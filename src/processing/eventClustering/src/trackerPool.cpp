@@ -41,6 +41,7 @@ TrackerPool::TrackerPool()
 
 }
 
+/******************************************************************************/
 void TrackerPool::setInitialParams(double sig_x, double sig_y, double sig_xy,
                       double alpha_pos, double alpha_shape, bool fixed_shape)
 {
@@ -53,6 +54,7 @@ void TrackerPool::setInitialParams(double sig_x, double sig_y, double sig_xy,
 
 }
 
+/******************************************************************************/
 void TrackerPool::setDecayParams(double decay_tau, double Tact, double Tinact,
                     double Tfree, double Tevent, int rate)
 {
@@ -64,16 +66,19 @@ void TrackerPool::setDecayParams(double decay_tau, double Tact, double Tinact,
     this->nb_ev_regulate_ = rate;
 }
 
+/******************************************************************************/
 void TrackerPool::setComparisonParams(double max_dist)
 {
     this->max_dist = max_dist;
 }
 
+/******************************************************************************/
 void TrackerPool::setClusterLimit(int limit)
 {
     clusterLimit = limit;
 }
 
+/******************************************************************************/
 int TrackerPool::update(emorph::AddressEvent &event,
                         std::vector<emorph::ClusterEventGauss> &clEvts)
 {
@@ -141,6 +146,7 @@ int TrackerPool::update(emorph::AddressEvent &event,
     return trackId;
 }
 
+/******************************************************************************/
 int TrackerPool::getNewTracker()
 {
     //check to see if there is a free tracker already created
@@ -168,6 +174,7 @@ int TrackerPool::getNewTracker()
 
 }
 
+/******************************************************************************/
 emorph::ClusterEventGauss TrackerPool::makeEvent(int i, int ts)
 {
     emorph::ClusterEventGauss clep;
@@ -191,6 +198,13 @@ emorph::ClusterEventGauss TrackerPool::makeEvent(int i, int ts)
     trackers_[i].clusterSpiked();
     return clep;
 }
+
+/******************************************************************************/
+void TrackerPool::LockCluster(int trackId)
+{
+    trackers_[trackId].Lock();
+}
+/******************************************************************************/
 
 //void TrackerPool::apply_rep_field(){
 //    // Apply repulsion between filters

@@ -44,7 +44,7 @@ protected:
     int getNewTracker();
     emorph::ClusterEventGauss makeEvent(int i, int ts);
     emorph::vtsHelper unwrap;
-
+    
 
     // Parameters of the repulsive field
     //double alpha_rep_;
@@ -63,6 +63,7 @@ public:
                         double Tfree, double Tevent, int rate);
     void setComparisonParams(double max_dist);
     void setClusterLimit(int limit);
+    void LockCluster(int trackId);
 
     int update(emorph::AddressEvent &event,
                std::vector<emorph::ClusterEventGauss> &clEvts);

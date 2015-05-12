@@ -120,8 +120,6 @@ double EventClustering::getPeriod()
 /******************************************************************************/
 bool EventClustering::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply)
 {
-    int ch;
-    int trackId;
 
     reply.clear();
     
@@ -132,12 +130,8 @@ bool EventClustering::respond(const yarp::os::Bottle &command, yarp::os::Bottle 
     }
     else {
         // Lock
-        ch = command.get(1).asInt();
-        trackId = command.get(2).asInt();
-        if (ch == 0)//left
-        {
-            printf("Locking cluster %d, channel %d \n", trackId, ch);
-        }
+        eventBottleManager.LockCluster(command);
+
         reply.addString("locked");
         return true;
     }
@@ -174,6 +168,26 @@ void EventBottleManager::setAllParameters(double alpha_shape, double alpha_pos,
                                        alpha_shape, Fixedshape);
     tracker_pool_right.setClusterLimit(clusterLimit);
 
+}
+
+/******************************************************************************/
+
+void EventBottleManager::LockCluster(yarp::os::Bottle command)
+{
+    int ch;
+    int trackId;
+
+    ch = command.get(1).asInt();
+    trackId = command.get(2).asInt();
+    
+    if (ch == 0)//left
+    {
+        printf("Locking cluster %d, channel %d \n", trackId, ch);
+        tracker_pool_left.LockCluster(trackId);
+    } else
+    {//right
+        tracker_pool_right.LockCluster(trackId);
+    }
 }
 
 /******************************************************************************/
@@ -257,7 +271,7 @@ void EventBottleManager::onRead(emorph::vBottle &bot)
 
         }
         else
-        {
+        { //right camera
             clEvts.clear();
             int clusterAssignedTo = tracker_pool_right.update(*aep, clEvts);
 
