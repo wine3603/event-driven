@@ -29,6 +29,7 @@ protected:
         Active,
         Inactive,
         Free,
+        Locked,
     };
 
     State state_;
@@ -62,10 +63,12 @@ public:
     void clusterSpiked();
 
     //updating and getting state
-    void isNoLongerFree() { state_ = Inactive; }
-    inline bool is_active(){return state_==Active;}
-    inline bool is_on(){return state_==Active || state_==Inactive;}
+    void isNoLongerFree() { state_ = Inactive;}
+    inline bool isActive(){return state_==Active || state_==Locked;}
+    inline bool isOn(){return state_==Active || state_==Inactive || state_==Locked;}
     inline bool isFree() {return state_ == Free;}
+    void Lock() {state_ = Locked;}
+    inline bool isLocked() {return state_ == Locked;}
 
     //getting blob position etc.
     inline double get_sigx2() {return sig_x2_;}

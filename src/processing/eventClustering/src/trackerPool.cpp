@@ -91,7 +91,7 @@ int TrackerPool::update(emorph::AddressEvent &event,
     // We look for the tracker with the biggest p
     for(int ii=0; ii<trackers_.size(); ii++){
         // only among the Active and Inactive clusters
-        if(trackers_[ii].is_on() && trackers_[ii].dist2event(ev_x, ev_y) < max_dist){
+        if(trackers_[ii].isOn() && trackers_[ii].dist2event(ev_x, ev_y) < max_dist){
             double p = trackers_[ii].compute_p(ev_x, ev_y);
             if(p>max_p || trackId ==-1){
                 max_p = p;
@@ -132,7 +132,7 @@ int TrackerPool::update(emorph::AddressEvent &event,
 
     for(int i = 0; i < trackers_.size(); i++){
         // We update the activity of each Active tracker
-        if(!(trackers_[i].is_on())) continue;
+        if(!(trackers_[i].isOn())||trackers_[i].isLocked()) continue;
         bool spiked = trackers_[i].decayActivity(dt, decay_tau,
                                                  Tinact, Tfree);
         if(spiked) clEvts.push_back(makeEvent(i, event.getStamp()));
@@ -173,7 +173,7 @@ emorph::ClusterEventGauss TrackerPool::makeEvent(int i, int ts)
     emorph::ClusterEventGauss clep;
 
     clep.setStamp(ts);
-    if(trackers_[i].is_active()) {
+    if(trackers_[i].isActive()) {
         clep.setPolarity(1);
     } else {
         clep.setPolarity(0);

@@ -35,7 +35,7 @@ BlobTracker::BlobTracker()
 
     fixed_shape_ = false;
 
-    state_ = Free;
+    state_ = Free; // Free, Active, Non_Active
 
     activity_ = 0;
 
@@ -109,7 +109,7 @@ bool BlobTracker::addActivity(int x, int y, unsigned long int ts,
     ts_last_update_ = ts;
 
     //return true if just turned on
-    if(!is_active() && activity_ > Tact) {
+    if(!isActive() && activity_ > Tact) {
         state_ = Active;
         return true;
     }
@@ -117,7 +117,7 @@ bool BlobTracker::addActivity(int x, int y, unsigned long int ts,
     //return true if moved enough
     double distance = sqrt(std::pow(vLastX - cen_x_, 2.0) +
                            std::pow(vLastY - cen_y_, 2.0));
-    if(is_active() && distance > Tevent) {
+    if(isActive() && distance > Tevent) {
         return true;
     }
 

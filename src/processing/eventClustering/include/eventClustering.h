@@ -77,6 +77,8 @@ public:
 
     double getPeriod();
     bool updateModule();
+    virtual bool respond(const yarp::os::Bottle &command,
+                         yarp::os::Bottle &reply);
 
 };
 

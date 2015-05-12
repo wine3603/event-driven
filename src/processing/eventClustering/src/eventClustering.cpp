@@ -117,6 +117,32 @@ double EventClustering::getPeriod()
 {
     return 0.1;
 }
+/******************************************************************************/
+bool EventClustering::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply)
+{
+    int ch;
+    int trackId;
+
+    reply.clear();
+    
+    if (command.get(0).asString()!="lock") {
+        printf("Unidentified command\n");
+        reply.addString("wrong command");
+        return false;
+    }
+    else {
+        // Lock
+        ch = command.get(1).asInt();
+        trackId = command.get(2).asInt();
+        if (ch == 0)//left
+        {
+            printf("Locking cluster %d, channel %d \n", trackId, ch);
+        }
+        reply.addString("locked");
+        return true;
+    }
+
+}
 
 /******************************************************************************/
 //EventBottleManager

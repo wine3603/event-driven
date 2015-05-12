@@ -1,0 +1,81 @@
+<application>
+<name> vTrack </name>
+
+<dependencies>	
+</dependencies>
+
+<module>
+   <name>dPepper</name>
+   <parameters> --name dPepper --temporalSize 10000 --spatialSize 1</parameters>
+   <node>localhost</node>
+</module>
+
+<module>
+   <name>eventClustering</name>
+   <parameters> --decay 15000 --tAct 20 --tInact 5 --tFree 5 --maxDist 8 --tEvent 0.5 </parameters>
+   <node>localhost</node>
+</module>
+
+<module>
+    <name>vFramer</name>
+    <parameters> --frameRate 60 --eventWindow 0.02 --displays "(0 aeLeft (AE) 0 cleLeft (CLE))"</parameters>
+    <node>localhost</node>
+</module>
+
+<module>
+   <name>yarpview</name>
+   <parameters>--name /viewCh0 --x 000 --y 000 --RefreshTime 16 </parameters>
+   <node>localhost</node>
+</module>
+
+<module>
+   <name>yarpview</name>
+   <parameters>--name /viewCh1 --x 500 --y 000 --RefreshTime 16 </parameters>
+   <node>localhost</node>
+</module>
+<!-- comments :-) -->
+
+<connection>
+  <from>/aexGrabber/vBottle:o</from>
+  <to>/dPepper/vBottle:i</to>
+  <protocol>tcp</protocol>
+</connection>
+
+<connection>
+  <from>/dPepper/vBottle:o</from>
+  <to>/vCluster/vBottle:i</to>
+  <protocol>tcp</protocol>
+</connection>
+
+<connection>
+    <from>/vCluster/vBottle:o</from>
+    <to>/vFramerModule/vBottle:i</to>
+    <protocol>tcp</protocol>
+</connection>
+
+<connection>
+  <from>/vFramerModule/aeLeft</from>
+  <to>/viewCh0</to>
+  <protocol>tcp</protocol>
+</connection>
+
+<connection>
+    <from>/vFramerModule/cleLeft</from>
+    <to>/viewCh1</to>
+    <protocol>tcp</protocol>
+</connection>
+
+<connection>
+    <from>/vCluster/vBottle:o</from>
+    <to>/vTrack/vBottle:i</to>
+    <protocol>tcp</protocol>
+</connection>
+
+<connection>
+    <from>/vTrack/rpc:o</from>
+    <to>/vCluster/rpc:i</to>
+    <protocol>tcp</protocol>
+</connection>
+
+
+</application>
