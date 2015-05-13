@@ -36,10 +36,13 @@ protected:
     double decay_tau;
     double Tact, Tinact, Tfree, Tevent;
     double max_dist;
-    bool fixed_shape_;
+    bool fixed_shape_, trackerLocked;
     double sig_x2_, sig_y2_, sig_xy_;
     double alpha_pos, alpha_shape;
     double clusterLimit;
+    double probThr;
+    
+    //bool trackerLocked;
 
     int getNewTracker();
     emorph::ClusterEventGauss makeEvent(int i, int ts);
@@ -63,7 +66,9 @@ public:
                         double Tfree, double Tevent, int rate);
     void setComparisonParams(double max_dist);
     void setClusterLimit(int limit);
-    void LockCluster(int trackId);
+    void setProbabilityThreshold(double pThr);
+    bool lockCluster(int trackId);
+    bool unlockCluster(int trackId);
 
     int update(emorph::AddressEvent &event,
                std::vector<emorph::ClusterEventGauss> &clEvts);

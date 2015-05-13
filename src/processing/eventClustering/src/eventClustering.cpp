@@ -67,14 +67,16 @@ bool EventClustering::configure(yarp::os::ResourceFinder &rf)
     //is there a limit on the number of clusters?
     double clusterLimit =
             rf.check("clusterLimit", yarp::os::Value(-1)).asDouble();
-
+    //threshold on the probability to update the cluster with the given event
+    double pThr = rf.check("pThr", yarp::os::Value(0.01)).asDouble();
+    
 
 
     
     eventBottleManager.setAllParameters(alphaShape, alphaPos, Tact, Tinact,
                                         Tfree, Tevent, SigX, SigY, SigXY,
                                         Fixedshape, Regrate, Maxdist,
-                                        decay_tau, clusterLimit);
+                                        decay_tau, clusterLimit, pThr);
 
    /* now open the manager to do the work */
     if(!eventBottleManager.open(moduleName))
@@ -122,19 +124,38 @@ bool EventClustering::respond(const yarp::os::Bottle &command, yarp::os::Bottle 
 {
 
     reply.clear();
+    //printf("received command %s\n",command.get(0).asString().c_str());
     
-    if (command.get(0).asString()!="lock") {
+    if (command.get(0).asString()=="lock"){
+        // Lock
+        if (eventBottleManager.lockCluster(command))
+        {
+            reply.addString("locked");
+            return true;
+        } else
+        {
+            reply.addString("failed");
+            return false;
+        }
+    }
+    else if (command.get(0).asString()=="unlock"){
+        // Unlock
+        if (eventBottleManager.unlockCluster(command))
+        {
+            reply.addString("unlocked");
+            return true;
+        } else
+        {
+            reply.addString("failed");
+            return false;
+        }
+    }
+    else {
         printf("Unidentified command\n");
         reply.addString("wrong command");
         return false;
     }
-    else {
-        // Lock
-        eventBottleManager.LockCluster(command);
-
-        reply.addString("locked");
-        return true;
-    }
+    
 
 }
 
@@ -150,8 +171,8 @@ void EventBottleManager::setAllParameters(double alpha_shape, double alpha_pos,
                                           double SigXY, bool Fixedshape,
                                           int Regrate,
                                           double Maxdist, double decay_tau,
-                                          double clusterLimit)
-{
+                                          double clusterLimit, double pThr)
+{   printf("eventBottleManager - set all parameters\n");
     //left
     tracker_pool_left.setComparisonParams(Maxdist);
     tracker_pool_left.setDecayParams(decay_tau, Tact, Tinact, Tfree, Tevent,
@@ -159,7 +180,8 @@ void EventBottleManager::setAllParameters(double alpha_shape, double alpha_pos,
     tracker_pool_left.setInitialParams(SigX, SigY, SigXY, alpha_pos,
                                        alpha_shape, Fixedshape);
     tracker_pool_left.setClusterLimit(clusterLimit);
-
+    tracker_pool_left.setProbabilityThreshold(pThr);
+    
     //right
     tracker_pool_right.setComparisonParams(Maxdist);
     tracker_pool_right.setDecayParams(decay_tau, Tact, Tinact, Tfree, Tevent,
@@ -167,12 +189,12 @@ void EventBottleManager::setAllParameters(double alpha_shape, double alpha_pos,
     tracker_pool_right.setInitialParams(SigX, SigY, SigXY, alpha_pos,
                                        alpha_shape, Fixedshape);
     tracker_pool_right.setClusterLimit(clusterLimit);
-
+    tracker_pool_right.setProbabilityThreshold(pThr);
 }
 
 /******************************************************************************/
 
-void EventBottleManager::LockCluster(yarp::os::Bottle command)
+bool EventBottleManager::lockCluster(yarp::os::Bottle command)
 {
     int ch;
     int trackId;
@@ -183,13 +205,37 @@ void EventBottleManager::LockCluster(yarp::os::Bottle command)
     if (ch == 0)//left
     {
         printf("Locking cluster %d, channel %d \n", trackId, ch);
-        tracker_pool_left.LockCluster(trackId);
-    } else
+        return tracker_pool_left.lockCluster(trackId);
+    } else if (ch == 1)
     {//right
-        tracker_pool_right.LockCluster(trackId);
+        return tracker_pool_right.lockCluster(trackId);
+    } else
+    {
+        return false;
     }
 }
 
+/******************************************************************************/
+bool EventBottleManager::unlockCluster(yarp::os::Bottle command)
+{
+    int ch;
+    int trackId;
+    
+    ch = command.get(1).asInt();
+    trackId = command.get(2).asInt();
+    
+    if (ch == 0)//left
+    {
+        printf("Unlocking cluster %d, channel %d \n", trackId, ch);
+        return tracker_pool_left.unlockCluster(trackId);
+    } else if (ch == 1)
+    {//right
+        return tracker_pool_right.unlockCluster(trackId);
+    }
+    else {
+        return false;
+    }
+}
 /******************************************************************************/
 bool EventBottleManager::open(std::string moduleName)
 {
@@ -207,6 +253,7 @@ bool EventBottleManager::open(std::string moduleName)
         outPort.close();
     }
 
+    printf("eventBottleManager - open\n");
     return success1 && success2;
 }
 

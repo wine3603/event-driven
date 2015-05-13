@@ -35,7 +35,7 @@ BlobTracker::BlobTracker()
 
     fixed_shape_ = false;
 
-    state_ = Free; // Free, Active, Non_Active
+    state_ = Free; // Free, Active, Non_Active, Locked
 
     activity_ = 0;
 
@@ -74,7 +74,7 @@ bool BlobTracker::initialiseShape(double sigX2, double sigY2, double sigXY,
 bool BlobTracker::addActivity(int x, int y, unsigned long int ts,
                               double Tact, double Tevent)
 {
-    activity_ += 1;//p;
+    activity_ += 1;//p; // why don't update the tracker using a weight that depends on the probability of the event bolonging to the cluster?
 
     double delta_sig_x2 = (x-cen_x_)*(x-cen_x_);
     double delta_sig_y2 = (y-cen_y_)*(y-cen_y_);
@@ -108,8 +108,8 @@ bool BlobTracker::addActivity(int x, int y, unsigned long int ts,
     }
     ts_last_update_ = ts;
 
-    //return true if just turned on
-    if(!isActive() && activity_ > Tact) {
+    //return true if just turned on and not locked
+    if(!isActive() && activity_ > Tact && !isLocked()) {
         state_ = Active;
         return true;
     }
@@ -117,8 +117,10 @@ bool BlobTracker::addActivity(int x, int y, unsigned long int ts,
     //return true if moved enough
     double distance = sqrt(std::pow(vLastX - cen_x_, 2.0) +
                            std::pow(vLastY - cen_y_, 2.0));
-    if(isActive() && distance > Tevent) {
-        return true;
+    if((isActive() || isLocked()) && distance > Tevent) {
+    //if(isActive() && distance > Tevent) {
+
+    return true;
     }
 
     return false;

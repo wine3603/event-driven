@@ -47,9 +47,10 @@ class EventBottleManager : public yarp::os::BufferedPort<emorph::vBottle>
                               double Tevent, double SigX, double SigY,
                               double SigXY, bool Fixedshape, int Regrate,
                               double Maxdist, double decay_tau,
-                              double clusterLimit);
+                              double clusterLimit, double pThr);
 
-        void    LockCluster(yarp::os::Bottle command);
+        bool    lockCluster(yarp::os::Bottle command);
+        bool    unlockCluster(yarp::os::Bottle command);
     
         bool    open(std::string moduleName);
         bool    init();
