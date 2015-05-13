@@ -103,17 +103,17 @@ int TrackerPool::update(emorph::AddressEvent &event,
     
     //the first event sets the beginning of the regulation cycle
     if(ts_last_reg_ < 0) ts_last_reg_ = ev_t;
-
+    printf("TrackerPool-update\n");
     /*if (trackerLocked == true)
     {
-        trackId = 10; // deve essere il trackId di quello locked // todo
+        trackId = 0; // deve essere il trackId di quello locked // todo
         if(trackers_[trackId].dist2event(ev_x, ev_y) < max_dist){
             p = trackers_[trackId].compute_p(ev_x, ev_y);
         }
     } else*/
     //{
         // We look for the tracker with the biggest p
-   /*     for(int ii=0; ii<trackers_.size(); ii++){
+       for(int ii=0; ii<trackers_.size(); ii++){
             // only among the Active and Inactive clusters
             if(trackers_[ii].isOn() && trackers_[ii].dist2event(ev_x, ev_y) < max_dist){
                 p = trackers_[ii].compute_p(ev_x, ev_y);
@@ -122,30 +122,34 @@ int TrackerPool::update(emorph::AddressEvent &event,
                     trackId = ii;
                 }
             }
-        }*/
+        }
     //}
     // If there was not any tracker close enough,
     // we take one of the Free trackers (to_reset_) and reset
     // it to the position of the event
-    /*if(trackId == -1) {
-
+    printf("trackId: %d\n",trackId);
+    if(trackId == -1) {
+        printf("trackId: %d, trackers size: %lu\n",trackId,trackers_.size());
+        
         trackId = getNewTracker();
-        if(trackId >= 0) {
+        printf("trackId: %d, trackers size: %lu\n",trackId,trackers_.size());
+        
+        /*if(trackId >= 0) {
             trackers_[trackId].initialisePosition(ev_x, ev_y);
             trackers_[trackId].clusterSpiked();
             trackers_[trackId].isNoLongerFree();
-        }
-    }*/
+        }*/
+    }
     
     // Otherwise, we update the one with the highest probability
     /* 
      If the tracker is locked there can be noise (so we do not want to update for low probability) but when we loose the tracker because of overt tracking, then we must be able to update the position of the cluster. We can assume that we always have some events from the cluster, or that the cluster is moving at constant velocity. In the latter case, even if we loose the tracker for a while, it keeps moving and the probability of the event to belong to the cluster will be quite high and above the threshold.
      */
     //else if (p > probThr){
-    //bool spiked = 0;// trackers_[trackId].addActivity(ev_x, ev_y, ev_t, Tact, Tevent);
-    //    if(spiked) {
-    //        clEvts.push_back(makeEvent(trackId, event.getStamp()));
-    //    }
+        /*bool spiked = 0;// trackers_[trackId].addActivity(ev_x, ev_y, ev_t, Tact, Tevent);
+        if(spiked) {
+           clEvts.push_back(makeEvent(trackId, event.getStamp()));
+        }*/
     //}
 
     //regulate the pool only each nb_ev_regulate_ events
@@ -170,8 +174,10 @@ int TrackerPool::update(emorph::AddressEvent &event,
 /******************************************************************************/
 int TrackerPool::getNewTracker()
 {
+    //printf("getNewTracker\n");
     //check to see if there is a free tracker already created
     for(int i = 0; i < trackers_.size(); i++) {
+        //printf("i: %d %d",i,trackers_[i].isFree());
         if(trackers_[i].isFree()) {
             trackers_[i].initialiseShape(sig_x2_, sig_y2_, sig_xy_, alpha_pos,
                                         alpha_shape, fixed_shape_);
@@ -183,6 +189,7 @@ int TrackerPool::getNewTracker()
 
     //first check if we are under the limit
     if(clusterLimit < 0 || trackers_.size() < clusterLimit) {
+        //printf("new tracker, trackId: %lu\n", trackers_.size());
         BlobTracker newtracker;
         newtracker.initialiseShape(sig_x2_, sig_y2_, sig_xy_,
                                    alpha_pos, alpha_shape, fixed_shape_);
@@ -225,14 +232,14 @@ bool TrackerPool::lockCluster(int trackId)
 {
     if (trackId < trackers_.size())
     {
+        printf("locking trackId %d\n", trackId);
         trackers_[trackId].Lock();
         trackerLocked = true;
         return true;
     } else {
         printf("non existing cluster -- locking failed\n");
         return false;
-    }// todo cambiare reply con un return boolean
-    
+    }
 }
 
 /******************************************************************************/

@@ -67,8 +67,8 @@ public:
     inline bool isActive(){return state_==Active || state_==Locked;}
     inline bool isOn(){return state_==Active || state_==Inactive || state_==Locked;}
     inline bool isFree() {return state_ == Free;}
-    void Lock() {} //state_ = Locked;}
-    void unLock() {}// {state_ = Active;}
+    void Lock() {state_ = Locked;}
+    void unLock() {state_ = Active;}
     inline bool isLocked() {return state_ == Locked;}
 
     //getting blob position etc.
