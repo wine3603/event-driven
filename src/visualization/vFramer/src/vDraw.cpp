@@ -180,11 +180,11 @@ void clusterDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
         cv::putText(textImg, ss.str(),
                     cv::Point(ci->second->getYCog(),
                               Xlimit - ci->second->getXCog()),
-                    0, 0.3, CV_RGB(0, 0, 0));
+                    0, 0.3, CV_RGB(255, 255, 255));
     }
 
     cv::flip(textImg, textImg, 0);
-    image += textImg;
+    image -= textImg;
 
 }
 
