@@ -38,9 +38,10 @@ TrackerPool::TrackerPool()
     Tevent = 2;
 
     max_dist = 10;
+    //trackers_ = new std::vector<BlobTracker>;
     probThr = 0.01;
     
-    //trackerLocked = false;
+    trackerLocked = false;
 
 }
 
@@ -103,15 +104,15 @@ int TrackerPool::update(emorph::AddressEvent &event,
     
     //the first event sets the beginning of the regulation cycle
     if(ts_last_reg_ < 0) ts_last_reg_ = ev_t;
-    printf("TrackerPool-update\n");
-    /*if (trackerLocked == true)
+    
+    if (trackerLocked == true)
     {
         trackId = 0; // deve essere il trackId di quello locked // todo
         if(trackers_[trackId].dist2event(ev_x, ev_y) < max_dist){
             p = trackers_[trackId].compute_p(ev_x, ev_y);
         }
-    } else*/
-    //{
+    } else
+    {
         // We look for the tracker with the biggest p
        for(int ii=0; ii<trackers_.size(); ii++){
             // only among the Active and Inactive clusters
@@ -123,37 +124,35 @@ int TrackerPool::update(emorph::AddressEvent &event,
                 }
             }
         }
-    //}
+    }
     // If there was not any tracker close enough,
     // we take one of the Free trackers (to_reset_) and reset
     // it to the position of the event
-    printf("trackId: %d\n",trackId);
+    
     if(trackId == -1) {
-        printf("trackId: %d, trackers size: %lu\n",trackId,trackers_.size());
-        
+    
         trackId = getNewTracker();
-        printf("trackId: %d, trackers size: %lu\n",trackId,trackers_.size());
         
-        /*if(trackId >= 0) {
+        if(trackId >= 0) {
             trackers_[trackId].initialisePosition(ev_x, ev_y);
             trackers_[trackId].clusterSpiked();
             trackers_[trackId].isNoLongerFree();
-        }*/
+        }
     }
     
     // Otherwise, we update the one with the highest probability
     /* 
      If the tracker is locked there can be noise (so we do not want to update for low probability) but when we loose the tracker because of overt tracking, then we must be able to update the position of the cluster. We can assume that we always have some events from the cluster, or that the cluster is moving at constant velocity. In the latter case, even if we loose the tracker for a while, it keeps moving and the probability of the event to belong to the cluster will be quite high and above the threshold.
      */
-    //else if (p > probThr){
-        /*bool spiked = 0;// trackers_[trackId].addActivity(ev_x, ev_y, ev_t, Tact, Tevent);
+    else if (p > probThr){
+        bool spiked = trackers_[trackId].addActivity(ev_x, ev_y, ev_t, Tact, Tevent);
         if(spiked) {
            clEvts.push_back(makeEvent(trackId, event.getStamp()));
-        }*/
-    //}
+        }
+    }
 
     //regulate the pool only each nb_ev_regulate_ events
-    /*if(++count_ < nb_ev_regulate_) return trackId;
+    if(++count_ < nb_ev_regulate_) return trackId;
 
     //do the regulation
     int dt = ev_t - ts_last_reg_;
@@ -167,7 +166,7 @@ int TrackerPool::update(emorph::AddressEvent &event,
                                                  Tinact, Tfree);
         if(spiked) clEvts.push_back(makeEvent(i, event.getStamp()));
     }
-*/
+
     return trackId;
 }
 
@@ -247,6 +246,7 @@ bool TrackerPool::unlockCluster(int trackId)
 {
     if (trackId < trackers_.size())
     {
+        printf("unlocking trackId %d\n", trackId);
         trackers_[trackId].unLock();
         trackerLocked = false;
         return true;

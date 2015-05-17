@@ -28,31 +28,35 @@ class TrackerPool {
 
 protected:
 
-    //we will store trackers in a vector
-    std::vector<BlobTracker> trackers_;
+    emorph::vtsHelper unwrap;
+    
+
 
     int nb_ev_regulate_, count_;
     unsigned long int  ts_last_reg_;
     double decay_tau;
     double Tact, Tinact, Tfree, Tevent;
     double max_dist;
-    bool fixed_shape_, trackerLocked;
+    bool fixed_shape_;//, trackerLocked;
     double sig_x2_, sig_y2_, sig_xy_;
     double alpha_pos, alpha_shape;
     double clusterLimit;
     double probThr;
-    
+    bool trackerLocked;
+
+    //we will store trackers in a vector
+    std::vector<BlobTracker> trackers_;
+    //
     //bool trackerLocked;
 
-    int getNewTracker();
-    emorph::ClusterEventGauss makeEvent(int i, int ts);
-    emorph::vtsHelper unwrap;
     
-
     // Parameters of the repulsive field
     //double alpha_rep_;
     //int d_rep_;
     //void apply_rep_field();
+    
+    int getNewTracker();
+    emorph::ClusterEventGauss makeEvent(int i, int ts);
 
 
 public:
