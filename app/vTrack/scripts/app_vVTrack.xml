@@ -4,11 +4,13 @@
 <dependencies>	
 </dependencies>
 
+<!--
 <module>
    <name>dPepper</name>
    <parameters> --name dPepper --temporalSize 10000 --spatialSize 1</parameters>
    <node>localhost</node>
 </module>
+-->
 
 <module>
    <name>eventClustering</name>
@@ -18,7 +20,7 @@
 
 <module>
     <name>vFramer</name>
-    <parameters> --frameRate 60 --eventWindow 0.02 --displays "(0 aeLeft (AE) 0 cleLeft (CLE))"</parameters>
+    <parameters> --frameRate 60 --eventWindow 0.02 --displays "(0 left (AE CLE) 1 right (AE CLE))"</parameters>
     <node>localhost</node>
 </module>
 
@@ -35,14 +37,16 @@
 </module>
 <!-- comments :-) -->
 
+<!--
 <connection>
   <from>/aexGrabber/vBottle:o</from>
   <to>/dPepper/vBottle:i</to>
   <protocol>tcp</protocol>
 </connection>
+-->
 
 <connection>
-  <from>/dPepper/vBottle:o</from>
+  <from>/aexGrabber/vBottle:o</from>
   <to>/vCluster/vBottle:i</to>
   <protocol>tcp</protocol>
 </connection>
@@ -54,13 +58,13 @@
 </connection>
 
 <connection>
-  <from>/vFramerModule/aeLeft</from>
+  <from>/vFramerModule/left</from>
   <to>/viewCh0</to>
   <protocol>tcp</protocol>
 </connection>
 
 <connection>
-    <from>/vFramerModule/cleLeft</from>
+    <from>/vFramerModule/right</from>
     <to>/viewCh1</to>
     <protocol>tcp</protocol>
 </connection>

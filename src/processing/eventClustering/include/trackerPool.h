@@ -42,7 +42,7 @@ protected:
     double alpha_pos, alpha_shape;
     double clusterLimit;
     double probThr;
-    bool trackerLocked;
+    int trackerLocked;
 
     //we will store trackers in a vector
     std::vector<BlobTracker> trackers_;

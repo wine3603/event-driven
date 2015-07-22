@@ -39,9 +39,9 @@ TrackerPool::TrackerPool()
 
     max_dist = 10;
     //trackers_ = new std::vector<BlobTracker>;
-    probThr = 0.01;
+    probThr = 0;
     
-    trackerLocked = false;
+    trackerLocked = -1; //if there is a locked tracker trackerLocked is the id of the locked tracker, otherwise it is -1 (i.e. there isn't any locked tracker)
 
 }
 
@@ -100,14 +100,14 @@ int TrackerPool::update(emorph::AddressEvent &event,
     double max_p = 0;
     int trackId = -1;
 
-    double p;
+    double p = 0;
     
     //the first event sets the beginning of the regulation cycle
     if(ts_last_reg_ < 0) ts_last_reg_ = ev_t;
     
-    if (trackerLocked == true)
+    if (trackerLocked != -1)
     {
-        trackId = 0; // deve essere il trackId di quello locked // todo
+        trackId = trackerLocked;
         if(trackers_[trackId].dist2event(ev_x, ev_y) < max_dist){
             p = trackers_[trackId].compute_p(ev_x, ev_y);
         }
@@ -233,7 +233,7 @@ bool TrackerPool::lockCluster(int trackId)
     {
         printf("locking trackId %d\n", trackId);
         trackers_[trackId].Lock();
-        trackerLocked = true;
+        trackerLocked = trackId;
         return true;
     } else {
         printf("non existing cluster -- locking failed\n");
@@ -248,7 +248,7 @@ bool TrackerPool::unlockCluster(int trackId)
     {
         printf("unlocking trackId %d\n", trackId);
         trackers_[trackId].unLock();
-        trackerLocked = false;
+        trackerLocked = -1;
         return true;
     } else {
         printf("non existing cluster -- unlocking failed\n");

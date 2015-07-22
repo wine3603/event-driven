@@ -205,10 +205,10 @@ bool EventBottleManager::lockCluster(yarp::os::Bottle command)
     if (ch == 0)//left
     {
         printf("Locking cluster %d, channel %d \n", trackId, ch);
-        //return tracker_pool_left.lockCluster(trackId);
+        return tracker_pool_left.lockCluster(trackId);
     } else if (ch == 1)
     {//right
-        //return tracker_pool_right.lockCluster(trackId);
+        return tracker_pool_right.lockCluster(trackId);
     } else
     {
         return false;
@@ -227,10 +227,10 @@ bool EventBottleManager::unlockCluster(yarp::os::Bottle command)
     if (ch == 0)//left
     {
         printf("Unlocking cluster %d, channel %d \n", trackId, ch);
-        //return tracker_pool_left.unlockCluster(trackId);
+        return tracker_pool_left.unlockCluster(trackId);
     } else if (ch == 1)
     {//right
-        //return tracker_pool_right.unlockCluster(trackId);
+        return tracker_pool_right.unlockCluster(trackId);
     }
     else {
         return false;
