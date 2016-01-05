@@ -62,7 +62,7 @@ class stFilters{
         //Member functions
 
         //Constructor definition
-        stFilters(double frequency_spatial = 0.08, double variance_spatial = 6.5, double frequency_temporal = 0.08, double variance_temporal = 5){
+        stFilters(double frequency_spatial = 0.0625, double variance_spatial = 6, double frequency_temporal = 0.0625, double variance_temporal = 0.5){
 
             std::cout<<"Spatial-Temporal Filter parameters initialization..."<<std::endl;
 

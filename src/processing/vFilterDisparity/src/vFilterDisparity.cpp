@@ -196,6 +196,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         pos_x = aep->getY();
         pos_y = aep->getX();
         ts = unwrapper(aep->getStamp()) / event_history.time_scale;
+        std::cout << ts << std::endl;
 
         //center the filters on the current event
         st_filters.center_x = aep->getY();
@@ -397,7 +398,10 @@ std::vector<double> vFilterDisparityManager::computeEnergy() {
 
       disp = *disp_vector_it;
 
-      gaborResponse << theta << " " << disp << " " << binocular_energy_theta[t] << "\n";
+      gaborResponse.precision(10);
+      gaborResponse.setf(ios::fixed);
+      gaborResponse.setf(ios::showpoint);
+      gaborResponse << ts << " " << theta << " " << disp << " " << binocular_energy_theta[t] << "\n";
 
       ++disp_vector_it;
       ++t;
@@ -489,7 +493,7 @@ emorph::FlowEvent * vFilterDisparityManager::computeFlow(emorph::AddressEvent &a
     for(; dir_vector_it != dir_vector.end() - 1 ; ){//Summing up motion estimation along all directons
 
       //std::cout << "Theta value : " << *dir_vector_it<< std::endl; //Debug Code
-        std::cout << "Binocular value : " << *binocular_energy_theta_it<< std::endl; //Debug Code
+      //std::cout << "Binocular value : " << *binocular_energy_theta_it<< std::endl; //Debug Code
 
       vx = vx + ( *binocular_energy_theta_it   *  cos( *dir_vector_it ) )  ;
       vy = vy - ( *binocular_energy_theta_it   *  sin( *dir_vector_it ) ) ;
