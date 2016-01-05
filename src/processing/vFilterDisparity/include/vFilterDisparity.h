@@ -23,6 +23,8 @@
 #include <yarp/math/Math.h>
 #include <iCub/emorph/all.h>
 #include <iCub/emorph/vtsHelper.h>
+#include <iostream>
+#include <fstream>
 #include "stFilters.h"
 #include "eventHistoryBuffer.h"
 
@@ -35,9 +37,49 @@ private:
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<emorph::vBottle> outPort;
 
+    int height;
+    int width;
     int pos_x;
     int pos_y;
+    int ts;
     double theta;
+    int fRad;
+
+    std::vector<double> disparity_vector;
+    std::vector<double> phase_vector;
+    std::vector<double> binocular_energy_theta;
+    double even_conv_left;
+    double odd_conv_left;
+    std::vector<double> even_conv_right;
+    std::vector<double> odd_conv_right; //Arrays of size = number of phases
+    std::vector<double> final_convolution_even;
+    std::vector<double> final_convolution_odd;
+    std::vector<double> final_convolution;
+
+    std::vector<double> disparity_est_theta;
+    eventHistoryBuffer event_history;
+
+    emorph::vSurface *surfaceOn; //< emorph::vSurface for on polarity events
+    emorph::vSurface *surfaceOf; //< emorph::vSurface for off polarity events
+    emorph::vSurface *cSurf;     // pointer to current surface (on or off)
+
+    std::ofstream gaborResponse;
+
+//    std::vector<double> even_conv_right;
+//    std::vector<double> odd_conv_right; //Arrays of size = number of phases
+//    std::vector<double> final_convolution_even;
+//    std::vector<double> final_convolution_odd;
+//    std::vector<double> final_convolution;
+
+//    //estimated binocular energy for the single direction
+//    std::vector<double> binocular_energy_theta;
+//    std::vector<double>::iterator binocular_energy_theta_it;
+
+//    //estimated disparity for the single direction
+//    std::vector<double> disparity_est_theta;
+
+//    //estimated flow for the single direction
+//    std::vector<double> flow_est_theta;
 
     //FILTER PARAMETERS
     //directions
@@ -47,23 +89,32 @@ private:
 
     //phases
     int phases;
-    std::vector<double> phase_vector;
-    double phase_step;
+//    std::vector<double> phase_vector;
+//    double phase_step;
+
+//    //disparity
+//    std::vector<double> disparity_vector;
 
     //size
     int kernel_size;
 
-    eventHistoryBuffer event_history;
+//    eventHistoryBuffer event_history;
     stFilters st_filters;
 
     //for helping with timestamp wrap around
     emorph::vtsHelper unwrapper;
 
-    //void processing();
+    void convolveGabor();
+    std::vector<double> computeEnergy();
+    double computeDisparityTheta();
+    std::pair<double, double> estimateDisparity();
+    emorph::FlowEvent *computeFlow(emorph::AddressEvent &ae);
+    void convolve(std::pair<double, double> &conv_value);
+    emorph::FlowEvent *compute(std::vector<double> E);
 
 public:
     
-    vFilterDisparityManager(int directions, int phases, int kernel_size);
+    vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();

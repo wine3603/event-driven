@@ -14,6 +14,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <utility>
+#include <iCub/emorph/all.h>
 //#include <tuple>
 
 // Includes for CUDA functionality
@@ -77,7 +78,7 @@ class stFilters{
             f_temporal = frequency_temporal;
             var_temporal = variance_temporal;
 
-             std::cout<<"Parameters : "<< f_spatial << " " << var_spatial << " "<< f_temporal << " "<<var_temporal <<std::endl;//Debug Code
+            std::cout<<"Parameters : "<< f_spatial << " " << var_spatial << " "<< f_temporal << " "<<var_temporal <<std::endl;//Debug Code
 
 
         }
@@ -85,7 +86,7 @@ class stFilters{
 
         //The folliwng function can be changed into GPU kernel
 
-        std::pair<double,double> filtering(int&,int&,double&,double&,double&); //X,Y,theta, time and phase
+        std::pair<double,double> filtering(int&,int&,double&,double&,double&); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
 
 
 
