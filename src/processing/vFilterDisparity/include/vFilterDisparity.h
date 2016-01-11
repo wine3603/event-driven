@@ -41,7 +41,7 @@ private:
     int width;
     int pos_x;
     int pos_y;
-    int ts;
+    double ts;
     double theta;
     int fRad;
 

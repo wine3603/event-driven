@@ -35,10 +35,10 @@
 using namespace std;
 
 
-#ifndef STFILTERS_H
-#define STFILTERS_H
+#ifndef STFILTERSFLOW_H
+#define STFILTERSFLOW_H
 
-class stFilters{
+class stFiltersFlow{
 
     private :
 
@@ -62,7 +62,7 @@ class stFilters{
         //Member functions
 
         //Constructor definition
-        stFilters(double frequency_spatial = 0.0625, double variance_spatial = 6.5, double frequency_temporal = 0.5, double variance_temporal = 1){
+        stFiltersFlow(double frequency_spatial = 0.0625, double variance_spatial = 6.5, double frequency_temporal = 0.0625, double variance_temporal = 5){
 
             std::cout<<"Spatial-Temporal Filter parameters initialization..."<<std::endl;
 
@@ -82,11 +82,11 @@ class stFilters{
 
 
         }
-        virtual ~stFilters();//Destructor
+        virtual ~stFiltersFlow();//Destructor
 
         //The folliwng function can be changed into GPU kernel
 
-        std::pair<double,double> filtering(int&,int&,double&,double&,double&); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
+        std::pair<double,double> filtering(int&,int&,double&,double&); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
 
 
 

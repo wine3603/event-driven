@@ -196,14 +196,14 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         pos_x = aep->getY();
         pos_y = aep->getX();
         ts = unwrapper(aep->getStamp()) / event_history.time_scale;
-        std::cout << ts << std::endl;
+//        std::cout << ts << std::endl;
 
         //center the filters on the current event
         st_filters.center_x = aep->getY();
         st_filters.center_y = aep->getX();
 
         int thetai = 0;
-//        if(channel == 0) {
+        if(channel == 0) {
             //process for each direction
             std::vector<double>::iterator dir_vector_it = dir_vector.begin();
             for(; dir_vector_it != dir_vector.end() ;) {
@@ -211,10 +211,6 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
                 //convolve the events in the buffer with Gabor filters
                 convolveGabor();
-//                std::cout << "even_conv_right " << even_conv_right[0] << std::endl;
-//                std::cout << "odd_conv_right " << odd_conv_right[0] << std::endl;
-//                std::cout << "even_conv_left " << even_conv_left << std::endl;
-//                std::cout << "odd_conv_left " << odd_conv_left << std::endl;
 
                 //compute binocular energy, which will be a vector of energies,
                 //each corresponding to each phase
@@ -236,6 +232,12 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
             }
 
+            //compute flow
+            ofe = computeFlow(*aep);
+//            std::cout << "vx " << ofe->getVx() << " vy " << ofe->getVy() << std::endl;
+            if(ofe) outBottle.addEvent(*ofe);
+            else outBottle.addEvent(*aep);
+
             //estimate the final disparity for all the directions
             std::pair<double,double> disparity = estimateDisparity();
 //            std::cout << "Dx " << disparity.first << " Dy " << disparity.second << std::endl;
@@ -248,7 +250,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             ofe->setVx(disparity.first);
             ofe->setVx(disparity.second);
             outBottle.addEvent(*ofe);
-//        }
+
+        }
 
     if (strictness) outPort.writeStrict();
     else outPort.write();
@@ -287,7 +290,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
           //NOTE : List size is always limited to the buffer size, took care of this in the event buffer code
           if(!event_history.timeStampList[pixel_x][pixel_y].empty()){ //If the list is empty skip computing
 
-              //std::cout << "Event History Buffer Size : " <<  event_history.timeStampList[pixel_x][pixel_y].size() << std::endl;//Debug Code
+              std::cout << "Event History Buffer Size : " <<  event_history.timeStampList[pixel_x][pixel_y].size() << std::endl;//Debug Code
 
               for( int list_length = 1 ; list_length <= event_history.timeStampList[pixel_x][pixel_y].size() ; ){
 
@@ -398,9 +401,9 @@ std::vector<double> vFilterDisparityManager::computeEnergy() {
 
       disp = *disp_vector_it;
 
-      gaborResponse.precision(10);
-      gaborResponse.setf(ios::fixed);
-      gaborResponse.setf(ios::showpoint);
+//      gaborResponse.precision(10);
+//      gaborResponse.setf(ios::fixed);
+//      gaborResponse.setf(ios::showpoint);
       gaborResponse << ts << " " << theta << " " << disp << " " << binocular_energy_theta[t] << "\n";
 
       ++disp_vector_it;
