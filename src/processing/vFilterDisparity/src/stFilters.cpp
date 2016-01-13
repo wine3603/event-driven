@@ -13,7 +13,7 @@
 #include "vFilterDisparity.h"
 #define  BUFSIZE 256
 
-std::pair<double,double> stFilters::filtering(int& x,int& y,double& theta,double& time,double& phase){ //(const emorph::vQueue& subsurf, int& curr_ts, double& theta, double& phase){ {
+std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,double& time,double& phase){ //(const emorph::vQueue& subsurf, int& curr_ts, double& theta, double& phase){ {
 
  //    double st_even = 0, st_odd = 0;
 
@@ -47,9 +47,6 @@ std::pair<double,double> stFilters::filtering(int& x,int& y,double& theta,double
 //        st_odd  += -st2 + st4;
 
 //    }
-
-    int dx = x - center_x;
-    int dy = y - center_y;
 
      //std::cout <<"Filter applied at : " << std::endl;
      //std::cout << "dx " << dx << " dy " << dy << " time " << time << std::endl;
@@ -85,13 +82,6 @@ std::pair<double,double> stFilters::filtering(int& x,int& y,double& theta,double
      double st_odd =  -st2 + st4; //CHECK THIS
 
      //std::cout << "Event Convolution computed: " << st_even << " "<<st_odd<< std::endl;//Debug Code
-
-     //Spatio-Temporal Filter computation
-     //final_convolution[0] = st_even;
-     //final_convolution[1] = st_odd;
-
-     //Computing the motion energy
-     //double final_convolution = st_even * st_even + st_odd * st_odd;
 
     return std::make_pair(st_even,st_odd);
 

@@ -6,7 +6,7 @@ eventHistoryBuffer::eventHistoryBuffer(){ //one time initialization
     std::cout << "Event History Buffer Constructor..." << std::endl;
     height = MAX_RES;
     width = MAX_RES;
-    bufferSize = 50;
+    bufferSize = 10;
     time_scale = 1000000;
     disp = false;
 

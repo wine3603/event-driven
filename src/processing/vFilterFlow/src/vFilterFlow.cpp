@@ -154,8 +154,8 @@ void vFilterFlowManager::onRead(emorph::vBottle &bot)
     {
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
         if(!aep) continue;
-        if(aep->getChannel() != 0) continue;
-        if(aep->getPolarity() == 1) continue;
+        if(aep->getChannel() != 1) continue;
+        if(aep->getPolarity() == 0) continue;
 
         double vx = 0, vy = 0;
 
@@ -188,9 +188,6 @@ void vFilterFlowManager::onRead(emorph::vBottle &bot)
 
             response << ts << " " << theta * (180 / M_PI) << " " << energy << "\n";
         }
-
-//        vx = (2.0 / directions) * vx;
-//        vy = (2.0 / directions) * vy;
 
         ofe = new emorph::FlowEvent(*aep);
         ofe->setVx(vx);

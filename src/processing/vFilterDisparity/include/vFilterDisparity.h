@@ -37,80 +37,39 @@ private:
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<emorph::vBottle> outPort;
 
+    //for helping with timestamp wrap around
+    emorph::vtsHelper unwrapper;
+
+    int x;
+    int y;
+    double ts;
+
     int height;
     int width;
-    int pos_x;
-    int pos_y;
-    double ts;
-    double theta;
-    int fRad;
 
-    std::vector<double> disparity_vector;
-    std::vector<double> phase_vector;
-    std::vector<double> binocular_energy_theta;
+    eventHistoryBuffer event_history;
+
+    //filters parameters
+    int directions; // number of directions
+    std::vector<double> dir_vector; // vector of directions
+    double theta; // actual direction
+    int phases; // number of phases
+    std::vector<double> phase_vector; // vector of phases
+    std::vector<double> disparity_vector; // vector of disparities
+    int kernel_size;
+    stFilters st_filters;
+
+    //filters responses
     double even_conv_left;
     double odd_conv_left;
     std::vector<double> even_conv_right;
     std::vector<double> odd_conv_right; //Arrays of size = number of phases
-    std::vector<double> final_convolution_even;
-    std::vector<double> final_convolution_odd;
-    std::vector<double> final_convolution;
 
-    std::vector<double> disparity_est_theta;
-    eventHistoryBuffer event_history;
-
-    emorph::vSurface *surfaceOn; //< emorph::vSurface for on polarity events
-    emorph::vSurface *surfaceOf; //< emorph::vSurface for off polarity events
-    emorph::vSurface *cSurf;     // pointer to current surface (on or off)
-
+    std::ofstream outDisparity;
     std::ofstream gaborResponse;
 
-//    std::vector<double> even_conv_right;
-//    std::vector<double> odd_conv_right; //Arrays of size = number of phases
-//    std::vector<double> final_convolution_even;
-//    std::vector<double> final_convolution_odd;
-//    std::vector<double> final_convolution;
-
-//    //estimated binocular energy for the single direction
-//    std::vector<double> binocular_energy_theta;
-//    std::vector<double>::iterator binocular_energy_theta_it;
-
-//    //estimated disparity for the single direction
-//    std::vector<double> disparity_est_theta;
-
-//    //estimated flow for the single direction
-//    std::vector<double> flow_est_theta;
-
-    //FILTER PARAMETERS
-    //directions
-    int directions;
-    std::vector<double> dir_vector;
-    double dir_step;
-
-    //phases
-    int phases;
-//    std::vector<double> phase_vector;
-//    double phase_step;
-
-//    //disparity
-//    std::vector<double> disparity_vector;
-
-    //size
-    int kernel_size;
-
-//    eventHistoryBuffer event_history;
-    stFilters st_filters;
-
-    //for helping with timestamp wrap around
-    emorph::vtsHelper unwrapper;
-
     void convolveGabor();
-    std::vector<double> computeEnergy();
-    double computeDisparityTheta();
-    std::pair<double, double> estimateDisparity();
-    emorph::FlowEvent *computeFlow(emorph::AddressEvent &ae);
-    void convolve(std::pair<double, double> &conv_value);
-    emorph::FlowEvent *compute(std::vector<double> E);
+    double estimateDisparity();
 
 public:
     
