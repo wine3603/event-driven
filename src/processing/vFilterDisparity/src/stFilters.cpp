@@ -54,13 +54,13 @@ std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,doub
      //std::cout << "Filter centered at X : " << center_x << " Y : "<< center_y << std::endl;//Debug Code
 
      //Spatial Filter computation
-     double D = 2 * M_PI * (1/ pow(var_spatial,2));
+     double D = (1/ (2 * M_PI * pow(var_spatial,2))); //double D = 2 * M_PI * (1/ pow(var_spatial,2));
 
      //CHANGED
      double dx_theta =  dx * cos(theta) + dy * sin(theta);
      double dy_theta = -dx * sin(theta) + dy * cos(theta);
      double gaussian_spatial = exp( - ( pow(dx_theta, 2) + pow(dy_theta,2) ) / ( 2 * pow(var_spatial,2) ) ); //double gaussian_spatial = exp( - ( pow(dx,2) + pow(dy,2) ) / ( 2 * pow(var_spatial,2) ) );
-     double f1 = f_spatial * dx_theta; //double f1 = f_spatial * ( dx * cos(-theta) + dy * sin(-theta) );
+     double f1 = f_spatial * dx_theta; // double f1 = f_spatial * ( dx * cos(-theta) + dy * sin(-theta) );
 
      double even_spatial = D * gaussian_spatial  * cos( (2 * M_PI * f1 ) + phase );
      double odd_spatial = D * gaussian_spatial * sin( (2 * M_PI * f1) + phase );

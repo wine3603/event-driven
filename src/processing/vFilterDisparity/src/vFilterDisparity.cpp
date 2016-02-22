@@ -104,15 +104,15 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int dire
     double phase_value = 0;
     for(int k = 0; k < phases; k++) {
         phase_value = phase_gen[k] * M_PI;
-        phase_vector[k] = phase_value;
+        phase_vector[k] = -phase_value;
         disparity_vector[k] = phase_value / st_filters.omega;
     }
 
     even_conv_right.resize(phases);
     odd_conv_right.resize(phases); //Arrays of size = number of phases
 
-    outDisparity.open("estimatedDisparity.txt");
-    gaborResponse.open("gaborResponse.txt");
+    outDisparity.open("estimatedDisparityNEW.txt");
+    gaborResponse.open("gaborResponseNEW.txt");
 
 }
 
@@ -182,7 +182,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         y = aep->getX();
         ts = unwrapper(aep->getStamp()) / event_history.time_scale;
 
-        if(aep->getChannel() == 0) {
+        if(aep->getChannel() == 0) {//left channel used as reference for disparity
 
             //center the filters on the current event
             st_filters.center_x = aep->getY();
@@ -319,6 +319,7 @@ double vFilterDisparityManager::estimateDisparity(){
         disparity_sum = disparity_sum + (*disparity_it) * energy;
 
         gaborResponse << ts << " " << theta << " " << *disparity_it << " " << energy << "\n";
+        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
 
         ++disparity_it;
 

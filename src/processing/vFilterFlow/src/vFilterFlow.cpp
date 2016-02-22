@@ -88,13 +88,13 @@ vFilterFlowManager::vFilterFlowManager(int height, int width, int directions, in
     dir_vector.resize(directions);
     //set the direction vector
     double value = 0;
-    double dir_step = 0.25;
+    double dir_step = 0.125;
     for(int i = 0; i < directions; i++) {
         dir_vector[i] = value * M_PI;
         value = value + dir_step;
     }
 
-    response.open ("response.txt");
+    response.open ("gaborResponse.txt");
 
 }
 /**********************************************************/
@@ -154,7 +154,7 @@ void vFilterFlowManager::onRead(emorph::vBottle &bot)
     {
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
         if(!aep) continue;
-        if(aep->getChannel() != 1) continue;
+        if(aep->getChannel() != 0) continue;
         if(aep->getPolarity() == 0) continue;
 
         double vx = 0, vy = 0;
@@ -183,8 +183,8 @@ void vFilterFlowManager::onRead(emorph::vBottle &bot)
             double vy0 = energy * sin(theta);
             vx = vx + vx0;
             vy = vy + vy0;
-            std::cout << "theta = " << theta * (180 / M_PI) << " energy = " << energy << " "
-                         << " flowx = " << vx0 << " flowy = " << vy0 << std::endl;
+            //std::cout << "theta = " << theta * (180 / M_PI) << " energy = " << energy << " "
+            //             << " flowx = " << vx0 << " flowy = " << vy0 << std::endl;
 
             response << ts << " " << theta * (180 / M_PI) << " " << energy << "\n";
         }
@@ -226,7 +226,7 @@ double vFilterFlowManager::computeEnergy()
                 if(event_history.timeStampList[pixel_x][pixel_y].empty()) continue;
 
                 //do the computation for all the events in the list
-                for(int list_length = 1; list_length <= event_history.timeStampList[pixel_x][pixel_y].size(); list_length++) {
+                for(int list_length = 1; list_length <= event_history.timeStampList[pixel_x][pixel_y].size();) {
 
 //                    std::cout << "size event buffer = " << event_history.timeStampList[pixel_x][pixel_y].size() << endl;
 //                    std::cout << "history timestamp = " << *event_history.timeStampsList_it << endl;
@@ -247,6 +247,7 @@ double vFilterFlowManager::computeEnergy()
                     odd_conv  = odd_conv  + conv_value.second;
 
                     ++event_history.timeStampsList_it; //Moving up the list
+                    ++list_length;
                 }
 
             }
