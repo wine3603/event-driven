@@ -319,7 +319,7 @@ double vFilterDisparityManager::estimateDisparity(){
         disparity_sum = disparity_sum + (*disparity_it) * energy;
 
         gaborResponse << ts << " " << theta << " " << *disparity_it << " " << energy << "\n";
-        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
+//        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
 
         ++disparity_it;
 
