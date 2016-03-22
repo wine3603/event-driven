@@ -99,14 +99,21 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int dire
     disparity_vector.resize(phases);
     phase_vector.resize(phases);
 
-    //set the phase vector and the disparity vector
-    double phase_gen[] = {-1,-0.5,-0.25,-0.125,0,0.125,0.25,0.5,1};
-    double phase_value = 0;
+    //set the disparity that you want and the phase vector accordingly
+    double disp_gen[] = {-8,-4,-2,-1,0,1,2,4,8};
     for(int k = 0; k < phases; k++) {
-        phase_value = phase_gen[k] * M_PI;
-        phase_vector[k] = -phase_value;
-        disparity_vector[k] = phase_value / st_filters.omega;
+        phase_vector[k] = -disp_gen[k]*st_filters.omega;
+        disparity_vector[k] = disp_gen[k];
     }
+
+//    //set the phase vector and the disparity vector
+//    double phase_gen[] = {-1,-0.5,-0.25,-0.125,0,0.125,0.25,0.5,1};
+//    double phase_value = 0;
+//    for(int k = 0; k < phases; k++) {
+//        phase_value = phase_gen[k] * M_PI;
+//        phase_vector[k] = -phase_value;
+//        disparity_vector[k] = phase_value / st_filters.omega;
+//    }
 
     even_conv_right.resize(phases);
     odd_conv_right.resize(phases); //Arrays of size = number of phases
