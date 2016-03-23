@@ -33,9 +33,10 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int directions = rf.check("directions", yarp::os::Value(8)).asInt();
     int phases = rf.check("phases", yarp::os::Value(9)).asInt();
     int kernel_size = rf.check("filterSize", yarp::os::Value(31)).asInt();
+    bool temp_decay = rf.check("decay", yarp::os::Value('on')).asBool();
 
     /* create the thread and pass pointers to the module parameters */
-    disparitymanager = new vFilterDisparityManager(height, width, directions, phases, kernel_size);
+    disparitymanager = new vFilterDisparityManager(height, width, directions, phases, kernel_size, temp_decay);
     return disparitymanager->open(moduleName, strictness);
 
 }
@@ -79,13 +80,14 @@ bool vFilterDisparityModule::respond(const yarp::os::Bottle &command,
 /******************************************************************************/
 //vFilterDisparityManager
 /******************************************************************************/
-vFilterDisparityManager::vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size)
+vFilterDisparityManager::vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size, bool temp_decay)
 {
     this->height = height;
     this->width = width;
     this->directions = directions;
     this->phases = phases;
     this->kernel_size = kernel_size;
+    this->temp_decay = temp_decay;
 
     dir_vector.resize(directions);
     //set the direction vector
@@ -273,7 +275,7 @@ void vFilterDisparityManager::convolveGabor(){
                     if(ch == -1){ //left events are encoded with -1 in the history buffer (reference channel)
 
                         double psi = 0.0;
-                        std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi);
+                        std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi, temp_decay);
                         even_conv_left = even_conv_left + conv_value.first;
                         odd_conv_left  = odd_conv_left  + conv_value.second;
 
@@ -285,7 +287,7 @@ void vFilterDisparityManager::convolveGabor(){
                         for(int t = 0; t < phases; t++){
 
                             psi = *it;
-                            std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi);
+                            std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi, temp_decay);
                             even_conv_right[t] = even_conv_right[t] + conv_value.first;
                             odd_conv_right[t]  = odd_conv_right[t]  + conv_value.second;
 

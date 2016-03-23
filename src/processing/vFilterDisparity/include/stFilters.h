@@ -86,7 +86,7 @@ class stFilters{
 
         //The folliwng function can be changed into GPU kernel
 
-        std::pair<double,double> filtering(int&, int&, double&, double&, double&); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
+        std::pair<double,double> filtering(int&, int&, double&, double&, double&, bool); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
 
 
 

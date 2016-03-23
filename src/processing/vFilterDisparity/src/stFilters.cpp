@@ -13,9 +13,9 @@
 #include "vFilterDisparity.h"
 #define  BUFSIZE 256
 
-std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,double& time,double& phase){ //(const emorph::vQueue& subsurf, int& curr_ts, double& theta, double& phase){ {
+std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,double& time,double& phase, bool temp_decay){ //(const emorph::vQueue& subsurf, int& curr_ts, double& theta, double& phase){ {
 
- //    double st_even = 0, st_odd = 0;
+    double st_even = 0, st_odd = 0;
 
 //    for(int k = 0; k < subsurf.size(); k++) {
 
@@ -65,21 +65,27 @@ std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,doub
      double even_spatial = D * gaussian_spatial  * cos( (2 * M_PI * f1 ) + phase );
      double odd_spatial = D * gaussian_spatial * sin( (2 * M_PI * f1) + phase );
 
-     //Temporal Filter computation
-     double gaussian_temporal = exp( - pow(time,2) / (2 * pow(var_temporal,2) )  );
+     if(temp_decay) {
+         //Temporal Filter computation
+         double gaussian_temporal = exp( - pow(time,2) / (2 * pow(var_temporal,2) )  );
 
-     double mono_temporal = gaussian_temporal * cos( 2 * M_PI * f_temporal * time);
-     double bi_temporal =  gaussian_temporal * sin( 2 * M_PI * f_temporal * time);
+         double mono_temporal = gaussian_temporal * cos( 2 * M_PI * f_temporal * time);
+         double bi_temporal =  gaussian_temporal * sin( 2 * M_PI * f_temporal * time);
 
-     double st1 = even_spatial * bi_temporal;
-     double st3 = odd_spatial * mono_temporal;
+         double st1 = even_spatial * bi_temporal;
+         double st3 = odd_spatial * mono_temporal;
 
-     double st2 = even_spatial * mono_temporal;
-     double st4 = odd_spatial * bi_temporal;
+         double st2 = even_spatial * mono_temporal;
+         double st4 = odd_spatial * bi_temporal;
 
-     //Even and Odd components of spatio-temporal filters
-     double st_even = st1 + st3;
-     double st_odd =  -st2 + st4; //CHECK THIS
+         //Even and Odd components of spatio-temporal filters
+         st_even = st1 + st3;
+         st_odd =  -st2 + st4; //CHECK THIS
+     }
+     else {
+         st_even = even_spatial;
+         st_odd = odd_spatial;
+     }
 
      //std::cout << "Event Convolution computed: " << st_even << " "<<st_odd<< std::endl;//Debug Code
 

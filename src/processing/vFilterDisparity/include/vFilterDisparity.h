@@ -57,6 +57,7 @@ private:
     std::vector<double> phase_vector; // vector of phases
     std::vector<double> disparity_vector; // vector of disparities
     int kernel_size;
+    bool temp_decay; //flag to set the temporal decay of the filters
     stFilters st_filters;
 
     //filters responses
@@ -73,7 +74,7 @@ private:
 
 public:
     
-    vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size);
+    vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size, bool temp_decay);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
