@@ -26,7 +26,6 @@
 #include <iostream>
 #include <fstream>
 #include "stFilters.h"
-#include "eventHistoryBuffer.h"
 
 class vFilterDisparityManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
@@ -50,11 +49,10 @@ private:
     int height;
     int width;
     int nevents;
+    int maxdisp;
 
     //list of tuned disparities
     yarp::os::Bottle disparitylist;
-
-    eventHistoryBuffer event_history;
 
     //filters parameters
     int directions; // number of directions
@@ -76,20 +74,21 @@ private:
     std::ofstream outDisparity;
     std::ofstream gaborResponse;
 
-    void convolveGabor();
-    double estimateDisparity();
+    //set disparity values
+    bool setDisparity(yarp::os::Bottle disparitylist);
+    std::vector<int> prepareDisparities();
+
+    void computeMonocularEnergy();
+    double computeBinocularEnergy();
 
 public:
     
-    vFilterDisparityManager(int height, int width, int nevents, int directions, int phases, int winsize, bool temp_decay);
+    vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
+                            int directions, int phases, int winsize, bool temp_decay);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
     void    interrupt();
-
-    //set disparity values
-    bool setDisparity(yarp::os::Bottle disparitylist);
-    std::vector<int> prepareDisparities();
 
     //this is the entry point to your main functionality
     void    onRead(emorph::vBottle &bot);
