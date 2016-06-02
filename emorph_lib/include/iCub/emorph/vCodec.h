@@ -475,6 +475,47 @@ public:
 
 };
 
+/**************************************************************************/
+class DisparityEvent : public AddressEvent
+{
+private:
+    const static int localWordsCoded = 3;
+
+protected:
+
+    //add new member variables here
+    float dx;
+    float dy;
+
+public:
+
+    //these are new the member get functions
+    virtual std::string getType() const { return "DISP";}
+    float getDx() const                     { return dx;                }
+    float getDy() const                     { return dy;                }
+
+    void setDx(float dx)                    { this->dx=dx;              }
+    void setDy(float dy)                    { this->dy=dy;              }
+
+    //these functions need to be defined correctly for inheritance
+    DisparityEvent() : AddressEvent(), dx(0), dy(0) {}
+    DisparityEvent(const vEvent &event);
+    vEvent &operator=(const vEvent &event);
+    virtual vEvent* clone();
+
+    bool operator==(const DisparityEvent &event);
+    bool operator==(const vEvent &event) {
+        return operator==(dynamic_cast<const DisparityEvent&>(event)); }
+    virtual void encode(yarp::os::Bottle &b) const;
+    yarp::os::Property getContent() const;
+    virtual bool decode(const yarp::os::Bottle &packet, int &pos);
+    //this is the total number of bytes used to code this event
+    virtual int nBytesCoded() const         { return localWordsCoded *
+                sizeof(int) + vEvent::nBytesCoded(); }
+
+
+};
+
 }
 
 #endif
