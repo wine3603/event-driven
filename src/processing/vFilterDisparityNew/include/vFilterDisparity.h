@@ -44,8 +44,15 @@ private:
     int y;
     double ts;
 
+    //first in first out structure
+    emorph::vQueue FIFO;
+
     int height;
     int width;
+    int nevents;
+
+    //list of tuned disparities
+    yarp::os::Bottle disparitylist;
 
     eventHistoryBuffer event_history;
 
@@ -56,7 +63,7 @@ private:
     int phases; // number of phases
     std::vector<double> phase_vector; // vector of phases
     std::vector<double> disparity_vector; // vector of disparities
-    int kernel_size;
+    int winsize;
     bool temp_decay; //flag to set the temporal decay of the filters
     stFilters st_filters;
 
@@ -74,11 +81,15 @@ private:
 
 public:
     
-    vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size, bool temp_decay);
+    vFilterDisparityManager(int height, int width, int nevents, int directions, int phases, int winsize, bool temp_decay);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
     void    interrupt();
+
+    //set disparity values
+    bool setDisparity(yarp::os::Bottle disparitylist);
+    std::vector<int> prepareDisparities();
 
     //this is the entry point to your main functionality
     void    onRead(emorph::vBottle &bot);

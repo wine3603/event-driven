@@ -62,7 +62,7 @@ class stFilters{
         //Member functions
 
         //Constructor definition
-        stFilters(double frequency_spatial = 0.0625, double variance_spatial = 6.5, double frequency_temporal = 0.0625, double variance_temporal = 5){
+        stFilters(double frequency_spatial = 0.05, double variance_spatial = 10, double frequency_temporal = 0.0625, double variance_temporal = 5){
 
             std::cout<<"Spatial-Temporal Filter parameters initialization..."<<std::endl;
 
@@ -86,7 +86,7 @@ class stFilters{
 
         //The folliwng function can be changed into GPU kernel
 
-        std::pair<double,double> filtering(int&, int&, double&, double&, double&, bool); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
+        std::pair<double,double> filtering(int&, int&, double&, int &, double&, bool); //(const emorph::vQueue &, int &, double&, double&); //X,Y,theta, time and phase
 
 
 
