@@ -67,6 +67,10 @@ vDraw * createDrawer(std::string tag)
     if(tag == newDrawer->getTag()) return newDrawer;
     delete newDrawer;
 
+    newDrawer = new disparityDraw();
+    if(tag == newDrawer->getTag()) return newDrawer;
+    delete newDrawer;
+
     return 0;
 }
 
@@ -858,6 +862,48 @@ void isoDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
 
     image = image - baseimage;
     //cv::resize(image, image, image.size() * 8);
+
+}
+
+disparityDraw::disparityDraw()
+{
+    dimage = cv::Mat(Xlimit, Ylimit, CV_8UC1);
+    dimage.setTo(128);
+}
+
+std::string disparityDraw::getTag()
+{
+    return "DISP";
+}
+
+void disparityDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
+{
+
+    if(checkStagnancy(eSet) > clearThreshold) {
+        return;
+    }
+
+    emorph::vQueue::const_iterator qi;
+    for(qi = eSet.begin(); qi != eSet.end(); qi++) {
+        emorph::DisparityEvent *dep = (*qi)->getAs<emorph::DisparityEvent>();
+        if(!dep) continue;
+
+        unsigned char c = dimage.at<unsigned char>(dep->getX(), dep->getY());
+        int disparity = c;
+        float dx = dep->getDx();
+        float dy = dep->getDy();
+        disparity = (255*round(sqrt(dx * dx + dy * dy)))/10;
+
+        disparity = std::max(disparity, 0);
+        disparity = std::min(disparity, 255);
+        dimage.at<unsigned char>(dep->getX(), dep->getY()) = (unsigned char)disparity;
+
+//        std::cout << "disparity " << disparity << std::endl;
+
+    }
+
+    cv::cvtColor(dimage, image, CV_GRAY2BGR);
+
 
 }
 
