@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences - Istituto Italiano di Tecnologia
- * Author: Valentina Vasco
- * email:  valentina.vasco@iit.it
+ * Author: Valentina Vasco and Yeshasvi Tirupachuri
+ * email:  valentina.vasco@iit.it, Yeshasvi.Tirupachuri@iit.it
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -30,13 +30,26 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     /* set parameters */
     int height = rf.check("height", yarp::os::Value(128)).asInt();
     int width = rf.check("width", yarp::os::Value(128)).asInt();
+
+    //number of events to process
+    int nevents = rf.check("nevets", yarp::os::Value(2000)).asInt();
+
+    //maximum computable disparity
+    int maxdisp = rf.check("maxdisp", yarp::os::Value(10)).asInt();
+
+    //number of filters' directions
     int directions = rf.check("directions", yarp::os::Value(8)).asInt();
-    int phases = rf.check("phases", yarp::os::Value(9)).asInt();
-    int kernel_size = rf.check("filterSize", yarp::os::Value(31)).asInt();
-    bool temp_decay = rf.check("decay", yarp::os::Value('on')).asBool();
+
+    //size of the spatial window
+    int winsize = rf.check("winsize", yarp::os::Value(10)).asInt();
+
+    //load disparity values from configuration file
+    yarp::os::Bottle disparitylist = rf.findGroup("disparity").tail();
 
     /* create the thread and pass pointers to the module parameters */
-    disparitymanager = new vFilterDisparityManager(height, width, directions, phases, kernel_size, temp_decay);
+    disparitymanager = new vFilterDisparityManager(height, width, nevents, maxdisp,
+                                                   directions, winsize, disparitylist);
+
     return disparitymanager->open(moduleName, strictness);
 
 }
@@ -80,48 +93,56 @@ bool vFilterDisparityModule::respond(const yarp::os::Bottle &command,
 /******************************************************************************/
 //vFilterDisparityManager
 /******************************************************************************/
-vFilterDisparityManager::vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size, bool temp_decay)
+vFilterDisparityManager::vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
+                                                 int directions, int winsize, yarp::os::Bottle disparitylist)
 {
     this->height = height;
     this->width = width;
+    this->nevents = nevents;
+    this->maxdisp = maxdisp;
     this->directions = directions;
-    this->phases = phases;
-    this->kernel_size = kernel_size;
-    this->temp_decay = temp_decay;
+    this->winsize = winsize;
+    this->disparitylist = disparitylist;
+    this->phases = disparitylist.size();
 
+    std::cout << "Setting filter parameters... " << std::endl;
+    std::cout << "Number of directions = " << directions << std::endl;
     dir_vector.resize(directions);
     //set the direction vector
     double value = 0;
-    double dir_step = 0.125;
+    double dir_step = 1.0/directions;
     for(int i = 0; i < directions; i++) {
-        dir_vector[i] = value * M_PI; //dir_vector.push_back(value * M_PI);
+        dir_vector[i] = value * M_PI;
         value = value + dir_step;
     }
 
-    disparity_vector.resize(phases);
+    //set filters parameters
+    double f_spatial = 1.0/(2 * maxdisp);
+    double var_spatial = maxdisp;
+    double f_temporal = 0;
+    double var_temporal = 0;
+    std::cout << "Spatial parameters: frequency = " << f_spatial << " standard deviation = " << var_spatial << " px" << std::endl;
+    std::cout << "Temporal parameters: frequency = " << f_temporal << " standard deviation = "<< var_temporal <<std::endl;
+    st_filters.setParams(f_spatial, var_spatial, f_temporal, var_temporal);
+
+    std::cout << "Number of phase-shifts = " << phases << std::endl;
+    //set the disparity and the phase vector accordingly
     phase_vector.resize(phases);
-
-    //set the disparity that you want and the phase vector accordingly
-    double disp_gen[] = {-8,-4,-2,-1,0,1,2,4,8};
+    disparity_vector = NULL;
+    disparity_vector = new int[phases];
+    std::cout << "Tuned disparities = ";
     for(int k = 0; k < phases; k++) {
-        phase_vector[k] = -disp_gen[k]*st_filters.omega;
-        disparity_vector[k] = disp_gen[k];
+        disparity_vector[k] = disparitylist.get(k).asInt();
+        phase_vector[k] = -disparity_vector[k]*(2*M_PI*st_filters.f_spatial);
+        std::cout << disparity_vector[k] << " ";
     }
-
-//    //set the phase vector and the disparity vector
-//    double phase_gen[] = {-1,-0.5,-0.25,-0.125,0,0.125,0.25,0.5,1};
-//    double phase_value = 0;
-//    for(int k = 0; k < phases; k++) {
-//        phase_value = phase_gen[k] * M_PI;
-//        phase_vector[k] = -phase_value;
-//        disparity_vector[k] = phase_value / st_filters.omega;
-//    }
+    std::cout << std::endl;
 
     even_conv_right.resize(phases);
-    odd_conv_right.resize(phases); //Arrays of size = number of phases
+    odd_conv_right.resize(phases);
 
-    outDisparity.open("estimatedDisparityNEW.txt");
-    gaborResponse.open("gaborResponseNEW.txt");
+    outDisparity.open("estimatedDisparity.txt");
+//    gaborResponse.open("gaborResponseNEW.txt");
 
 }
 
@@ -149,7 +170,9 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
 void vFilterDisparityManager::close()
 {
     outDisparity.close();
-    gaborResponse.close();
+//    gaborResponse.close();
+
+    delete [] disparity_vector;
 
     //close ports
     outPort.close();
@@ -160,6 +183,7 @@ void vFilterDisparityManager::close()
 /**********************************************************/
 void vFilterDisparityManager::interrupt()
 {
+
     //pass on the interrupt call to everything needed
     outPort.interrupt();
     yarp::os::BufferedPort<emorph::vBottle>::interrupt();
@@ -174,55 +198,71 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
     yarp::os::Stamp st;
     this->getEnvelope(st); outPort.setEnvelope(st);
 
-    emorph::FlowEvent *ofe = NULL;
+    emorph::DisparityEvent *de = NULL;
 
     /*get the event queue in the vBottle bot*/
     emorph::vQueue q = bot.get<emorph::AddressEvent>();
+
+    //processing queue of events
+    emorph::vQueue procQueue;
 
     for(emorph::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
         if(!aep) continue;
 
-        //update event buffer with information from both left and right eye
-        event_history.updateList(*aep);
+        procQueue.push_back(aep);
 
-        x = aep->getY();
-        y = aep->getX();
-        ts = unwrapper(aep->getStamp()) / event_history.time_scale;
+        bool removed = false;
+
+        //ADD THE CURRENT EVENT
+        FIFO.push_front(*qi);
+
+        //KEEP FIFO TO LIMITED SIZE
+        while(FIFO.size() > nevents) {
+            procQueue.push_back(FIFO.back());
+            FIFO.pop_back();
+            removed = true;
+        }
+
+        //current event
+        x = aep->getX();
+        y = aep->getY();
+        ts = unwrapper(aep->getStamp());
 
         if(aep->getChannel() == 0) {//left channel used as reference for disparity
-
-            //center the filters on the current event
-            st_filters.center_x = aep->getY();
-            st_filters.center_y = aep->getX();
 
             double disparityX = 0; double disparityY = 0;
 
             //process for each direction
             for(std::vector<double>::iterator it = dir_vector.begin(); it != dir_vector.end(); it ++) {
 
-                theta = *it;
+                double theta = *it;
 
-                //convolve the events in the buffer with Gabor filters
-                //this will give you even and odd components of the response for right and left events in the history buffer
-                convolveGabor();
+                //compute even and odd components of the response for right and left events
+                computeMonocularEnergy(theta);
+
+                //compute binocular energy
+                double disparity = computeBinocularEnergy();
 
                 //estimate the disparity for the single direction
-                double disparity = estimateDisparity();
-
                 disparityX = disparityX + disparity * cos(theta);
                 disparityY = disparityY + disparity * sin(theta);
 
             }
 
-            outDisparity << ts << " " << disparityX << " " << disparityY << "\n";
-            std::cout << "dx = " << disparityX << " dy = " << disparityY << std::endl;
+            disparityX = (2.0/directions)*disparityX;
+            disparityY = (2.0/directions)*disparityY;
 
-            ofe = new emorph::FlowEvent(*aep);
-            ofe->setVx(disparityX);
-            ofe->setVx(disparityY);
-            outBottle.addEvent(*ofe);
+            outDisparity << ts << " " << disparityX << " " << disparityY << "\n";
+            std::cout << "dx = " << disparityY << " dy = " << disparityX << std::endl;
+
+            de = new emorph::DisparityEvent(*aep);
+            de->setDx(disparityY);
+            de->setDy(disparityX);
+
+//            std::cout << "send dx = " << de->getDx() << " send dy = " << de->getDy() << std::endl;
+            outBottle.addEvent(*de);
 
         }
 
@@ -234,103 +274,85 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 }
 
 /**********************************************************/
-void vFilterDisparityManager::convolveGabor(){
-
-    double dt_step = 1;
+void vFilterDisparityManager::computeMonocularEnergy(double theta){
 
     //reset filter convolution value for every event processing
     even_conv_left = 0; odd_conv_left = 0;
     std::fill(even_conv_right.begin(), even_conv_right.end(), 0.0);
     std::fill(odd_conv_right.begin(), odd_conv_right.end(), 0.0);
 
-    //do the computation for all the events that are spatially inside the filter
-    for(int j = 1; j < kernel_size; j++) {
-        for(int i = 1; i < kernel_size; i++) {
-            int pixel_x = x + i - ((kernel_size + 1) / 2);
-            int pixel_y = y + j - ((kernel_size + 1) / 2);
+    //for all the events in the list
+    for(emorph::vQueue::iterator fi = FIFO.begin(); fi != FIFO.end(); fi++)
+    {
 
-            //check for borders
-            if(pixel_x >= 0 && pixel_y >= 0 && pixel_x < height && pixel_y < width) {
+        emorph::AddressEvent *vp = (*fi)->getAs<emorph::AddressEvent>();
 
-                //going from latest event pushed in the back
-                event_history.timeStampsList_it = event_history.timeStampList[pixel_x][pixel_y].rbegin();
+        //check for borders
+        if(vp->getX() < 0 && vp->getY() < 0 && vp->getX() >= height && vp->getY() >= width)
+            continue;
 
-                //if the list is empty skip computing
-                if(event_history.timeStampList[pixel_x][pixel_y].empty()) continue;
+        //if the event is in the spatial window
+        if(abs(x - vp->getX()) < winsize && abs(y - vp->getY()) < winsize)
+        {
+            int dx = vp->getX() - x;
+            int dy = vp->getY() - y;
+            int dt = vp->getStamp() - ts;
+            int ch = vp->getChannel();
 
-                //do the computation for all the events in the temporal list
-                for(int list_length = 1; list_length <= event_history.timeStampList[pixel_x][pixel_y].size() ;) {
+            //compute monocular energy
+            if(ch == 0){ //left events (reference channel)
 
-                    int dx = pixel_x - x;
-                    int dy = pixel_y - y;
-                    double dt = ts - abs(*event_history.timeStampsList_it);
-                    int ch = (*event_history.timeStampsList_it) / abs(*event_history.timeStampsList_it);
+                double psi = 0.0;
+                std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi);
+                even_conv_left = even_conv_left + conv_value.first;
+                odd_conv_left  = odd_conv_left  + conv_value.second;
+            }
+            else { //right events
 
-                    if(dt > dt_step){
-                        //std::cout << "Skipping the list element..." << std::endl;//Debug Code
-                        ++list_length;
-                        continue;
-                    }
+                double psi = 0;
+                std::vector<double>::iterator it = phase_vector.begin();
+                for(int t = 0; t < phases; t++){
 
-                    if(ch == -1){ //left events are encoded with -1 in the history buffer (reference channel)
+                    psi = *it;
+                    std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi);
+                    even_conv_right[t] = even_conv_right[t] + conv_value.first;
+                    odd_conv_right[t]  = odd_conv_right[t]  + conv_value.second;
 
-                        double psi = 0.0;
-                        std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi, temp_decay);
-                        even_conv_left = even_conv_left + conv_value.first;
-                        odd_conv_left  = odd_conv_left  + conv_value.second;
+                    ++it;
 
-                    }
-                    if(ch == 1){ //right events
-
-                        double psi = 0;
-                        std::vector<double>::iterator it = phase_vector.begin();
-                        for(int t = 0; t < phases; t++){
-
-                            psi = *it;
-                            std::pair<double,double> conv_value = st_filters.filtering(dx, dy, theta, dt, psi, temp_decay);
-                            even_conv_right[t] = even_conv_right[t] + conv_value.first;
-                            odd_conv_right[t]  = odd_conv_right[t]  + conv_value.second;
-
-                            ++it;
-
-                        }
-                    }
-
-                    ++event_history.timeStampsList_it; //moving up the list
-                    ++list_length;
-
-                } //end of temporal iteration loop
-
+                }
             }
 
-            else continue;
-
         }
-
     }
-    
+
 }
 
  /**********************************************************/
-double vFilterDisparityManager::estimateDisparity(){
+double vFilterDisparityManager::computeBinocularEnergy(){
 
     double final_even_conv = 0; double final_odd_conv = 0;
-    double energy = 0; double energy_sum = 0;
+    double binocularenergy = 0; double energy_sum = 0;
     double disparity_sum = 0;
 
-    std::vector<double>::iterator disparity_it = disparity_vector.begin();
+//    std::vector<int>::iterator disparity_it = disparity_vector.begin();
     for(int t = 0; t < phases; t++){
 
         final_even_conv = even_conv_left + even_conv_right[t];
         final_odd_conv  = odd_conv_left  + odd_conv_right[t];
-        energy = final_even_conv * final_even_conv + final_odd_conv * final_odd_conv;
-        energy_sum = energy_sum + energy;
-        disparity_sum = disparity_sum + (*disparity_it) * energy;
+        binocularenergy = final_even_conv * final_even_conv + final_odd_conv * final_odd_conv;
 
-        gaborResponse << ts << " " << theta << " " << *disparity_it << " " << energy << "\n";
+//        std::cout << "binocular energy " << binocularenergy << std::endl;
+
+//        //apply threshold to binocular energy
+//        if(binocularenergy < 0.001)
+//            binocularenergy = 0;
+
+        energy_sum = energy_sum + binocularenergy;
+        disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
+
+//        gaborResponse << ts << " " << theta << " " << *disparity_it << " " << binocularenergy << "\n";
 //        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
-
-        ++disparity_it;
 
     }
 

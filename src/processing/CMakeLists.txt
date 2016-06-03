@@ -8,10 +8,21 @@ add_subdirectory(vFlow)
 add_subdirectory(vAnalysis)
 add_subdirectory(vCluster)
 add_subdirectory(vPepper)
-add_subdirectory(vCircle)
+#add_subdirectory(vCircle)
 #add_subdirectory(vFilterDisparity)
 add_subdirectory(vFilterDisparityNew)
 add_subdirectory(vFilterFlow)
+
+#add_subdirectory(vPepper)
+
+if(ICUB_FOUND)
+    add_subdirectory(vCircle)
+    #add_subdirectory(vCircleDisparity)
+endif(ICUB_FOUND)
+
+#add_subdirectory(vCorner)
+#add_subdirectory(vRepTest)
+#add_subdirectory(spinconverter)
 
 if(OPENCV_FOUND)
     add_subdirectory(vUndistortCam)

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences - Istituto Italiano di Tecnologia
- * Author: Valentina Vasco
- * email:  valentina.vasco@iit.it
+ * Author: Valentina Vasco and Yeshasvi Tirupachuri
+ * email:  valentina.vasco@iit.it, Yeshasvi.Tirupachuri@iit.it
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -26,7 +26,6 @@
 #include <iostream>
 #include <fstream>
 #include "stFilters.h"
-#include "eventHistoryBuffer.h"
 
 class vFilterDisparityManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
@@ -44,37 +43,42 @@ private:
     int y;
     double ts;
 
+    //first in first out structure
+    emorph::vQueue FIFO;
+
     int height;
     int width;
+    int nevents;
+    int maxdisp;
 
-    eventHistoryBuffer event_history;
+    //list of tuned disparities
+    yarp::os::Bottle disparitylist;
 
     //filters parameters
     int directions; // number of directions
     std::vector<double> dir_vector; // vector of directions
-    double theta; // actual direction
     int phases; // number of phases
     std::vector<double> phase_vector; // vector of phases
-    std::vector<double> disparity_vector; // vector of disparities
-    int kernel_size;
-    bool temp_decay; //flag to set the temporal decay of the filters
+    int *disparity_vector;
+    int winsize;
     stFilters st_filters;
 
     //filters responses
     double even_conv_left;
     double odd_conv_left;
     std::vector<double> even_conv_right;
-    std::vector<double> odd_conv_right; //Arrays of size = number of phases
+    std::vector<double> odd_conv_right; //arrays of size = number of phases
 
     std::ofstream outDisparity;
-    std::ofstream gaborResponse;
+//    std::ofstream gaborResponse;
 
-    void convolveGabor();
-    double estimateDisparity();
+    void computeMonocularEnergy(double theta);
+    double computeBinocularEnergy();
 
 public:
     
-    vFilterDisparityManager(int height, int width, int directions, int phases, int kernel_size, bool temp_decay);
+    vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
+                            int directions, int winsize, yarp::os::Bottle disparitylist);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();

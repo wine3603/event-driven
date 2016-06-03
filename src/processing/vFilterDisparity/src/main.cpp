@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences - Istituto Italiano di Tecnologia
- * Author: Valentina Vasco
- * email:  valentina.vasco@iit.it
+ * Author: Valentina Vasco and Yeshasvi Tirupachuri
+ * email:  valentina.vasco@iit.it, Yeshasvi.Tirupachuri@iit.it
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -28,8 +28,8 @@ int main(int argc, char * argv[])
 
     /* prepare and configure the resource finder */
     yarp::os::ResourceFinder rf;
-    //rf.setVerbose( true );
-    rf.setDefaultContext( "emorph" );
+    rf.setVerbose( true );
+    rf.setDefaultContext( "eMorph" );
     rf.setDefaultConfigFile( "filter_disparity.ini" );
     rf.configure( argc, argv );
 
