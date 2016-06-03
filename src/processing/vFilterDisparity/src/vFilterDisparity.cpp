@@ -34,21 +34,21 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     //number of events to process
     int nevents = rf.check("nevets", yarp::os::Value(2000)).asInt();
 
-    //maximum computable disparity
-    int maxdisp = rf.check("maxdisp", yarp::os::Value(10)).asInt();
-
-    //number of filters' directions
-    int directions = rf.check("directions", yarp::os::Value(8)).asInt();
+    //number of filters' orientations
+    int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
 
     //size of the spatial window
     int winsize = rf.check("winsize", yarp::os::Value(10)).asInt();
+
+    //threshold to apply to the binocular energies
+    double threshold = rf.check("thresh", yarp::os::Value(0)).asDouble();
 
     //load disparity values from configuration file
     yarp::os::Bottle disparitylist = rf.findGroup("disparity").tail();
 
     /* create the thread and pass pointers to the module parameters */
-    disparitymanager = new vFilterDisparityManager(height, width, nevents, maxdisp,
-                                                   directions, winsize, disparitylist);
+    disparitymanager = new vFilterDisparityManager(height, width, nevents, orientations,
+                                                   winsize, threshold, disparitylist);
 
     return disparitymanager->open(moduleName, strictness);
 
@@ -93,29 +93,33 @@ bool vFilterDisparityModule::respond(const yarp::os::Bottle &command,
 /******************************************************************************/
 //vFilterDisparityManager
 /******************************************************************************/
-vFilterDisparityManager::vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
-                                                 int directions, int winsize, yarp::os::Bottle disparitylist)
+vFilterDisparityManager::vFilterDisparityManager(int height, int width, int nevents, int orientations,
+                                                 int winsize, double threshold, yarp::os::Bottle disparitylist)
 {
     this->height = height;
     this->width = width;
     this->nevents = nevents;
-    this->maxdisp = maxdisp;
-    this->directions = directions;
+    this->orientations = orientations;
     this->winsize = winsize;
+    this->threshold = threshold;
     this->disparitylist = disparitylist;
     this->phases = disparitylist.size();
 
     std::cout << "Setting filter parameters... " << std::endl;
-    std::cout << "Number of directions = " << directions << std::endl;
-    dir_vector.resize(directions);
+    std::cout << "Number of orientations = " << orientations << std::endl;
+    ori_vector.resize(orientations);
     //set the direction vector
+    std::cout << "Tuned orientations = ";
     double value = 0;
-    double dir_step = 1.0/directions;
-    for(int i = 0; i < directions; i++) {
-        dir_vector[i] = value * M_PI;
+    double dir_step = 1.0/orientations;
+    for(int i = 0; i < orientations; i++) {
+        ori_vector[i] = value * M_PI;
         value = value + dir_step;
+        std::cout << ori_vector[i]*(180/M_PI) << " ";
     }
+    std::cout << " degrees" << endl;
 
+    int maxdisp = (disparitylist.size() - 1)/2;
     //set filters parameters
     double f_spatial = 1.0/(2 * maxdisp);
     double var_spatial = maxdisp;
@@ -124,6 +128,8 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     std::cout << "Spatial parameters: frequency = " << f_spatial << " standard deviation = " << var_spatial << " px" << std::endl;
     std::cout << "Temporal parameters: frequency = " << f_temporal << " standard deviation = "<< var_temporal <<std::endl;
     st_filters.setParams(f_spatial, var_spatial, f_temporal, var_temporal);
+
+    std::cout << "Maximum disparity computable = " << maxdisp << " px " << std::endl;
 
     std::cout << "Number of phase-shifts = " << phases << std::endl;
     //set the disparity and the phase vector accordingly
@@ -142,7 +148,7 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     odd_conv_right.resize(phases);
 
     outDisparity.open("estimatedDisparity.txt");
-//    gaborResponse.open("gaborResponseNEW.txt");
+    gaborResponse.open("gaborResponse.txt");
 
 }
 
@@ -170,7 +176,7 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
 void vFilterDisparityManager::close()
 {
     outDisparity.close();
-//    gaborResponse.close();
+    gaborResponse.close();
 
     delete [] disparity_vector;
 
@@ -235,7 +241,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             double disparityX = 0; double disparityY = 0;
 
             //process for each direction
-            for(std::vector<double>::iterator it = dir_vector.begin(); it != dir_vector.end(); it ++) {
+            for(std::vector<double>::iterator it = ori_vector.begin(); it != ori_vector.end(); it ++) {
 
                 double theta = *it;
 
@@ -251,11 +257,11 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
             }
 
-            disparityX = (2.0/directions)*disparityX;
-            disparityY = (2.0/directions)*disparityY;
+            disparityX = (2.0/orientations)*disparityX;
+            disparityY = (2.0/orientations)*disparityY;
 
             outDisparity << ts << " " << disparityX << " " << disparityY << "\n";
-            std::cout << "dx = " << disparityY << " dy = " << disparityX << std::endl;
+//            std::cout << "dx = " << disparityY << " dy = " << disparityX << std::endl;
 
             de = new emorph::DisparityEvent(*aep);
             de->setDx(disparityY);
@@ -345,13 +351,13 @@ double vFilterDisparityManager::computeBinocularEnergy(){
 //        std::cout << "binocular energy " << binocularenergy << std::endl;
 
         //apply threshold to binocular energy
-        if(binocularenergy < 0.0005)
+        if(binocularenergy < threshold)
             binocularenergy = 0;
 
         energy_sum = energy_sum + binocularenergy;
         disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
 
-//        gaborResponse << ts << " " << theta << " " << *disparity_it << " " << binocularenergy << "\n";
+        gaborResponse << ts << " " << " " << disparity_vector[t] << " " << binocularenergy << "\n";
 //        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
 
     }

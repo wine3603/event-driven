@@ -49,14 +49,14 @@ private:
     int height;
     int width;
     int nevents;
-    int maxdisp;
+    double threshold;
 
     //list of tuned disparities
     yarp::os::Bottle disparitylist;
 
     //filters parameters
-    int directions; // number of directions
-    std::vector<double> dir_vector; // vector of directions
+    int orientations; // number of orientations
+    std::vector<double> ori_vector; // vector of orientations
     int phases; // number of phases
     std::vector<double> phase_vector; // vector of phases
     int *disparity_vector;
@@ -70,15 +70,15 @@ private:
     std::vector<double> odd_conv_right; //arrays of size = number of phases
 
     std::ofstream outDisparity;
-//    std::ofstream gaborResponse;
+    std::ofstream gaborResponse;
 
     void computeMonocularEnergy(double theta);
     double computeBinocularEnergy();
 
 public:
     
-    vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
-                            int directions, int winsize, yarp::os::Bottle disparitylist);
+    vFilterDisparityManager(int height, int width, int nevents, int orientations,
+                            int winsize, double threshold, yarp::os::Bottle disparitylist);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
