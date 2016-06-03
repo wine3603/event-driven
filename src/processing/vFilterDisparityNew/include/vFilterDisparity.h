@@ -60,9 +60,9 @@ private:
     double theta; // actual direction
     int phases; // number of phases
     std::vector<double> phase_vector; // vector of phases
-    std::vector<double> disparity_vector; // vector of disparities
+//    std::vector<int> disparity_vector; // vector of disparities
+    int *disparity_vector;
     int winsize;
-    bool temp_decay; //flag to set the temporal decay of the filters
     stFilters st_filters;
 
     //filters responses
@@ -74,17 +74,13 @@ private:
     std::ofstream outDisparity;
     std::ofstream gaborResponse;
 
-    //set disparity values
-    bool setDisparity(yarp::os::Bottle disparitylist);
-    std::vector<int> prepareDisparities();
-
     void computeMonocularEnergy();
     double computeBinocularEnergy();
 
 public:
     
     vFilterDisparityManager(int height, int width, int nevents, int maxdisp,
-                            int directions, int phases, int winsize, bool temp_decay);
+                            int directions, int winsize, yarp::os::Bottle disparitylist);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();

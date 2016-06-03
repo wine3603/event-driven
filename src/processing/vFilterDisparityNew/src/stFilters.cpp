@@ -28,7 +28,7 @@ void stFilters::setParams(double f_spatial, double var_spatial,
 }
 
 //apply filter
-std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,int& time,double& phase, bool temp_decay){ //(const emorph::vQueue& subsurf, int& curr_ts, double& theta, double& phase){ {
+std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,int& time,double& phase){
 
     double st_even = 0, st_odd = 0;
 

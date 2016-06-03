@@ -64,7 +64,7 @@ class stFilters{
 
         void setParams(double f_spatial, double var_spatial,
                        double f_temporal, double var_temporal);
-        std::pair<double,double> filtering(int&, int&, double&, int &, double&, bool);
+        std::pair<double,double> filtering(int&, int&, double&, int &, double&);
 
         //destructor
         virtual ~stFilters();
