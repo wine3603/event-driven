@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences - Istituto Italiano di Tecnologia
- * Author: Valentina Vasco
- * email:  valentina.vasco@iit.it
+ * Author: Valentina Vasco and Yeshasvi Tirupachuri
+ * email:  valentina.vasco@iit.it, Yeshasvi.Tirupachuri@iit.it
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -126,19 +126,12 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     st_filters.setParams(f_spatial, var_spatial, f_temporal, var_temporal);
 
     std::cout << "Number of phase-shifts = " << phases << std::endl;
-//    disparity_vector.resize(phases);
+    //set the disparity and the phase vector accordingly
     phase_vector.resize(phases);
-    //set the disparity that you want and the phase vector accordingly
-//    disparity_vector = prepareDisparities();
-
     disparity_vector = NULL;
     disparity_vector = new int[phases];
-
     std::cout << "Tuned disparities = ";
-//    double disp_gen[] = {-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     for(int k = 0; k < phases; k++) {
-//        phase_vector[k] = -disp_gen[k]*(2*M_PI*st_filters.f_spatial);
-//        disparity_vector[k] = disp_gen[k];
         disparity_vector[k] = disparitylist.get(k).asInt();
         phase_vector[k] = -disparity_vector[k]*(2*M_PI*st_filters.f_spatial);
         std::cout << disparity_vector[k] << " ";
@@ -146,10 +139,10 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     std::cout << std::endl;
 
     even_conv_right.resize(phases);
-    odd_conv_right.resize(phases); //Arrays of size = number of phases
+    odd_conv_right.resize(phases);
 
-    outDisparity.open("estimatedDisparityNEW.txt");
-    gaborResponse.open("gaborResponseNEW.txt");
+    outDisparity.open("estimatedDisparity.txt");
+//    gaborResponse.open("gaborResponseNEW.txt");
 
 }
 
@@ -177,7 +170,7 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
 void vFilterDisparityManager::close()
 {
     outDisparity.close();
-    gaborResponse.close();
+//    gaborResponse.close();
 
     delete [] disparity_vector;
 
@@ -244,10 +237,10 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             //process for each direction
             for(std::vector<double>::iterator it = dir_vector.begin(); it != dir_vector.end(); it ++) {
 
-                theta = *it;
+                double theta = *it;
 
-                //compute even and odd components of the response for right and left events fifo
-                computeMonocularEnergy();
+                //compute even and odd components of the response for right and left events
+                computeMonocularEnergy(theta);
 
                 //compute binocular energy
                 double disparity = computeBinocularEnergy();
@@ -281,7 +274,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 }
 
 /**********************************************************/
-void vFilterDisparityManager::computeMonocularEnergy(){
+void vFilterDisparityManager::computeMonocularEnergy(double theta){
 
     //reset filter convolution value for every event processing
     even_conv_left = 0; odd_conv_left = 0;
@@ -349,7 +342,6 @@ double vFilterDisparityManager::computeBinocularEnergy(){
         final_odd_conv  = odd_conv_left  + odd_conv_right[t];
         binocularenergy = final_even_conv * final_even_conv + final_odd_conv * final_odd_conv;
 
-//        std::cout << disparity_vector[t] << std::endl;
 //        std::cout << "binocular energy " << binocularenergy << std::endl;
 
 //        //apply threshold to binocular energy
@@ -358,12 +350,9 @@ double vFilterDisparityManager::computeBinocularEnergy(){
 
         energy_sum = energy_sum + binocularenergy;
         disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
-//        disparity_sum = disparity_sum + (*disparity_it) * binocularenergy;
 
 //        gaborResponse << ts << " " << theta << " " << *disparity_it << " " << binocularenergy << "\n";
 //        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
-
-//        ++disparity_it;
 
     }
 
