@@ -344,9 +344,9 @@ double vFilterDisparityManager::computeBinocularEnergy(){
 
 //        std::cout << "binocular energy " << binocularenergy << std::endl;
 
-//        //apply threshold to binocular energy
-//        if(binocularenergy < 0.001)
-//            binocularenergy = 0;
+        //apply threshold to binocular energy
+        if(binocularenergy < 0.0005)
+            binocularenergy = 0;
 
         energy_sum = energy_sum + binocularenergy;
         disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
