@@ -310,8 +310,6 @@ private:
 
 public:
 
-    disparityDraw();
-
     ///
     /// \brief see vDraw
     ///

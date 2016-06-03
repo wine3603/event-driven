@@ -479,7 +479,7 @@ public:
 class DisparityEvent : public AddressEvent
 {
 private:
-    const static int localWordsCoded = 3;
+    const static int localWordsCoded = 2;
 
 protected:
 

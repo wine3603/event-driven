@@ -865,12 +865,6 @@ void isoDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
 
 }
 
-disparityDraw::disparityDraw()
-{
-    dimage = cv::Mat(Xlimit, Ylimit, CV_8UC1);
-    dimage.setTo(128);
-}
-
 std::string disparityDraw::getTag()
 {
     return "DISP";
@@ -879,9 +873,13 @@ std::string disparityDraw::getTag()
 void disparityDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
 {
 
+    dimage = cv::Mat(Xlimit, Ylimit, CV_8UC1);
+    dimage.setTo(128);
+
     if(checkStagnancy(eSet) > clearThreshold) {
         return;
     }
+    if(eSet.empty()) return;
 
     emorph::vQueue::const_iterator qi;
     for(qi = eSet.begin(); qi != eSet.end(); qi++) {
