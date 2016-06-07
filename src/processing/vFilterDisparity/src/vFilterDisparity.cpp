@@ -38,7 +38,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
 
     //size of the spatial window
-    int winsize = rf.check("winsize", yarp::os::Value(10)).asInt();
+    int winsize = rf.check("winsize", yarp::os::Value(16)).asInt();
 
     //threshold to apply to the binocular energies
     double threshold = rf.check("thresh", yarp::os::Value(0)).asDouble();
@@ -260,14 +260,16 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             disparityX = (2.0/orientations)*disparityX;
             disparityY = (2.0/orientations)*disparityY;
 
-            outDisparity << ts << " " << disparityX << " " << disparityY << "\n";
-//            std::cout << "dx = " << disparityY << " dy = " << disparityX << std::endl;
+            outDisparity << x << " " << y << " " << ts << " " << disparityX << " " << disparityY <<
+                            " " << sqrt(disparityX*disparityX + disparityY*disparityY) << "\n";
+
+//            std::cout << "disparity = " << sqrt(disparityX * disparityX + disparityY * disparityY) << std::endl;
 
             de = new emorph::DisparityEvent(*aep);
             de->setDx(disparityY);
             de->setDy(disparityX);
 
-//            std::cout << "send dx = " << de->getDx() << " send dy = " << de->getDy() << std::endl;
+            std::cout << "send disparity = " << sqrt(pow(de->getDx(), 2) + pow(de->getDy(), 2)) << std::endl;
             outBottle.addEvent(*de);
 
         }
