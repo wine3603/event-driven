@@ -38,7 +38,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
 
     //size of the spatial window
-    int winsize = rf.check("winsize", yarp::os::Value(16)).asInt();
+    int winsize = rf.check("winsize", yarp::os::Value(18)).asInt();
 
     //threshold to apply to the binocular energies
     double threshold = rf.check("thresh", yarp::os::Value(0)).asDouble();
@@ -119,7 +119,7 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     }
     std::cout << " degrees" << endl;
 
-    int maxdisp = (disparitylist.size() - 1)/2;
+    int maxdisp = disparitylist.get(phases - 1).asInt();
     //set filters parameters
     double f_spatial = 1.0/(2 * maxdisp);
     double var_spatial = maxdisp;
@@ -209,15 +209,10 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
     /*get the event queue in the vBottle bot*/
     emorph::vQueue q = bot.get<emorph::AddressEvent>();
 
-    //processing queue of events
-    emorph::vQueue procQueue;
-
     for(emorph::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
         if(!aep) continue;
-
-        procQueue.push_back(aep);
 
         bool removed = false;
 
@@ -226,7 +221,6 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
         //KEEP FIFO TO LIMITED SIZE
         while(FIFO.size() > nevents) {
-            procQueue.push_back(FIFO.back());
             FIFO.pop_back();
             removed = true;
         }
@@ -240,6 +234,9 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
             double disparityX = 0; double disparityY = 0;
 
+            //number of orientations on which we apply the intersection of constraint
+            int ori_ioc = 0;
+
             //process for each direction
             for(std::vector<double>::iterator it = ori_vector.begin(); it != ori_vector.end(); it ++) {
 
@@ -251,14 +248,21 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
                 //compute binocular energy
                 double disparity = computeBinocularEnergy();
 
+                if(disparity != 0)
+                    ori_ioc++;
+
                 //estimate the disparity for the single direction
                 disparityX = disparityX + disparity * cos(theta);
                 disparityY = disparityY + disparity * sin(theta);
 
             }
 
-            disparityX = (2.0/orientations)*disparityX;
-            disparityY = (2.0/orientations)*disparityY;
+            if(ori_ioc != 0) {
+                disparityX = (1.0/ori_ioc)*disparityX;
+                disparityY = (1.0/ori_ioc)*disparityY;
+            }
+//            disparityX = (2.0/orientations)*disparityX;
+//            disparityY = (2.0/orientations)*disparityY;
 
             outDisparity << x << " " << y << " " << ts << " " << disparityX << " " << disparityY <<
                             " " << sqrt(disparityX*disparityX + disparityY*disparityY) << "\n";
@@ -266,18 +270,18 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 //            std::cout << "disparity = " << sqrt(disparityX * disparityX + disparityY * disparityY) << std::endl;
 
             de = new emorph::DisparityEvent(*aep);
-            de->setDx(disparityY);
-            de->setDy(disparityX);
+            de->setDx(disparityX);
+            de->setDy(disparityY);
 
-            std::cout << "send disparity = " << sqrt(pow(de->getDx(), 2) + pow(de->getDy(), 2)) << std::endl;
+//            std::cout << "send disparity = " << sqrt(pow(de->getDx(), 2) + pow(de->getDy(), 2)) << std::endl;
             outBottle.addEvent(*de);
 
         }
 
+    }
+
     if (strictness) outPort.writeStrict();
     else outPort.write();
-
-    }
 
 }
 
@@ -353,8 +357,8 @@ double vFilterDisparityManager::computeBinocularEnergy(){
 //        std::cout << "binocular energy " << binocularenergy << std::endl;
 
         //apply threshold to binocular energy
-        if(binocularenergy < threshold)
-            binocularenergy = 0;
+        if(binocularenergy < threshold) continue;
+//            binocularenergy = 0;
 
         energy_sum = energy_sum + binocularenergy;
         disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
@@ -364,7 +368,10 @@ double vFilterDisparityManager::computeBinocularEnergy(){
 
     }
 
-    return(disparity_sum / energy_sum);
+    if(energy_sum == 0)
+        return 0;
+    else
+        return(disparity_sum / energy_sum);
 
 }
 

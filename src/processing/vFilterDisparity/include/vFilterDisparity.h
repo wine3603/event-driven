@@ -48,7 +48,7 @@ private:
 
     int height;
     int width;
-    int nevents;
+    uint nevents;
     double threshold;
 
     //list of tuned disparities
