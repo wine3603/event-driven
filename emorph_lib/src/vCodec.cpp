@@ -59,6 +59,10 @@ vEvent * createEvent(const std::string type)
     if(type == ret->getType()) return ret;
     else delete(ret);
 
+    ret = new DisparityEvent();
+    if(type == ret->getType()) return ret;
+    else delete(ret);
+
     return 0;
 
 }
