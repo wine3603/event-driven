@@ -38,6 +38,7 @@ protected:
     int stagnantCount;
     int pTS;
     int clearThreshold;
+    int twindow;
 
     int checkStagnancy(const emorph::vQueue &eSet) {
         if(!eSet.size()) return 0;
@@ -52,7 +53,8 @@ protected:
 public:
 
     vDraw() : Xlimit(128), Ylimit(128), stagnantCount(0), pTS(0),
-            clearThreshold(30) {}
+            clearThreshold(30), twindow(781250/2) {}
+    virtual ~vDraw() {}
 
     ///
     /// \brief setLimits sets the maximum possible values of the position of
@@ -65,6 +67,13 @@ public:
         this->Xlimit = Xlimit;
         this->Ylimit = Ylimit;
     }
+
+    void setWindow(int twindow)
+    {
+        this->twindow = twindow;
+    }
+
+    virtual void initialise() {}
 
     ///
     /// \brief draw takes an image and overlays the new visualisation textures
@@ -284,12 +293,29 @@ private:
     int imagewidth;
     int imageheight;
     int imagexshift;
+    int imageyshift;
     double scale;
 
 
 public:
 
-    isoDraw();
+    void initialise();
+    ///
+    /// \brief see vDraw
+    ///
+    virtual void draw(cv::Mat &image, const emorph::vQueue &eSet);
+
+    ///
+    /// \brief see vDraw
+    ///
+    virtual std::string getTag();
+
+};
+
+class interestDraw : public vDraw {
+
+public:
+
     ///
     /// \brief see vDraw
     ///

@@ -25,9 +25,6 @@
 #include <EIEIOReceiver.h>
 #include <EIEIOSender.h>
 
-#include <iostream>
-#include <fstream>
-
 class YARPspinI : public yarp::os::BufferedPort<emorph::vBottle>
 {
 private:
@@ -40,8 +37,6 @@ private:
     int downsamplefactor;
     int height;
     int width;
-
-    std::ofstream eventsin;
 
 public:
 
@@ -68,8 +63,6 @@ private:
     int width;
     int height;
     int downsamplefactor;
-
-    std::ofstream eventsout;
 
 public:
 

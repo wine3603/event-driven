@@ -29,10 +29,29 @@ vCircleThread::vCircleThread(int R, bool directed, bool parallel, int height, in
     this->height = height;
     this->width = width;
 
+    H.resize(this->height, this->width); H.zero();
+    double alr  = arclength * M_PI / 180.0;
 
-    H.resize(this->height, this->width);
-    a = this->R * fabs(tan(arclength * M_PI / 180.0));
-    Hstr = 1.0 / (2.0 * M_PI * R * 0.5); //should not be scaled by scale
+    a = 0;
+    double count = 0;
+    int x = R; int y = 0;
+    for(double th = 0; th <= 2 * M_PI; th+=0.01) {
+
+        int xn = R * cos(th) + 0.5;
+        int yn = R * sin(th) + 0.5;
+
+        if((xn != x || yn != y) && (sqrt(pow(xn, 2.0)+pow(yn, 2.0))-R < 0.4)) {
+            x = xn;
+            y = yn;
+            hy.push_back(y);
+            hx.push_back(x);
+            hang.push_back(th);
+            count++;
+        }
+
+        if(!a && th > alr) a = hx.size();
+    }
+    Hstr = 0.05;
 
     x_max = 0; y_max = 0;
 
@@ -47,7 +66,8 @@ vCircleThread::vCircleThread(int R, bool directed, bool parallel, int height, in
 
 }
 
-void vCircleThread::process(emorph::vQueue &procQueue, std::vector<int> &procType) {
+void vCircleThread::process(emorph::vQueue &procQueue, std::vector<int> &procType)
+{
 
     this->procQueue = &procQueue;
     this->procType = &procType;
@@ -65,99 +85,70 @@ void vCircleThread::waitfordone()
         mdone.lock();
 }
 
-void vCircleThread::updateHAddress(int xv, int yv, double strength)
+void vCircleThread::updateHAddress(int xv, int yv, int strength)
 {
-    int xstart = std::max(0, xv - R);
-    int xend = std::min(width-1, xv + R);
 
-    for(int x = xstart; x <= xend; x++) {
-        //(xv-xc)^2 + (yv - yc)^2 = R^2
-        int deltay = (int)sqrt(Rsqr - pow(x - xv, 2.0));
+    //std::cout << "Updating with LUT" << std::endl;
+    for(unsigned int i = 0; i < hx.size(); i++) {
 
-        int y = yv + deltay;
-        if(y > height-1 || y < 0) continue;
-        H[y][x] += strength;
-        if(H[y][x] > H[y_max][x_max]) {
-            y_max = y; x_max = x;
-        }
+        int x = xv + hx[i];
+        int y = yv + hy[i];
+        if(y > height - 1 || y < 0 || x > width -1 || x < 0) continue;
 
-        if(!deltay) continue; //don't double up on same space
+        //std::cout << y << " " << x << std::endl;
 
-        y = yv - deltay;
-        if(y > height-1 || y < 0) continue;
-        H[y][x] += strength;
-        if(H[y][x] > H[y_max][x_max]) {
+        H(y, x) += strength;
+        if(H(y, x) > H(y_max, x_max)) {
             y_max = y; x_max = x;
         }
     }
+    return;
 }
 
-double vCircleThread::updateHFlowAngle(int xv, int yv, double strength,
+double vCircleThread::updateHFlowAngle(int xv, int yv, int strength,
                                      double dtdx, double dtdy)
 {
 
     //this is the same for all R try passing xn/yn to the function instead
     double velR = sqrt(pow(dtdx, 2.0) + pow(dtdy, 2.0));
-    double xn = dtdy / velR;
-    double yn = dtdx / velR;
+    double xr = R * dtdy / velR;
+    double yr = R * dtdx / velR;
 
-    //calculate the end position of the tangent to the arc
-    double x2 = R * xn - yn * a;
-    double y2 = R * yn + xn * a;
+    double theta = acos(xr/R) / (2 * M_PI);
+    if(yr < 0) theta = 1 - theta;
+    int bir = theta * hx.size();
 
-    double nonadjR = sqrt(pow(x2, 2.0) + pow(y2, 2.0));
+    //now fill in the pixels from that starting pixel for a pixels forward and
+    //backward
 
-    //then adjust to fit the radius R
-    double x2h = R * x2 / nonadjR;
-    double y2h = R * y2 / nonadjR;
+    for(int i = bir - a; i <= bir + a; i++) {
 
-    //also for the other end of the arc
-    double x3 = R * xn + yn * a;
-    double y3 = R * yn - xn * a;
+        int modi =  i;
+        if(i >= (int)hx.size())
+            modi = i - hx.size();
+        if(i < 0)
+            modi = i + hx.size();
 
-    double x3h = R * x3 / nonadjR; //nonadjR is the same for both 2 and 3
-    double y3h = R * y3 / nonadjR;
+        int x = xv + hx[modi];
+        int y = yv + hy[modi];
 
-
-    //we are mostly left or right of the centre
-    int sign = xn < 0 ? -1 : 1;
-
-    //get the starting position
-    int yStart, yEnd;
-    if(y2h > y3h) {
-        yStart = y3h+0.5; yEnd = y2h+0.5;
-    } else {
-        yStart = y2h+0.5, yEnd = y3h+0.5;
-    }
-
-    //and then go through the y values
-    for(int yd = yStart; yd <= yEnd; yd++) {
-
-        //calculate the x value
-        int xd = (int)(sqrt(Rsqr - pow(yd, 2.0)) * sign + 0.5);
-
-        //for both forward and reverse directions
-        for(int dir = 1; dir >= -1; dir -= 2) {
-
-            //update the direction
-            int xdd = xd * dir;
-            int ydd = yd * dir;
-
-            //calculate x pixel location and check limits
-            int ypix = yv + ydd;
-            if(!(ypix > 0 && ypix < height)) continue;
-
-            //calculate the y value
-            int xpix = xv + xdd;
-            if(!(xpix > 0 && xpix < width)) continue;
-
-            //update and check the hough transform
-            H[ypix][xpix] += strength;
-            if(H[ypix][xpix] > H[y_max][x_max]) {
-                y_max = ypix; x_max = xpix;
+        if(y >= 0 && y < height && x >= 0 && x < width) {
+            H(y, x) += strength;
+            if(H(y, x) > H(y_max, x_max)) {
+                y_max = y; x_max = x;
             }
-
         }
+
+        x = xv - hx[modi];
+        y = yv - hy[modi];
+
+        if(y >= 0 && y < height && x >= 0 && x < width) {
+            H(y, x) += strength;
+            if(H(y, x) > H(y_max, x_max)) {
+                y_max = y; x_max = x;
+            }
+        }
+
     }
 
     return 0;
@@ -167,24 +158,23 @@ double vCircleThread::updateHFlowAngle(int xv, int yv, double strength,
 void vCircleThread::performHough()
 {
 
-    for(int i = 0; i < procQueue->size(); i++) {
+    for(unsigned int i = 0; i < procQueue->size(); i++) {
 
         if(directed) {
 
             emorph::FlowEvent * v = (*procQueue)[i]->getAs<emorph::FlowEvent>();
 
             if(v) {
-                updateHFlowAngle(v->getX(), v->getY(), (*procType)[i] * Hstr,
+                updateHFlowAngle(v->getX(), v->getY(), (*procType)[i],
                                  v->getVx(), v->getVy());
             }
-
 
         } else {
 
             emorph::AddressEvent * v = (*procQueue)[i]->getAs<emorph::AddressEvent>();
 
             if(v) {
-                updateHAddress(v->getX(), v->getY(), (*procType)[i] * Hstr);
+                updateHAddress(v->getX(), v->getY(), (*procType)[i]);
             }
 
         }
@@ -208,21 +198,45 @@ void vCircleThread::run()
     }
 }
 
+int vCircleThread::findScores(std::vector<double> &values, double threshold)
+{
+    int c = 0;
+    for(int y = 0; y < height; y += 1) {
+        for(int x = 0; x < width; x += 1) {
+            if(H(y, x) > threshold) {
+                values.push_back(x);
+                values.push_back(y);
+                values.push_back(R);
+                values.push_back(H(y, x)*Hstr);
+                c++;
+            }
+        }
+    }
+
+    return c;
+
+}
+
 yarp::sig::ImageOf<yarp::sig::PixelBgr> vCircleThread::makeDebugImage(double refval)
 {
 
     if(refval < 0)
-        refval = H[y_max][x_max];
+        refval = H(y_max, x_max)*Hstr;
 
-    for(int y = 0; y < height; y++) {
-        for(int x = 0; x < width; x++) {
-            if(H[y][x] >= refval*0.9)
+    for(int y = 0; y < height; y += 1) {
+        for(int x = 0; x < width; x += 1) {
+
+            if(H(y, x)*Hstr >= refval*0.9)
                 canvas(y, width - 1 - x) = yarp::sig::PixelBgr(255, 255, 255);
             else {
-                int I = 255.0 * pow(H[y][x] / refval, 2.0);
+                int I = 255.0 * pow(H(y, x)*Hstr / refval, 1.0);
                 if(I > 254) I = 254;
                 //I = 0;
-                canvas(y, width - 1 - x) = yarp::sig::PixelBgr(0, I, 0);
+                if(directed)
+                    canvas(y, width - 1 - x) = yarp::sig::PixelBgr(0, I, 0);
+                else
+                    canvas(y, width - 1 - x) = yarp::sig::PixelBgr(0, 0, I);
+
             }
 //            if(H[y][x] >= refval*0.9) {
 //                canvas(y, width - 1 - x) = yarp::sig::PixelBgr(
@@ -241,17 +255,24 @@ yarp::sig::ImageOf<yarp::sig::PixelBgr> vCircleThread::makeDebugImage(double ref
 vCircleMultiSize::vCircleMultiSize(double threshold, std::string qType,
                                    int rLow, int rHigh,
                                    bool directed, bool parallel,
-                                   int height, int width)
+                                   int height, int width, int arclength, double fifolength)
 {
     this->qType = qType;
     this->threshold = threshold;
+    this->fifolength = fifolength;
+    this->directed = directed;
 
     for(int r = rLow; r <= rHigh; r++)
-        htransforms.push_back(new vCircleThread(r, directed, parallel, height, width));
+        htransforms.push_back(new vCircleThread(r, directed, parallel, height, width, arclength));
 
     best = htransforms.begin();
-    dummy.referto();
-    edge.setThickness(1);
+    fFIFO = emorph::fixedSurface(fifolength, width, height);
+    tFIFO = emorph::temporalSurface(width, height, fifolength * fifolength * 7812.5);
+    //eFIFO.setThickness(1);
+    //fFIFO.setFixedWindowSize(fifolength);
+    //tFIFO.setTemporalSize(fifolength * 7812.5);
+    channel = 0;
+
 }
 
 vCircleMultiSize::~vCircleMultiSize()
@@ -266,19 +287,16 @@ vCircleMultiSize::~vCircleMultiSize()
         (*i)->waitfordone();
         delete *i;
     }
-    dummy.destroy();
-
-
 }
 
 void vCircleMultiSize::addQueue(emorph::vQueue &additions) {
 
         if(qType == "fixed")
             addFixed(additions);
-        else if(qType == "lifetime")
+        else if(qType == "life")
             addLife(additions);
-        else if(qType == "surf")
-            addSurf(additions);
+        else if(qType == "time")
+            addTime(additions);
         else if(qType == "edge")
             addEdge(additions);
         else
@@ -312,130 +330,214 @@ double vCircleMultiSize::getObs(int &x, int &y, int &r)
 
 }
 
+std::vector<double> vCircleMultiSize::getPercentile(double p, double thMin)
+{
+    int x, y, r;
+    double maxval = getObs(x, y, r);
+    double threshold = std::max(p * maxval, (double)thMin);
+
+    std::vector<double> values;
+    std::vector<vCircleThread *>::iterator i;
+    for(i = htransforms.begin(); i != htransforms.end(); i++)
+        (*i)->findScores(values, threshold);
+
+    return values;
+}
+
 void vCircleMultiSize::addFixed(emorph::vQueue &additions)
 {
-
     emorph::vQueue procQueue;
     procType.clear();
+    emorph::AddressEvent *v;
 
     emorph::vQueue::iterator vi;
     for(vi = additions.begin(); vi != additions.end(); vi++) {
 
         //GET THE EVENTS AS CORRECT TYPE
-        emorph::AddressEvent *v = (*vi)->getAs<emorph::AddressEvent>();
-        if(!v || v->getChannel()) continue;
+        //emorph::AddressEvent *v = (*vi)->getAs<emorph::AddressEvent>();
+        if(directed)
+            v = (*vi)->getAs<emorph::FlowEvent>();
+        else
+            v = (*vi)->getAs<emorph::AddressEvent>();
+
+        if(!v || v->getChannel() != channel) continue;
 
         procQueue.push_back(v);
         procType.push_back(1);
 
+        emorph::vQueue removed = fFIFO.addEvent(*v);
 
-        bool removed = false;
-
-        //CHECK TO REMOVE "SAME LOCATION EVENTS FIRST"
-        int cx = v->getX(); int cy = v->getY();
-        emorph::vQueue::iterator i = FIFO.begin();
-        while(i != FIFO.end()) {
-            //we only add Address Events therefore we can do an unsafe cast
-            v = (*i)->getUnsafe<emorph::AddressEvent>();
-            removed = v->getX() == cx && v->getY() == cy;
-            if(removed) {
-                procQueue.push_back(v);
-                procType.push_back(-1);
-                i = FIFO.erase(i);
-                break;
-            } else {
-                i++;
-            }
-        }
-
-        //ADD THE CURRENT EVENT
-        FIFO.push_front(*vi);
-
-        //KEEP FIFO TO LIMITED SIZE
-        while(FIFO.size() > 2000) {
-            procQueue.push_back(FIFO.back());
+        for(unsigned int i = 0; i < removed.size(); i++) {
+            procQueue.push_back(removed[i]);
             procType.push_back(-1);
-            FIFO.pop_back();
-            removed = true;
         }
 
     }
 
     updateHough(procQueue, procType);
+}
 
+void vCircleMultiSize::addTime(emorph::vQueue &additions)
+{
+    emorph::vQueue procQueue;
+    procType.clear();
+    emorph::AddressEvent *v;
+
+    emorph::vQueue::iterator vi;
+    for(vi = additions.begin(); vi != additions.end(); vi++) {
+
+        v = (*vi)->getAs<emorph::AddressEvent>();
+        if(!v || v->getChannel() != channel) continue;
+
+        procQueue.push_back(v);
+        procType.push_back(1);
+
+        emorph::vQueue removed = tFIFO.addEvent(*v);
+
+        for(unsigned int i = 0; i < removed.size(); i++) {
+            procQueue.push_back(removed[i]);
+            procType.push_back(-1);
+        }
+
+    }
+
+    updateHough(procQueue, procType);
 }
 
 void vCircleMultiSize::addLife(emorph::vQueue &additions)
 {
     emorph::vQueue procQueue;
     procType.clear();
+    emorph::AddressEvent *v;
 
     emorph::vQueue::iterator vi;
     for(vi = additions.begin(); vi != additions.end(); vi++) {
 
-        //lifetime requires a flow event only
-        emorph::FlowEvent *v = (*vi)->getAs<emorph::FlowEvent>();
-        if(!v) return;
+        v = (*vi)->getAs<emorph::FlowEvent>();
+        if(!v || v->getChannel() != channel) continue;
 
-        //add this event
         procQueue.push_back(v);
         procType.push_back(1);
 
-        //then find any events that should be removed
-        int cts = v->getStamp();
-        int cx = v->getX(); int cy = v->getY();
-        emorph::FlowEvent * v2;
-        emorph::vQueue::iterator i = FIFO.begin();
-        while(i != FIFO.end()) {
-            v2 = (*i)->getUnsafe<emorph::FlowEvent>();
-            int modts = cts;
-            if(cts < v2->getStamp()) //we have wrapped
-                modts += emorph::vtsHelper::maxStamp();
+        emorph::vQueue removed = lFIFO.addEvent(*v);
 
-            bool samelocation = v2->getX() == cx && v2->getY() == cy;
-
-            if(modts > (v2->getDeath() - v2->getStamp()) * 78.125 + v2->getStamp() || samelocation) {
-                procQueue.push_back(v2);
-                procType.push_back(-1);
-                i = FIFO.erase(i);
-            } else {
-                i++;
-            }
-        }
-
-        //add to queue
-        FIFO.push_front(v);
-    }
-
-    //add this event to the hough space
-    updateHough(procQueue, procType);
-
-}
-
-void vCircleMultiSize::addSurf(emorph::vQueue &additions)
-{
-
-    emorph::vQueue procQueue;
-    procType.clear();
-
-    emorph::vQueue::iterator qi;
-    for(qi = additions.begin(); qi != additions.end(); qi++) {
-        emorph::AddressEvent * v = (*qi)->getAs<emorph::AddressEvent>();
-        if(!v) continue;
-        procQueue.push_back(v);
-        procType.push_back(1);
-
-        emorph::vEvent * removed = surface.addEvent(*v);
-        if(removed) {
-            procQueue.push_back(removed);
+        for(unsigned int i = 0; i < removed.size(); i++) {
+            procQueue.push_back(removed[i]);
             procType.push_back(-1);
         }
 
     }
 
     updateHough(procQueue, procType);
-
 }
+
+//void vCircleMultiSize::addFixed(emorph::vQueue &additions)
+//{
+
+//    emorph::vQueue procQueue;
+//    procType.clear();
+//    emorph::AddressEvent *v;
+
+//    emorph::vQueue::iterator vi;
+//    for(vi = additions.begin(); vi != additions.end(); vi++) {
+
+//        //GET THE EVENTS AS CORRECT TYPE
+//        //emorph::AddressEvent *v = (*vi)->getAs<emorph::AddressEvent>();
+//        if(directed)
+//            v = (*vi)->getAs<emorph::FlowEvent>();
+//        else
+//            v = (*vi)->getAs<emorph::AddressEvent>();
+
+//        if(!v || v->getChannel()) continue;
+
+//        procQueue.push_back(v);
+//        procType.push_back(1);
+
+
+//        bool removed = false;
+
+//        //CHECK TO REMOVE "SAME LOCATION EVENTS FIRST"
+//        // <----------THIS IS THE SLOWEST PART OF BALL TRACKING -------->
+//        int cx = v->getX(); int cy = v->getY();
+//        emorph::vQueue::iterator i = FIFO.begin();
+//        while(i != FIFO.end()) {
+//            //we only add Address Events therefore we can do an unsafe cast
+//            v = (*i)->getUnsafe<emorph::AddressEvent>(); //this may break now?
+//            removed = v->getX() == cx && v->getY() == cy;
+//            if(removed) {
+//                procQueue.push_back(v);
+//                procType.push_back(-1);
+//                i = FIFO.erase(i);
+//                break;
+//            } else {
+//                i++;
+//            }
+//        }
+//        // <---------------------------------------------------- -------->
+
+//        //ADD THE CURRENT EVENT
+//        FIFO.push_front(*vi);
+
+//        //KEEP FIFO TO LIMITED SIZE
+//        while(FIFO.size() > fifolength) {
+//            procQueue.push_back(FIFO.back());
+//            procType.push_back(-1);
+//            FIFO.pop_back();
+//            removed = true;
+//        }
+
+//    }
+
+//    updateHough(procQueue, procType);
+
+//}
+
+//void vCircleMultiSize::addLife(emorph::vQueue &additions)
+//{
+//    emorph::vQueue procQueue;
+//    procType.clear();
+
+//    emorph::vQueue::iterator vi;
+//    for(vi = additions.begin(); vi != additions.end(); vi++) {
+
+//        //lifetime requires a flow event only
+//        emorph::FlowEvent *v = (*vi)->getAs<emorph::FlowEvent>();
+//        if(!v) continue;
+
+//        //add this event
+//        procQueue.push_back(v);
+//        procType.push_back(1);
+
+//        //then find any events that should be removed
+//        int cts = v->getStamp();
+//        int cx = v->getX(); int cy = v->getY();
+//        emorph::FlowEvent * v2;
+//        emorph::vQueue::iterator i = FIFO.begin();
+//        while(i != FIFO.end()) {
+//            v2 = (*i)->getUnsafe<emorph::FlowEvent>();
+//            int modts = cts;
+//            if(cts < v2->getStamp()) //we have wrapped
+//                modts += emorph::vtsHelper::maxStamp();
+
+//            bool samelocation = v2->getX() == cx && v2->getY() == cy;
+
+//            if(modts > v2->getDeath() || samelocation) {
+//                procQueue.push_back(v2);
+//                procType.push_back(-1);
+//                i = FIFO.erase(i);
+//            } else {
+//                i++;
+//            }
+//        }
+
+//        //add to queue
+//        FIFO.push_front(v);
+//    }
+
+//    //add this event to the hough space
+//    updateHough(procQueue, procType);
+
+//}
 
 void vCircleMultiSize::addEdge(emorph::vQueue &additions)
 {
@@ -445,7 +547,7 @@ void vCircleMultiSize::addEdge(emorph::vQueue &additions)
     emorph::vQueue::iterator qi;
     for(qi = additions.begin(); qi != additions.end(); qi++) {
         emorph::AddressEvent * v = (*qi)->getAs<emorph::AddressEvent>();
-        if(!v || v->getChannel()) continue;
+        if(!v || v->getChannel() != channel) continue;
 
         emorph::FlowEvent * vf = v->getAs<emorph::FlowEvent>();
         //emorph::FlowEvent * vf = edge.upgradeEvent(v);
@@ -455,8 +557,8 @@ void vCircleMultiSize::addEdge(emorph::vQueue &additions)
             procType.push_back(1);
         }
 
-        emorph::vQueue removed = edge.addEventToEdge(v);
-        for(int i = 0; i < removed.size(); i++) {
+        emorph::vQueue removed = eFIFO.addEventToEdge(v);
+        for(unsigned int i = 0; i < removed.size(); i++) {
             if(removed[i]->getAs<emorph::FlowEvent>()) {
                 procQueue.push_back(removed[i]);
                 procType.push_back(-1);
@@ -472,13 +574,17 @@ yarp::sig::ImageOf<yarp::sig::PixelBgr> vCircleMultiSize::makeDebugImage()
 {
 
     std::vector<vCircleThread *>::iterator i;
+    //int dum1, dum2, dum3;
+    double v;
+    //v = this->getObs(dum1, dum2, dum3);
+    v = threshold;
 
     i = htransforms.begin();
     yarp::sig::ImageOf<yarp::sig::PixelBgr> imagebase =
-            (*i)->makeDebugImage(threshold);
+            (*i)->makeDebugImage(v);
 
     for(i++; i != htransforms.end(); i++) {
-        yarp::sig::ImageOf<yarp::sig::PixelBgr> image = (*i)->makeDebugImage(threshold);
+        yarp::sig::ImageOf<yarp::sig::PixelBgr> image = (*i)->makeDebugImage(v);
         for(int y = 0; y < image.height(); y++) {
             for(int x = 0; x < image.width(); x++) {
                 if(image(x, y).g > imagebase(x, y).g)
@@ -489,15 +595,15 @@ yarp::sig::ImageOf<yarp::sig::PixelBgr> vCircleMultiSize::makeDebugImage()
 
     emorph::vQueue q;
     if(qType == "fixed")
-        q = this->FIFO;
-    else if(qType == "lifetime")
-        q = this->FIFO;
-    else if(qType == "surf")
-        q = surface.getSURF(0, imagebase.width(), 0, imagebase.height());
+        q = fFIFO.getSurf();
+    else if(qType == "life")
+        q = lFIFO.getSurf();
+    else if(qType == "time")
+        q = tFIFO.getSurf();
     else if(qType == "edge")
-        q = edge.getSURF(0, imagebase.width(), 0, imagebase.height());
+        q = eFIFO.getSurf(0, imagebase.width(), 0, imagebase.height());
 
-    for(int i = 0; i < q.size(); i++) {
+    for(unsigned int i = 0; i < q.size(); i++) {
         emorph::AddressEvent *v = q[i]->getUnsafe<emorph::AddressEvent>();
         imagebase(v->getY(), imagebase.width() - 1 - v->getX()) =
                 yarp::sig::PixelBgr(255, 0, 255);

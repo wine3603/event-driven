@@ -18,12 +18,11 @@
 
 namespace emorph {
 
-vWindow::vWindow(int width, int height, int duration)
+vSurface2::vSurface2(int width, int height)
 {
     this->width = width;
     this->height = height;
-    this->duration = duration;
-    this->mostrecent = NULL;
+    this->count = 0;
 
     spatial.resize(height);
     for(int y = 0; y < height; y++) {
@@ -31,154 +30,201 @@ vWindow::vWindow(int width, int height, int duration)
     }
 }
 
-vWindow::vWindow(const vWindow& that)
-{
-    *this = that;
-}
-
-vWindow vWindow::operator=(const vWindow& that)
-{
-    this->width = that.width;
-    this->height = that.height;
-    this->duration = that.duration;
-    if(this->mostrecent) mostrecent->destroy();
-    mostrecent = NULL;
-
-    //we don't copy data in a vWindow for now
-    q.clear();
-
-    spatial.resize(height);
-    for(int y = 0; y < height; y++) {
-        spatial[y].resize(width);
-        for(int x = 0; x < width; x++) {
-            spatial[y][x].clear();
-        }
-    }
-
-
-    return *this;
-}
-
-void vWindow::addEvent(vEvent &event)
+vQueue vSurface2::addEvent(vEvent &event)
 {
 
-    //calculate event window boundaries based on latest timestamp
-    int ctime = event.getStamp();
-    int upper = ctime + vtsHelper::maxStamp() - duration;
-    int lower = ctime - duration;
-
-
-    //enter critcal section
-    mutex.wait();
+    vQueue removed = removeEvents(event);
 
     q.push_back(&event);
     AddressEvent *c = event.getAs<AddressEvent>();
-    if(c) spatial[c->getY()][c->getX()].push_back(q.back());
+    if(c) {
+        if(spatial[c->getY()][c->getX()])
+            removed.push_back(spatial[c->getY()][c->getX()]);
+        else
+            count++;
 
-    //remove any events falling out the back of the window
-    while(true) {
-
-        int vtime = q.front()->getStamp();
-        if((vtime > ctime && vtime < upper) || vtime < lower) {
-            AddressEvent * v = q.front()->getAs<AddressEvent>();
-            if(v) spatial[v->getY()][v->getX()].pop_front();
-            q.pop_front();
-        } else {
-            break;
-        }
+        spatial[c->getY()][c->getX()] = c;
     }
-    mutex.post();
+
+    return removed;
 
 }
 
-void vWindow::copyTWTO(vQueue &that)
+vQueue vSurface2::getSurf()
 {
-    mutex.wait();
-    that = q;
-    mutex.post();
+    return getSurf(0, width, 0, height);
 }
 
-const vQueue& vWindow::getTW()
-{
-    mutex.wait(); 
-    subq = q;
-    mutex.post();
-
-    return subq;
-
-}
-
-const vQueue& vWindow::getSMARTSTW(int d)
+vQueue vSurface2::getSurf(int d)
 {
     AddressEvent *v = 0;
     for(vQueue::reverse_iterator qi = q.rbegin(); qi != q.rend(); qi++) {
         v = (*qi)->getAs<AddressEvent>();
         if(v) break;
     }
-    if(!v) {
-        subq.clear();
-        return subq;
-    }
-    return getSTW(v->getX(), v->getY(), d);
+    if(!v) return vQueue();
+
+    return getSurf(v->getX(), v->getY(), d);
 
 }
 
-const vQueue& vWindow::getSTW(int x, int y, int d)
+vQueue vSurface2::getSurf(int x, int y, int d)
 {
-    return getSTW(x - d, x + d, y - d, y + d);
+    return getSurf(x - d, x + d, y - d, y + d);
 }
 
-const vQueue& vWindow::getSTW(int xl, int xh, int yl, int yh)
+vQueue vSurface2::getSurf(int xl, int xh, int yl, int yh)
 {
-    subq.clear();
+    vQueue qcopy;
 
     xl = std::max(xl, 0);
-    xh = std::min(xh, width);
+    xh = std::min(xh, width-1);
     yl = std::max(yl, 0);
-    yh = std::min(yh, height);
+    yh = std::min(yh, height-1);
 
-    //critical section
-    mutex.wait();
+    for(int y = yl; y <= yh; y++)
+        for(int x = xl; x <= xh; x++)
+            if(spatial[y][x]) qcopy.push_back(spatial[y][x]);
 
-    for(int y = yl; y < yh; y++) {
-        for(int x = xl; x < xh; x++) {
-            for (vQueue::iterator qi = spatial[y][x].begin();
-                 qi != spatial[y][x].end();
-                 qi++)
-            {
-                subq.push_back(*qi);
-            }
+    return qcopy;
+
+}
+
+vEvent *vSurface2::getMostRecent()
+{
+    if(!q.size()) return NULL;
+    return q.back();
+}
+
+/******************************************************************************/
+vQueue temporalSurface::removeEvents(vEvent &toAdd)
+{
+    vQueue removed;
+
+    //calculate event window boundaries based on latest timestamp
+    int ctime = toAdd.getStamp();
+    int upper = ctime + vtsHelper::maxStamp() - duration;
+    int lower = ctime - duration;
+
+    //remove any events falling out the back of the window
+    while(q.size()) {
+
+        AddressEvent * v = q.front()->getAs<AddressEvent>();
+        if(v && v != spatial[v->getY()][v->getX()]) {
+            q.pop_front();
+            continue;
+        }
+
+        int vtime = q.front()->getStamp();
+
+        if((vtime > ctime && vtime < upper) || vtime < lower) {
+            removed.push_back(q.front());
+            if(v) spatial[v->getY()][v->getX()] = NULL;
+            q.pop_front();
+            count--;
+        } else {
+            break;
         }
     }
 
+    while(q.size()) {
 
-    mutex.post();
+        AddressEvent * v = q.back()->getAs<AddressEvent>();
+        if(v && v != spatial[v->getY()][v->getX()]) {
+            q.pop_back();
+            continue;
+        }
 
-    return subq;
+        int vtime = q.back()->getStamp();
+
+        if((vtime > ctime && vtime < upper) || vtime < lower) {
+            removed.push_back(q.back());
+            if(v) spatial[v->getY()][v->getX()] = NULL;
+            q.pop_back();
+            count--;
+        } else {
+            break;
+        }
+    }
+
+    return removed;
+}
+
+/******************************************************************************/
+vQueue fixedSurface::removeEvents(vEvent &toAdd)
+{
+
+    vQueue removed;
+
+    while(q.size()) {
+
+        AddressEvent * v = q.front()->getAs<AddressEvent>();
+        if(v && v != spatial[v->getY()][v->getX()]) {
+            q.pop_front();
+        } else {
+            break;
+        }
+    }
+
+    if(count > qlength) {
+
+        removed.push_back(q.front());
+        AddressEvent * v = q.front()->getAs<AddressEvent>();
+        if(v) spatial[v->getY()][v->getX()] = NULL;
+        q.pop_front();
+        count--;
+    }
+
+    return removed;
 
 }
 
-
-
-
-
-
-vEvent *vWindow::getMostRecent()
+/******************************************************************************/
+vQueue lifetimeSurface::addEvent(emorph::vEvent &event)
 {
-    //return nothing if we are empty
-    if(!q.size()) return 0;
 
-    //if we had a previous most recent event allow it to be deallocated
-    if(mostrecent) {
-        mostrecent->destroy();
-        mostrecent = NULL;
+    FlowEvent *v = event.getAs<FlowEvent>();
+    if(!v) return vQueue();
+    return vSurface2::addEvent(event);
+}
+
+vQueue lifetimeSurface::removeEvents(vEvent &toAdd)
+{
+
+    vQueue removed;
+    //this could be better if q is sorted by death.
+
+
+    //lifetime requires a flow event only
+    FlowEvent *toAddflow = toAdd.getAs<FlowEvent>();
+    if(!toAddflow)
+        return vQueue();
+
+    int cts = toAddflow->getStamp();
+    int cx = toAddflow->getX(); int cy = toAddflow->getY();
+
+
+    vQueue::iterator i = q.begin();
+    while(i != q.end()) {
+        FlowEvent *v = (*i)->getUnsafe<emorph::FlowEvent>();
+        int modts = cts;
+        if(cts < v->getStamp()) //we have wrapped
+            modts += emorph::vtsHelper::maxStamp();
+
+        bool samelocation = v->getX() == cx && v->getY() == cy;
+
+        if(modts > v->getDeath() || samelocation) {
+            //it could be dangerous if spatial gets more than 1 event per pixel
+            removed.push_back(*i);
+            spatial[v->getY()][v->getX()] = NULL;
+            i = q.erase(i);
+            count--;
+        } else {
+            i++;
+        }
     }
 
-    //then set the most recent to be the back of the q and make sure it has
-    //a reference so it doesn't get deallocted
-    mostrecent = q.back();
-    mostrecent->referto();
-    return mostrecent;
+    return removed;
 
 }
 

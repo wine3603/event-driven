@@ -59,6 +59,7 @@ protected:
     yarp::os::Semaphore mutex;
     //! member variable for quick memory allocation
     vQueue subq;
+    int eventCount;
 
 public:
 
@@ -70,6 +71,7 @@ public:
 
     vSurface(const vSurface &);
     vSurface operator=(const vSurface&);
+    virtual ~vSurface() {}
 
     ///
     /// \brief addEvent adds an event to the window. Also checks for expired
@@ -84,12 +86,12 @@ public:
     ///
     vEvent * getMostRecent();
 
-
+    int getEventCount() { return eventCount; }
     void clear();
 
-    const vQueue& getSURF(int d);
-    const vQueue& getSURF(int x, int y, int d);
-    virtual const vQueue& getSURF(int xl, int xh, int yl, int yh);
+    const vQueue& getSurf(int d);
+    const vQueue& getSurf(int x, int y, int d);
+    virtual const vQueue& getSurf(int xl, int xh, int yl, int yh);
 
 
 };
@@ -101,19 +103,39 @@ private:
     //set the previous add event to be private so it cannot be used in vEdge
     //there could be a better way to achieve this.
     int thickness;
+    bool trackCount;
     vEvent * addEvent(emorph::AddressEvent &event);
 
-    vQueue addressremove(AddressEvent * v);
-    vQueue flowremove(FlowEvent * vf);
+    bool addressremove(vQueue &removed, AddressEvent * v);
+    bool flowremove(vQueue &removed, FlowEvent *vf);
+    bool pepperCheck(int y, int x);
 
 public:
 
-    vEdge(int width = 128, int height = 128) : vSurface(width, height) {thickness = 2;}
+    vEdge(int width = 128, int height = 128) :
+        vSurface(width, height), thickness(2), trackCount(false) {}
 
     vQueue addEventToEdge(AddressEvent *event);
-    FlowEvent * upgradeEvent(AddressEvent *event);
     void setThickness(int pixels) {thickness = pixels;}
+    void track(bool trackCount = true) {this->trackCount = trackCount;}
 
+    virtual const vQueue& getSurf(int xl, int xh, int yl, int yh);
+    using vSurface::getSurf;
+
+};
+
+class vFuzzyEdge : public vEdge
+{
+
+private:
+
+    double delta;
+    std::vector < std::vector <double> > scores;
+
+public:
+
+    vFuzzyEdge(int width = 128, int height = 128, double delta = 0.4);
+    vQueue addEventToEdge(AddressEvent *event);
     virtual const vQueue& getSURF(int xl, int xh, int yl, int yh);
 
 };

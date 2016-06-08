@@ -142,10 +142,10 @@ public:
     vEvent() : stamp(0), refcount(0) { }
     //!copy constructor
     vEvent(const vEvent &event);
+    virtual ~vEvent() {}
 
     int refcount;
     void referto() { refcount++; }
-    //bool destroy() { return !(--refcount > 0); }
     void destroy() { if(!(--refcount > 0)) delete this; }
 
     virtual std::string getType() const { return "TS";}
@@ -190,31 +190,28 @@ private:
 protected:
 
     //add new member variables here
-    char channel;
-    unsigned char polarity;
-    unsigned char x;
-    unsigned char y;
+    unsigned int x:10;
+    unsigned int y:10;
+    unsigned int channel:1;
+    unsigned int polarity:1;
+
 
 public:
 
     //these are new the member get functions
     virtual std::string getType() const { return "AE";}
-    int getChannel() const                      { return channel;       }
-    int getPolarity() const                     { return polarity;      }
-    unsigned char getX() const                  { return x;             }
-    unsigned char getY() const                  { return y;             }
+    int getChannel() const                  { return (int)channel;           }
+    int getPolarity() const                 { return (int)polarity;          }
+    int getX() const                        { return (int)x;                 }
+    int getY() const                        { return (int)y;                 }
 
-    void setChannel(const unsigned char channel)    {
-        if(channel>1) encoderr; this->channel=channel; }
-    void setPolarity(const unsigned char polarity)  {
-        if(polarity > 1) encoderr; this->polarity=polarity; }
-    void setX(const unsigned char x)                {
-        if(x > 127) encoderr; this->x=x; }
-    void setY(const unsigned char y)                {
-        if(y > 127) encoderr; this->y=y; }
+    void setChannel(const int channel)      { this->channel=channel;    }
+    void setPolarity(const int polarity)    { this->polarity=polarity;  }
+    void setX(const int x)                  { this->x=x;                }
+    void setY(const int y)                  { this->y=y;                }
 
     //these functions need to be defined correctly for inheritance
-    AddressEvent() : vEvent(), channel(0), polarity(0), x(0), y(0) {}
+    AddressEvent() : vEvent(), x(0), y(0), channel(0), polarity(0) {}
     AddressEvent(const vEvent &event);
     vEvent &operator=(const vEvent &event);
     virtual vEvent* clone();
@@ -330,32 +327,27 @@ private:
 protected:
 
     //add new member variables here
-    short int id;
-    unsigned char channel;
-    unsigned char xCog;
-    unsigned char yCog;
-    unsigned char polarity;
+    int id:10;
+    unsigned int channel:1;
+    unsigned int xCog:10;
+    unsigned int yCog:10;
+    unsigned int polarity:1;
 
 public:
 
     //these are new the member get functions
     virtual std::string getType() const { return "CLE";}
-    int getChannel() const             { return channel;        }
-    int getID()      const             { return id;             }
-    int getXCog()    const             { return xCog;           }
-    int getYCog()    const             { return yCog;           }
-    int getPolarity()const             { return polarity;           }
+    int getChannel() const             { return (int)channel;        }
+    int getID()      const             { return (int)id;             }
+    int getXCog()    const             { return (int)xCog;           }
+    int getYCog()    const             { return (int)yCog;           }
+    int getPolarity()const             { return (int)polarity;           }
 
-    void setChannel(const int channel)   { if(channel>1) encoderr;
-        this->channel = channel;  }
-    void setID(const int id)             { if(id>1023) encoderr;
-        this->id = id;            }
-    void setXCog(const int xCog)         { if(xCog>127) encoderr;
-        this->xCog = xCog;        }
-    void setYCog(const int yCog)         { if(yCog>127) encoderr;
-        this->yCog = yCog;        }
-    void setPolarity(const int polarity) { if(polarity > 1) encoderr;
-        this->polarity = polarity;}
+    void setChannel(const int channel)   { this->channel = channel;  }
+    void setID(const int id)             { this->id = id;            }
+    void setXCog(const int xCog)         { this->xCog = xCog;        }
+    void setYCog(const int yCog)         { this->yCog = yCog;        }
+    void setPolarity(const int polarity) { this->polarity = polarity;}
 
 
     //these functions need to be defined correctly for inheritance
@@ -472,6 +464,77 @@ public:
     virtual int nBytesCoded() const         { return localWordsCoded *
                 sizeof(int) + vEvent::nBytesCoded(); }
 
+
+};
+
+/**************************************************************************/
+class InterestEvent : public AddressEvent
+{
+private:
+    const static int localWordsCoded = 1;
+
+protected:
+
+    int intID;
+
+public:
+
+    virtual std::string getType() const { return "AE-INT";}
+    int getID() const                       { return intID;              }
+
+    void setID(const int intID)              { this->intID = intID;        }
+
+    InterestEvent() : AddressEvent(), intID(0) {}
+    InterestEvent(const vEvent &event);
+    vEvent &operator=(const vEvent &event);
+    virtual vEvent* clone();
+
+    bool operator==(const InterestEvent &event);
+    bool operator==(const vEvent &event) {
+        return operator==(dynamic_cast<const InterestEvent&>(event)); }
+    virtual void encode(yarp::os::Bottle &b) const;
+    yarp::os::Property getContent() const;
+    virtual bool decode(const yarp::os::Bottle &packet, int &pos);
+
+    //this is the total number of bytes used to code this event
+    virtual int nBytesCoded() const         { return localWordsCoded *
+                sizeof(int) + AddressEvent::nBytesCoded(); }
+
+
+};
+
+/**************************************************************************/
+class NeuronIDEvent : public vEvent
+{
+private:
+    const static int localWordsCoded = 1;
+
+protected:
+
+    int neurID;
+
+public:
+
+    virtual std::string getType() const { return "N_ID";}
+    int getID() const                       { return neurID;              }
+
+    void setID(const int neurID)              { this->neurID = neurID;        }
+
+    NeuronIDEvent() : vEvent(), neurID(0) {}
+    NeuronIDEvent(const vEvent &event);
+    vEvent &operator=(const vEvent &event);
+    virtual vEvent* clone();
+
+    bool operator==(const NeuronIDEvent &event);
+    bool operator==(const vEvent &event) {
+        return operator==(dynamic_cast<const NeuronIDEvent&>(event)); }
+    virtual void encode(yarp::os::Bottle &b) const;
+    yarp::os::Property getContent() const;
+    virtual bool decode(const yarp::os::Bottle &packet, int &pos);
+
+    //this is the total number of bytes used to code this event
+    virtual int nBytesCoded() const         { return localWordsCoded *
+                sizeof(int) + vEvent::nBytesCoded(); }
 
 };
 

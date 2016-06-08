@@ -1,9 +1,9 @@
 %% set these options!!
-winsize = 0.1; %seconds
-rate = 1.0; %seconds
+winsize = 2; %seconds
+rate = 2; %seconds
 channel = 0;
-start_offset = 0.3;
-randomised = 1;
+start_offset = 0;
+randomised = 0;
 
 %%
 if(~exist('GTdataset', 'var'))
@@ -35,13 +35,17 @@ display(['Approximately ' int2str((GTevents(end, 2) - start_offset) / rate + 0.5
     ' frames to GT']);
 
 figure(2); clf; hold on;
-prevGT = dlmread(GTresultfile);
-plot(prevGT(:, 1), ones(length(prevGT), 1), 'bx');
-plot(GTevents([1 end], 2), 1, 'o');
-title('GT Distribution');
-xlabel('Time (s)');
-legend('GT Point');
-display(['Previously ' int2str(size(prevGT, 1)) ' GT points']);
+
+try
+    prevGT = dlmread(GTresultfile);
+    plot(prevGT(:, 1), ones(length(prevGT), 1), 'bx');
+    plot(GTevents([1 end], 2), 1, 'o');
+    title('GT Distribution');
+    xlabel('Time (s)');
+    legend('GT Point');
+    display(['Previously ' int2str(size(prevGT, 1)) ' GT points']);
+end
+
 
 figure(1); clf;
 
@@ -63,7 +67,7 @@ finishedGT = false;
 while(~finishedGT)
     
     wini  = find(GTevents(:, 2) > cts-winsize, 1);
-    if(ci - wini) < 5000; wini = ci - 5000; end
+    %if(ci - wini) < 2000; wini = ci - 2000; end
     if(wini < 1); wini = 1; end;
     finishedLOG = false;
     
@@ -102,9 +106,9 @@ while(~finishedGT)
         elseif c == 27 %ESC
             finishedLOG = true;
             finishedGT = true;
-        elseif c == '+' || c == '='
+        elseif c == '+' | c == '='
             r = r + 1;
-        elseif c == '-' || c == '_'
+        elseif c == '-' | c == '_'
             r = r - 1;
             if r == 0; r = 1; end;
         elseif c == 30 %up

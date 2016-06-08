@@ -39,7 +39,62 @@ public:
 
     //you can only modify contents by adding events and append other vBottles
     void addEvent(emorph::vEvent &e);
-    void append(vBottle &eb);
+
+    void append(vBottle &eb)
+    {
+        append<emorph::vEvent>(eb);
+    }
+
+    template<class T> void append(vBottle &eb)
+    {
+        //we need to access the data in eb as if it were a normal bottle
+        //so we cast it to a Bottle
+
+        //TODO: just make sure the functions are available but protected should
+        //      make the casting unnecessary
+        yarp::os::Bottle * bb = dynamic_cast<yarp::os::Bottle *>(&eb);
+
+        //for each list of events
+        for(int tagi = 0; tagi < bb->size(); tagi+=2) {
+
+            //get the appended event type
+            const std::string tagname = bb->get(tagi).asString();
+            if(!tagname.size()) {
+                std::cerr << "Warning: Could not get tagname during vBottle append."
+                             "Check vBottle integrity." << std::endl;
+                continue;
+            }
+
+            //check to see if we want to append this event type
+            vEvent * e = emorph::createEvent(tagname);
+            if(!e) {
+                std::cerr << "Warning: could not get bottle type during vBottle::"
+                             "append<>(). Check vBottle integrity." << std::endl;
+                continue;
+            }
+            if(!dynamic_cast<T*>(e)) continue;
+
+
+            //we want to append these events so get the data from bb
+            yarp::os::Bottle *b_from = bb->get(tagi+1).asList();
+            if(!b_from->size()) {
+                std::cerr << "Warning: From-list empty during vBottle append."
+                             "Check vBottle integrity." << std::endl;
+                continue;
+            }
+
+            //get the correct bottle to append to (or create a new one)
+            yarp::os::Bottle *b_to = yarp::os::Bottle::find(tagname).asList();
+            if(!b_to) {
+                yarp::os::Bottle::addString(tagname);
+                b_to = &(yarp::os::Bottle::addList());
+            }
+
+            //and do it
+            b_to->append(*b_from);
+        }
+
+    }
 
     //all get functions call this to do the meat of the getting function
     template<class T> vQueue get() {
@@ -64,7 +119,10 @@ public:
             }
 
             //and if e is of type T we can continue to get the events
-            if(!dynamic_cast<T*>(e)) continue;
+            if(!dynamic_cast<T*>(e)) {
+                delete(e);
+                continue;
+            }
 
             //we get the (EVENTS)
             Bottle * b = Bottle::get(i+1).asList();
@@ -105,7 +163,7 @@ public:
 
     vQueue getAllSorted() {
         vQueue q = getAll();
-        q.wrapSort();
+        q.sort(true);
         return q;
     }
 
@@ -173,13 +231,13 @@ class vBottleMimic : public yarp::os::Portable {
 
 private:
 
-    std::vector<u_int32_t> header1;
+    std::vector<YARP_INT32> header1;
     std::vector<char> header2;
-    std::vector<u_int32_t> header3;
+    std::vector<YARP_INT32> header3;
 
     const char * datablock;
     unsigned int datalength;
-    const static unsigned int MINELSZ = sizeof(u_int32_t) * 2;
+    const static unsigned int MINELSZ = sizeof(YARP_INT32) * 2;
 
 public:
 
@@ -207,13 +265,13 @@ public:
 
     virtual bool write(yarp::os::ConnectionWriter& connection) {
 
-        connection.appendExternalBlock((const char *)header1.data(),
-                                       header1.size() * sizeof(u_int32_t));
-        connection.appendExternalBlock((const char *)header2.data(),
+        connection.appendBlock((const char *)header1.data(),
+                                       header1.size() * sizeof(YARP_INT32));
+        connection.appendBlock((const char *)header2.data(),
                                        header2.size() * sizeof(char));
-        connection.appendExternalBlock((const char *)header3.data(),
-                                       header3.size() * sizeof(u_int32_t));
-        connection.appendExternalBlock(datablock, datalength);
+        connection.appendBlock((const char *)header3.data(),
+                                       header3.size() * sizeof(YARP_INT32));
+        connection.appendBlock(datablock, datalength);
 
         return !connection.isError();
     }

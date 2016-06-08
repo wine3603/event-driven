@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences -
  * Istituto Italiano di Tecnologia
  * Author: Ugo Pattacini, edited by Arren Glover(10/14)
@@ -51,7 +51,11 @@ vEvent * createEvent(const std::string type)
     if(type == ret->getType()) return ret;
     else delete(ret);
 
-    ret = new DisparityEvent();
+    ret = new InterestEvent();
+    if(type == ret->getType()) return ret;
+    else delete(ret);
+
+    ret = new NeuronIDEvent();
     if(type == ret->getType()) return ret;
     else delete(ret);
 
@@ -96,7 +100,8 @@ vEvent &vEvent::operator=(const vEvent &event)
     return *this;
 }
 
-vEvent *vEvent::clone() {
+vEvent *vEvent::clone()
+{
     return new vEvent(*this);
 }
 
@@ -164,7 +169,11 @@ vEvent* AddressEvent::clone() {
 void AddressEvent::encode(yarp::os::Bottle &b) const
 {
     vEvent::encode(b);
+#ifdef TENBITCODEC
+    b.addInt(((channel&0x01)<<21)|((y&0x3FF)<<11)|((x&0x3FF)<<1)|(polarity&0x01));
+#else
     b.addInt(((channel&0x01)<<15)|((y&0x7f)<<8)|((x&0x7f)<<1)|(polarity&0x01));
+#endif
 }
 
 /******************************************************************************/
@@ -175,6 +184,18 @@ bool AddressEvent::decode(const yarp::os::Bottle &packet, int &pos)
     {
         int word0=packet.get(pos).asInt();
 
+#ifdef TENBITCODEC
+        polarity=word0&0x01;
+
+        word0>>=1;
+        x=word0&0x3FF;
+
+        word0>>=10;
+        y=word0&0x3FF;
+
+        word0>>=10;
+        channel=word0&0x01;
+#else
         polarity=word0&0x01;
 
         word0>>=1;
@@ -185,6 +206,8 @@ bool AddressEvent::decode(const yarp::os::Bottle &packet, int &pos)
 
         word0>>=7;
         channel=word0&0x01;
+
+#endif
 
         pos += localWordsCoded;
         return true;
@@ -208,10 +231,10 @@ bool AddressEvent::operator==(const AddressEvent &event)
 yarp::os::Property AddressEvent::getContent() const
 {
     yarp::os::Property prop = vEvent::getContent();
-    prop.put("channel",channel);
-    prop.put("polarity",polarity);
-    prop.put("x",x);
-    prop.put("y",y);
+    prop.put("channel", (int)channel);
+    prop.put("polarity", (int)polarity);
+    prop.put("x", (int)x);
+    prop.put("y", (int)y);
 
     return prop;
 }
@@ -438,8 +461,7 @@ vEvent* ClusterEvent::clone() {
 void ClusterEvent::encode(yarp::os::Bottle &b) const
 {
     vEvent::encode(b);
-    b.addInt((8<<26)|((id&0x02ff)<<16)|((yCog&0x7f)<<9)|((xCog&0x7f)<<2)|
-             ((polarity&0x01)<<1)|(channel&0x01));
+    b.addInt(((id&0x3FF)<<22)|((yCog&0x3FF)<<12)|((xCog&0x3FF)<<2)|((polarity&0x01)<<1)|(channel&0x01));
 }
 
 /******************************************************************************/
@@ -457,13 +479,13 @@ bool ClusterEvent::decode(const yarp::os::Bottle &packet, int &pos)
         polarity = word0&0x01;
         word0>>=1;
 
-        xCog=word0&0x7f;
-        word0>>=7;
+        xCog=word0&0x3FF;
+        word0>>=10;
 
-        yCog=word0&0x7f;
-        word0>>=7;
+        yCog=word0&0x3FF;
+        word0>>=10;
 
-        id=word0&0x02ff;
+        id=word0&0x3FF;
         //word0>>10;
 
         //code=word0&0x3f;
@@ -493,11 +515,11 @@ bool ClusterEvent::operator==(const ClusterEvent &event)
 yarp::os::Property ClusterEvent::getContent() const
 {
     yarp::os::Property prop = vEvent::getContent();
-    prop.put("channel",channel);
-    prop.put("polarity", polarity);
-    prop.put("id",id);
-    prop.put("xCog",xCog);
-    prop.put("yCog",yCog);
+    prop.put("channel", (int)channel);
+    prop.put("polarity", (int)polarity);
+    prop.put("id",(int)id);
+    prop.put("xCog",(int)xCog);
+    prop.put("yCog",(int)yCog);
 
     return prop;
 }
@@ -599,7 +621,7 @@ bool ClusterEventGauss::decode(const yarp::os::Bottle &packet, int &pos)
         yVel=word2&0xffff;
         word2>>=16;
         xVel=word2&0xffff;
-        
+
         pos += localWordsCoded;
         return true;
 
@@ -728,7 +750,7 @@ yarp::os::Property FlowEvent::getContent() const
 
 void FlowEvent::setDeath()
 {
-    death = 1.0 / (sqrt(pow(vx, 2.0) + pow(vy, 2.0)) * vtsHelper::tstosecs());
+    death = 1.0 / (sqrt(pow(vx, 2.0f) + pow(vy, 2.0f)) * vtsHelper::tstosecs());
     //if(death > 2000000) {
     //    death = 2000000;
     //}
@@ -740,7 +762,7 @@ void FlowEvent::setDeath()
     if(theta > 1.5707963) theta -= 1.5707963;
     if(theta > 0.785398) theta = 1.5707963 - theta;
     //death = 7.8125*(int)(sqrt(pow(vx, 2.0) + pow(vy, 2.0)) / (cos(theta)*vtsHelper::tstosecs()));
-    death = 1.0 / (sqrt(pow(vx, 2.0) + pow(vy, 2.0)) * cos(theta) * vtsHelper::tstosecs());
+    death = 1.0 / (sqrt(pow(vx, 2.0f) + pow(vy, 2.0f)) * cos(theta) * vtsHelper::tstosecs());
     if(death > 2000000) {
         death = 2000000;
     }
@@ -752,6 +774,158 @@ void FlowEvent::setDeath()
 //    death = 7.8125* (int)(sqrt(pow(vx, 2.0) + pow(vy, 2.0)) / vtsHelper::tstosecs());
 //    if(death > 1000000) death = 1000000;
 //    death += stamp;
+}
+
+/******************************************************************************/
+//InterestEvent
+/******************************************************************************/
+InterestEvent::InterestEvent(const vEvent &event/*always vEvent*/)
+{
+    //most of the constructor is replicated in the assignment operator
+    //so we just use that to construct
+    *this = event;
+
+}
+
+/******************************************************************************/
+vEvent &InterestEvent::operator=(const vEvent &event/*always vEvent*/)
+{
+
+    //copy timestamp and type (base class =operator)
+    AddressEvent::operator =(event);
+
+    //copy other fields if it's compatible
+    const InterestEvent * aep =
+            dynamic_cast<const InterestEvent *>(&event);
+    if(aep) {
+        intID = aep->intID;
+    } else {
+        intID = 0;
+    }
+
+    return *this;
+}
+
+/******************************************************************************/
+vEvent* InterestEvent::clone() {
+    return new InterestEvent(*this);
+}
+
+/******************************************************************************/
+void InterestEvent::encode(yarp::os::Bottle &b) const
+{
+    AddressEvent::encode(b);
+    b.addInt(intID);
+}
+
+/******************************************************************************/
+bool InterestEvent::decode(const yarp::os::Bottle &packet, int &pos)
+{
+    // check length
+    if (AddressEvent::decode(packet, pos) &&
+            pos + localWordsCoded <= packet.size())
+    {
+        int word0=packet.get(pos).asInt();
+        intID = word0;
+        pos += localWordsCoded;
+        return true;
+    }
+
+    return false;
+}
+
+
+
+/******************************************************************************/
+bool InterestEvent::operator==(const InterestEvent &event)
+{
+    return ((AddressEvent::operator==(event)) &&
+            (intID==event.intID));
+}
+
+/******************************************************************************/
+yarp::os::Property InterestEvent::getContent() const
+{
+    yarp::os::Property prop = AddressEvent::getContent();
+    prop.put("intID",intID);
+
+    return prop;
+}
+
+/******************************************************************************/
+//NeuronIDEvent
+/******************************************************************************/
+NeuronIDEvent::NeuronIDEvent(const vEvent &event/*always vEvent*/)
+{
+    //most of the constructor is replicated in the assignment operator
+    //so we just use that to construct
+    *this = event;
+
+}
+
+/******************************************************************************/
+vEvent &NeuronIDEvent::operator=(const vEvent &event/*always vEvent*/)
+{
+
+    //copy timestamp and type (base class =operator)
+    vEvent::operator =(event);
+
+    //copy other fields if it's compatible
+    const NeuronIDEvent * np =
+            dynamic_cast<const NeuronIDEvent *>(&event);
+    if(np) {
+        neurID = np->neurID;
+    } else {
+        neurID = 0;
+    }
+
+    return *this;
+}
+
+/******************************************************************************/
+vEvent* NeuronIDEvent::clone() {
+    return new NeuronIDEvent(*this);
+}
+
+/******************************************************************************/
+void NeuronIDEvent::encode(yarp::os::Bottle &b) const
+{
+    vEvent::encode(b);
+    b.addInt(neurID);
+}
+
+/******************************************************************************/
+bool NeuronIDEvent::decode(const yarp::os::Bottle &packet, int &pos)
+{
+    // check length
+    if (vEvent::decode(packet, pos) &&
+            pos + localWordsCoded <= packet.size())
+    {
+        int word0=packet.get(pos).asInt();
+        neurID = word0;
+        pos += localWordsCoded;
+        return true;
+    }
+
+    return false;
+}
+
+
+
+/******************************************************************************/
+bool NeuronIDEvent::operator==(const NeuronIDEvent &event)
+{
+    return ((NeuronIDEvent::operator==(event)) &&
+            (neurID==event.neurID));
+}
+
+/******************************************************************************/
+yarp::os::Property NeuronIDEvent::getContent() const
+{
+    yarp::os::Property prop = vEvent::getContent();
+    prop.put("N_ID", neurID);
+
+    return prop;
 }
 
 /******************************************************************************/

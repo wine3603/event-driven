@@ -29,18 +29,21 @@
 class dPepperIO : public yarp::os::BufferedPort<emorph::vBottle>
 {
 private:
-    
+
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<emorph::vBottle> outPort;
 
-    emorph::vWindow leftWindow;
-    emorph::vWindow rightWindow;
+    emorph::temporalSurface leftWindow;
+    emorph::temporalSurface rightWindow;
 
     //paramters
+    int height;
+    int width;
     double spatialSize;
+    double temporalSize;
 
 public:
-    
+
     dPepperIO();
 
     bool open(const std::string &name);
@@ -52,6 +55,7 @@ public:
 
     void setTemporalSize(double microseconds);
     void setSpatialSize(double pixelradius);
+    void setResolution(int height, int width);
 
 };
 

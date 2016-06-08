@@ -141,8 +141,6 @@ YARPspinI::YARPspinI()
     height = 128;
     width = 128;
     downsamplefactor = 1; // 2;
-    eventsin.open("eventssenttospinnaker.txt");
-
 
 }
 
@@ -198,23 +196,8 @@ void YARPspinI::onRead(emorph::vBottle &bot)
                 (width / pow(downsamplefactor, 2.0)) +
                 (v->getX() >> downsamplefactor);
 
-        eventsin << (int)(v->getX()) << " " << (int)(v->getY()) << " " << neuronID << " "
-                 << (int)(v->getX() >> downsamplefactor) << " " << (int)(v->getY() >> downsamplefactor) << std::endl;
-
-        int pixels = 16;
-
-//        for(int i = (width - pixels)/2; i <= (width + pixels)/2; i++)
-//            if(neuronID > i - (width - pixels)/2 && neuronID < i + (width - pixels)/2)
-
-        for(int i = 0; i <= pixels; i++) {
-            if(neuronID > i*width && neuronID < i*width + pixels)
-            {
-//                std::cout << "\n";
-//                std::cout << "neuronID " << neuronID << std::endl;
-//                std::cout << "Send event x " << (int)(v->getX()) << " y " << (int)(v->getY()) << std::endl;
-                spinSender->addSpikeToSendQueue(neuronID);
-            }
-        }
+        //eventsin << (int)(v->getX()) << " " << (int)(v->getY()) << " " << neuronID << std::endl;
+        spinSender->addSpikeToSendQueue(neuronID);
 
     }
 
@@ -229,8 +212,7 @@ YARPspinO::YARPspinO() : yarp::os::RateThread(1)
   // Do we need anything here?
     width = 128;
     height = 128;
-    downsamplefactor = 1; // 2;
-    eventsout.open("eventsfromspinnaker.txt");
+    downsamplefactor = 1;
 
 }
 
@@ -282,8 +264,6 @@ void YARPspinO::run()
 //        outbottle.addEvent(ae);
         ne.setStamp(spikeEvent.first);
         ne.setID(spikeEvent.second);
-
-        eventsout << x << " " << y << " " << ae.getStamp() << " " << spikeEvent.second << std::endl;
         outbottle.addEvent(ne);
 
     }
@@ -313,7 +293,7 @@ YARPspinIO::YARPspinIO()
     //here we should initialise the module
     height = 128;
     width = 128;
-    downsamplefactor = 4;
+    downsamplefactor = 0;
 
     spinSender = 0;
     spinReceiver = 0;
@@ -383,7 +363,6 @@ void YARPspinIO::onRead(emorph::vBottle &inbottle)
     int latestts = q.back()->getStamp();
 
     //first send on our packets we have read
-    int count1 = 0;
     for(emorph::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
 
@@ -398,12 +377,9 @@ void YARPspinIO::onRead(emorph::vBottle &inbottle)
                 (v->getX() >> downsamplefactor);
 
         //eventsin << (int)(v->getX()) << " " << (int)(v->getY()) << " " << neuronID << std::endl;
-        //std::cout << "x " << (int)v->getX() << " y " << (int)v->getY() << std::endl;
         spinSender->addSpikeToSendQueue(neuronID);
-        count1++;
 
     }
-    std::cout << "sent " << count1 << " spikes" << std::endl;
 
     //and then see if there are spikes to receive
     //int recvQueueSize = spinReceiver->getRecvQueueSize();
@@ -412,7 +388,6 @@ void YARPspinIO::onRead(emorph::vBottle &inbottle)
     emorph::ClusterEventGauss gaborevent;
 
     if(spinReceiver->getRecvQueueSize()) {
-        std::cout << "received spikes back" << std::endl  << std::endl;
         //convert the data to readable packets
         std::list<std::pair<int, int> > spikepacket =
                 spinReceiver->getNextSpikePacket();
@@ -421,7 +396,6 @@ void YARPspinIO::onRead(emorph::vBottle &inbottle)
         std::list<std::pair<int, int> >::iterator i;
         for(i = spikepacket.begin(); i != spikepacket.end(); i++) {
             std::pair<int,int> spikeEvent = *i;
-            std::cout << spikeEvent.second << " ";
             gaborevent.setStamp(latestts);
             gaborevent.setPolarity(0);
             gaborevent.setXCog(64);
@@ -440,7 +414,6 @@ void YARPspinIO::onRead(emorph::vBottle &inbottle)
             gaborevent.setYVel(0);
             outbottle.addEvent(gaborevent);
         }
-        std::cout << std::endl;
 
     }
 

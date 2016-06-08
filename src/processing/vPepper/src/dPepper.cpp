@@ -25,15 +25,12 @@ bool dPepperModule::configure(yarp::os::ResourceFinder &rf)
             rf.check("name", yarp::os::Value("vPepper")).asString();
     setName(moduleName.c_str());
 
-
-    //set other variables we need from the
-    double temporalSize =
-            rf.check("temporalSize", yarp::os::Value(10000)).asDouble();
-    double spatialSize =
-            rf.check("spatialSize", yarp::os::Value(1)).asDouble();
-
-    eventManager.setSpatialSize(spatialSize);
-    eventManager.setTemporalSize(temporalSize);
+    eventManager.setSpatialSize(rf.check("spatialSize",
+                                         yarp::os::Value(1)).asDouble());
+    eventManager.setTemporalSize(rf.check("temporalSize",
+                                          yarp::os::Value(10000)).asDouble());
+    eventManager.setResolution(rf.check("height", 128).asInt(),
+                               rf.check("width", 128).asInt());
     eventManager.open(moduleName);
 
     return true ;
@@ -72,11 +69,13 @@ dPepperIO::dPepperIO()
 {
 
     //here we should initialise the module
-    double temporalSize = 10000;
+    temporalSize = 10000;
     spatialSize = 1;
-    leftWindow.setTemporalWindowSize(temporalSize);
-    rightWindow.setTemporalWindowSize(temporalSize);
-    
+    height = 128;
+    width = 128;
+    leftWindow = emorph::temporalSurface(width, height, temporalSize);
+    rightWindow = emorph::temporalSurface(width, height, temporalSize);
+
 }
 /**********************************************************/
 bool dPepperIO::open(const std::string &name)
@@ -114,13 +113,16 @@ void dPepperIO::interrupt()
 void dPepperIO::onRead(emorph::vBottle &bot)
 {
     //create event queue
+    yarp::os::Stamp yts;
+    this->getEnvelope(yts);
     emorph::vQueue q = bot.getAll();
     //create queue iterator
     emorph::vQueue::iterator qi, wi;
-    
+
     // prepare output vBottle with address events extended with cluster ID (aec) and cluster events (clep)
     emorph::vBottle &outBottle = outPort.prepare();
     outBottle.clear();
+    outPort.setEnvelope(yts);
 
     // get the event queue in the vBottle bot
     //bot.getAll(q);
@@ -131,16 +133,17 @@ void dPepperIO::onRead(emorph::vBottle &bot)
         //leftWindow.addEvent(**qi);
         emorph::AddressEvent *v = (*qi)->getAs<emorph::AddressEvent>();
         if(!v) continue;
+        if(v->getY() == 1023) continue;
 
         //keep each channel independently
         emorph::vQueue tw;
         if(v->getChannel()) {
             rightWindow.addEvent(**qi);
-            tw = rightWindow.getSTW(v->getX(), v->getY(), spatialSize);
+            tw = rightWindow.getSurf(v->getX(), v->getY(), spatialSize);
         }
         else {
             leftWindow.addEvent(**qi);
-            tw = leftWindow.getSTW(v->getX(), v->getY(), spatialSize);
+            tw = leftWindow.getSurf(v->getX(), v->getY(), spatialSize);
         }
 
         bool addit = false;
@@ -166,13 +169,22 @@ void dPepperIO::onRead(emorph::vBottle &bot)
 
 void dPepperIO::setTemporalSize(double microseconds)
 {
-    leftWindow.setTemporalWindowSize(microseconds);
-    rightWindow.setTemporalWindowSize(microseconds);
+    leftWindow.setTemporalSize(microseconds);
+    rightWindow.setTemporalSize(microseconds);
 }
 
 void dPepperIO::setSpatialSize(double pixelradius)
 {
     spatialSize = pixelradius;
+}
+
+void dPepperIO::setResolution(int height, int width)
+{
+    this->height = height;
+    this->width = width;
+    leftWindow = emorph::temporalSurface(this->width, this->height, temporalSize);
+    rightWindow = emorph::temporalSurface(this->width, this->height, temporalSize);
+
 }
 
 //empty line to make gcc happy
