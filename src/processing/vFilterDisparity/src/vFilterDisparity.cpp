@@ -146,6 +146,7 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
 
     even_conv_right.resize(phases);
     odd_conv_right.resize(phases);
+    energy.resize(phases);
 
     outDisparity.open("estimatedDisparity.txt");
     gaborResponse.open("gaborResponse.txt");
@@ -168,7 +169,11 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
     if(strictness) outPort.setStrict();
     std::string outPortName = "/" + moduleName + "/vBottle:o";
     bool check2 = outPort.open(outPortName);
-    return check1 && check2;
+
+    std::string disparityPortName = "/" + moduleName + "/disp:o";
+    bool check3 = disparityPort.open(disparityPortName);
+
+    return check1 && check2 && check3;
 
 }
 
@@ -209,6 +214,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
     /*get the event queue in the vBottle bot*/
     emorph::vQueue q = bot.get<emorph::AddressEvent>();
 
+    double mx = 0, my = 0;
+    int count = 0;
     for(emorph::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
@@ -269,15 +276,31 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
 //            std::cout << "disparity = " << sqrt(disparityX * disparityX + disparityY * disparityY) << std::endl;
 
+            if(disparityX != 0 && disparityY != 0) count++;
+            mx = mx + disparityX;
+            my = my + disparityY;
+
             de = new emorph::DisparityEvent(*aep);
             de->setDx(disparityX);
             de->setDy(disparityY);
 
+//            std::cout << "send disparity x = " << de->getDx() << " y " << de->getDy() << std::endl;
 //            std::cout << "send disparity = " << sqrt(pow(de->getDx(), 2) + pow(de->getDy(), 2)) << std::endl;
             outBottle.addEvent(*de);
 
         }
 
+    }
+
+    mx = mx / count;
+    my = my / count;
+
+    if(outBottle.size() != 0) {
+        yarp::os::Bottle &dbot = disparityPort.prepare();
+        dbot.clear();
+        dbot.addDouble(mx);
+        dbot.addDouble(my);
+        disparityPort.write();
     }
 
     if (strictness) outPort.writeStrict();
@@ -346,27 +369,48 @@ double vFilterDisparityManager::computeBinocularEnergy(){
     double final_even_conv = 0; double final_odd_conv = 0;
     double binocularenergy = 0; double energy_sum = 0;
     double disparity_sum = 0;
+    double max = 0;
 
-//    std::vector<int>::iterator disparity_it = disparity_vector.begin();
     for(int t = 0; t < phases; t++){
 
         final_even_conv = even_conv_left + even_conv_right[t];
         final_odd_conv  = odd_conv_left  + odd_conv_right[t];
         binocularenergy = final_even_conv * final_even_conv + final_odd_conv * final_odd_conv;
+        energy[t] = binocularenergy;
 
-//        std::cout << "binocular energy " << binocularenergy << std::endl;
+        //compute maximum energy
+        if(energy[t] > max)
+            max = energy[t];
 
-        //apply threshold to binocular energy
-        if(binocularenergy < threshold) continue;
-//            binocularenergy = 0;
+//        std::cout << "binocular energy (" << t << ") " << binocularenergy << std::endl;
 
-        energy_sum = energy_sum + binocularenergy;
-        disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
+//        //apply threshold to binocular energy
+//        if(binocularenergy < threshold) continue;
+////            binocularenergy = 0;
+
+//        energy_sum = energy_sum + binocularenergy;
+//        disparity_sum = disparity_sum + disparity_vector[t] * binocularenergy;
 
         gaborResponse << ts << " " << " " << disparity_vector[t] << " " << binocularenergy << "\n";
-//        std::cout << "disparity ( " << theta * (180 / M_PI) << " ) = " << *disparity_it << " with energy = " << energy << "\n";
+    }
+
+
+    threshold = max / 1.5;
+    for(int t = 0; t < phases; t++) {
+
+        if(energy[t] > threshold) {
+
+            energy_sum = energy_sum + energy[t];
+            disparity_sum = disparity_sum + disparity_vector[t] * energy[t];
+
+        }
+        else {
+            disparity_sum = 0;
+            energy_sum = 0;
+        }
 
     }
+
 
     if(energy_sum == 0)
         return 0;

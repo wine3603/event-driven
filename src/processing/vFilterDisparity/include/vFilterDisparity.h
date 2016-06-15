@@ -35,6 +35,7 @@ private:
 
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<emorph::vBottle> outPort;
+    yarp::os::BufferedPort<yarp::os::Bottle> disparityPort;
 
     //for helping with timestamp wrap around
     emorph::vtsHelper unwrapper;
@@ -68,6 +69,7 @@ private:
     double odd_conv_left;
     std::vector<double> even_conv_right;
     std::vector<double> odd_conv_right; //arrays of size = number of phases
+    std::vector<double> energy;
 
     std::ofstream outDisparity;
     std::ofstream gaborResponse;

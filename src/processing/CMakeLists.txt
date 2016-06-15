@@ -10,7 +10,7 @@ add_subdirectory(vCluster)
 add_subdirectory(vPepper)
 #add_subdirectory(vCircle)
 add_subdirectory(vFilterDisparity)
-add_subdirectory(vFilterFlow)
+#add_subdirectory(vFilterFlow)
 
 if(ICUB_FOUND)
     add_subdirectory(vCircle)
