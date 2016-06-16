@@ -32,7 +32,10 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int width = rf.check("width", yarp::os::Value(128)).asInt();
 
     //number of events to process
-    int nevents = rf.check("nevets", yarp::os::Value(2000)).asInt();
+//    int nevents = rf.check("nevents", yarp::os::Value(2000)).asInt();
+
+    //temporal window duration
+    int tempWin = rf.check("tempWin", yarp::os::Value(1000)).asInt();
 
     //number of filters' orientations
     int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
@@ -46,6 +49,9 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     //minimum number of events between left and right camera
     int minEvtsDiff = rf.check("minEvtsDiff", yarp::os::Value(20)).asInt();
 
+    //minimum time difference between left and right events
+    int minTimeDiff = rf.check("minTimeDiff", yarp::os::Value(50000)).asInt();
+
     //threshold to apply to the binocular energies
     double threshold = rf.check("thresh", yarp::os::Value(0.0001)).asDouble();
 
@@ -53,8 +59,8 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     yarp::os::Bottle disparitylist = rf.findGroup("disparity").tail();
 
     /* create the thread and pass pointers to the module parameters */
-    disparitymanager = new vFilterDisparityManager(height, width, nevents, orientations, minEvtsLeft,
-                                                   minEvtsDiff, winsize, threshold, disparitylist);
+    disparitymanager = new vFilterDisparityManager(height, width, tempWin, orientations, minEvtsLeft,
+                                                   minTimeDiff, minEvtsDiff, winsize, threshold, disparitylist);
 
     return disparitymanager->open(moduleName, strictness);
 
@@ -99,15 +105,17 @@ bool vFilterDisparityModule::respond(const yarp::os::Bottle &command,
 /******************************************************************************/
 //vFilterDisparityManager
 /******************************************************************************/
-vFilterDisparityManager::vFilterDisparityManager(int height, int width, int nevents, int orientations, int minEvtsLeft,
+vFilterDisparityManager::vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft, int minTimeDiff,
                                                  int minEvtsDiff, int winsize, double threshold, yarp::os::Bottle disparitylist)
 {
     this->height = height;
     this->width = width;
-    this->nevents = nevents;
+//    this->nevents = nevents;
+    this->tempWin = tempWin;
     this->orientations = orientations;
     this->minEvtsLeft = minEvtsLeft;
     this->minEvtsDiff = minEvtsDiff;
+    this->minTimeDiff = minTimeDiff;
     this->winsize = winsize;
     this->threshold = threshold;
     this->disparitylist = disparitylist;
@@ -155,6 +163,9 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int neve
     even_conv_right.resize(phases);
     odd_conv_right.resize(phases);
     energy.resize(phases);
+
+    fifoL = emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoR = emorph::temporalSurface(width, height, tempWin * 7812.5);
 
     outDisparity.open("estimatedDisparity.txt");
     gaborResponse.open("gaborResponse.txt");
@@ -234,32 +245,39 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         if(!aep) continue;
 
         //add the current event
-        FIFO.push_front(aep);
+        if(aep->getChannel() == 0) fifoL.addEvent(*aep);
+        else fifoR.addEvent(*aep);
 
-        if(aep->getChannel() == 0) FIFOL = FIFO;// FIFOL.push_front(aep);
-        else FIFOR = FIFO;// FIFOR.push_front(aep);
+//        //add the current event
+//        FIFO.push_front(aep);
 
-        bool removed = false;
+//        if(aep->getChannel() == 0) FIFOL = FIFO;// FIFOL.push_front(aep);
+//        else FIFOR = FIFO;// FIFOR.push_front(aep);
 
-        //KEEP FIFO TO LIMITED SIZE
-        while((int)FIFO.size() > nevents) {
-            FIFO.pop_back();
-            removed = true;
-        }
+//        bool removed = false;
+
+//        //KEEP FIFO TO LIMITED SIZE
+//        while((int)FIFO.size() > nevents) {
+//            FIFO.pop_back();
+//            removed = true;
+//        }
+
+        //left channel is used as reference
+        if(aep->getChannel() != 0) continue;
 
         //current event
         x = aep->getX();
         y = aep->getY();
         ts = unwrapper(aep->getStamp());
 
-        //left channel is used as reference
-        if(aep->getChannel() != 0) continue;
-
         //get spatial window for the left events
-        windowL = getSpatial(x, y, FIFOL);
+        windowL = fifoL.getSurf(x, y, winsize / 2);
+//        std::pair<emorph::vQueue, int> window = getSpatial(x, y, FIFOL);
+//        windowL = window.first;
+//        int tl = window.second;
 
         //if the number of events is not sufficient in the left window, skip the computation
-        if(windowL.size() < minEvtsLeft) continue;
+        if((int)windowL.size() < minEvtsLeft) continue;
 
         double disparityX = 0; double disparityY = 0;
 
@@ -290,7 +308,10 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
                 int deltax = disparity_vector[t]*cos(theta);
                 int deltay = disparity_vector[t]*sin(theta);
                 //get window events from the right camera
-                windowR = getSpatial(x + deltax, y + deltay, FIFOR);
+                windowR = fifoR.getSurf(x + deltax, y + deltay, winsize / 2);
+//                std::pair<emorph::vQueue, int> window = getSpatial(x + deltax, y + deltay, FIFOR);
+//                windowR = window.first;
+//                int tr = window.second;
 
                 //skip the computation if the window is empty
                 if(windowR.empty()) continue;
@@ -300,6 +321,9 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
                 //skip the computation if the difference between the number of left and right events is too high
                 if(abs((int)windowL.size() - (int)windowR.size()) > minEvtsDiff) continue;
+
+//                //skip the computation if the events in left and right window do not match temporally
+//                if(abs(tl - tr) > minTimeDiff) continue;
 
                 double phase = *pit;
                 std::pair<double,double> convright = computeEnergy(windowR, theta, phase);
@@ -315,7 +339,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
                 //threshold the energy
                 if(energy[t] < threshold) continue;
 
-                gaborResponse << ts << " " << disparity_vector[t] << " " << energy[t] << "\n";
+                gaborResponse <<  ts << " " << disparity_vector[t] << " " << energy[t] << "\n";
 
                 disparity_sum += disparity_vector[t] * energy[t];
                 energy_sum += energy[t];
@@ -334,8 +358,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         }
 
         if(ori_ioc != 0) {
-            disparityX = (1.0/ori_ioc)*disparityX;
-            disparityY = (1.0/ori_ioc)*disparityY;
+            disparityX = (1.0 / ori_ioc)*disparityX;
+            disparityY = (1.0 / ori_ioc)*disparityY;
         }
 
         outDisparity << x << " " << y << " " << ts << " " << disparityX << " " << disparityY <<
@@ -437,18 +461,27 @@ std::pair<double,double> vFilterDisparityManager::computeEnergy(emorph::vQueue w
 
 
 /**********************************************************/
-emorph::vQueue vFilterDisparityManager::getSpatial(int x0, int y0, emorph::vQueue FIFOc){
+std::pair<emorph::vQueue, int> vFilterDisparityManager::getSpatial(int x0, int y0, emorph::vQueue FIFOc){
 
     emorph::vQueue window;
+    int meantime = 0;
 
     for(emorph::vQueue::iterator fi = FIFOc.begin(); fi != FIFOc.end(); fi++)
     {
         emorph::AddressEvent *vp = (*fi)->getAs<emorph::AddressEvent>();
         if(abs(x0 - vp->getX()) < winsize / 2 && abs(y0 - vp->getY()) < winsize / 2)
+        {
+            meantime += vp->getStamp();
+//            std::cout << "time " << vp->getStamp() << std::endl;
             window.push_front(vp);
+        }
     }
 
-    return window;
+//    std::cout << "end window " << std::endl;
+    if(window.size() != 0)
+        meantime = meantime / window.size();
+
+    return std::make_pair(window, meantime);
 
 }
 

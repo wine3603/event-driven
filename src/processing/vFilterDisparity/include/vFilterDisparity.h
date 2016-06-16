@@ -42,18 +42,25 @@ private:
 
     int x;
     int y;
-    double ts;
+    int ts;
 
-    //first in first out structure
+//    //first in first out structure
     emorph::vQueue FIFO;
-    emorph::vQueue FIFOL;
-    emorph::vQueue FIFOR;
+//    emorph::vQueue FIFOL;
+//    emorph::vQueue FIFOR;
+
+    //representation for the events
+    emorph::temporalSurface cFifo;
+    emorph::temporalSurface fifoL;
+    emorph::temporalSurface fifoR;
 
     int height;
     int width;
-    int nevents;
+//    int nevents;
+    int tempWin;
     int minEvtsLeft;
     int minEvtsDiff;
+    int minTimeDiff;
     double threshold;
 
     //list of tuned disparities
@@ -78,14 +85,14 @@ private:
     std::ofstream outDisparity;
     std::ofstream gaborResponse;
 
-    emorph::vQueue getSpatial(int x0, int y0, emorph::vQueue FIFOc);
+    std::pair<emorph::vQueue, int> getSpatial(int x0, int y0, emorph::vQueue FIFOc);
     std::pair<double,double> computeEnergy(emorph::vQueue window, double theta, double phase);
     void computeMonocularEnergy(double theta);
     double computeBinocularEnergy();
 
 public:
     
-    vFilterDisparityManager(int height, int width, int nevents, int orientations, int minEvtsLeft,
+    vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft, int minTimeDiff,
                             int minEvtsDiff, int winsize, double threshold, yarp::os::Bottle disparitylist);
 
     bool    open(const std::string moduleName, bool strictness = false);
