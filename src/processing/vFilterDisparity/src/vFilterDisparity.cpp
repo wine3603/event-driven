@@ -35,7 +35,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
 //    int nevents = rf.check("nevents", yarp::os::Value(2000)).asInt();
 
     //temporal window duration
-    int tempWin = rf.check("tempWin", yarp::os::Value(1000)).asInt();
+    int tempWin = rf.check("tempWin", yarp::os::Value(50000)).asInt();
 
     //number of filters' orientations
     int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
@@ -49,9 +49,6 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     //minimum number of events between left and right camera
     int minEvtsDiff = rf.check("minEvtsDiff", yarp::os::Value(20)).asInt();
 
-    //minimum time difference between left and right events
-    int minTimeDiff = rf.check("minTimeDiff", yarp::os::Value(50000)).asInt();
-
     //threshold to apply to the binocular energies
     double threshold = rf.check("thresh", yarp::os::Value(0.0001)).asDouble();
 
@@ -60,7 +57,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
 
     /* create the thread and pass pointers to the module parameters */
     disparitymanager = new vFilterDisparityManager(height, width, tempWin, orientations, minEvtsLeft,
-                                                   minTimeDiff, minEvtsDiff, winsize, threshold, disparitylist);
+                                                   minEvtsDiff, winsize, threshold, disparitylist);
 
     return disparitymanager->open(moduleName, strictness);
 
@@ -105,7 +102,7 @@ bool vFilterDisparityModule::respond(const yarp::os::Bottle &command,
 /******************************************************************************/
 //vFilterDisparityManager
 /******************************************************************************/
-vFilterDisparityManager::vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft, int minTimeDiff,
+vFilterDisparityManager::vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft,
                                                  int minEvtsDiff, int winsize, double threshold, yarp::os::Bottle disparitylist)
 {
     this->height = height;
@@ -115,7 +112,6 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int temp
     this->orientations = orientations;
     this->minEvtsLeft = minEvtsLeft;
     this->minEvtsDiff = minEvtsDiff;
-    this->minTimeDiff = minTimeDiff;
     this->winsize = winsize;
     this->threshold = threshold;
     this->disparitylist = disparitylist;
@@ -164,8 +160,9 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int temp
     odd_conv_right.resize(phases);
     energy.resize(phases);
 
-    fifoL = emorph::temporalSurface(width, height, tempWin * 7812.5);
-    fifoR = emorph::temporalSurface(width, height, tempWin * 7812.5);
+    cFifo = emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoL = emorph::temporalSurface(width, height);
+    fifoR = emorph::temporalSurface(width, height);
 
     outDisparity.open("estimatedDisparity.txt");
     gaborResponse.open("gaborResponse.txt");
@@ -245,8 +242,10 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         if(!aep) continue;
 
         //add the current event
-        if(aep->getChannel() == 0) fifoL.addEvent(*aep);
-        else fifoR.addEvent(*aep);
+        cFifo.addEvent(*aep);
+
+        if(aep->getChannel() == 0) fifoL = cFifo;
+        else fifoR = cFifo;
 
 //        //add the current event
 //        FIFO.push_front(aep);
@@ -279,7 +278,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         //if the number of events is not sufficient in the left window, skip the computation
         if((int)windowL.size() < minEvtsLeft) continue;
 
-        double disparityX = 0; double disparityY = 0;
+        double disparityX = 0, disparityY = 0;
+        double disparity;
 
         //number of orientations on which we apply the intersection of constraint
         int ori_ioc = 0;
@@ -302,6 +302,7 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             //compute monocular energy from right events
             //for each disparity
             double energy_sum = 0, disparity_sum = 0;
+            disparity = 0;
             std::vector<double>::iterator pit = phase_vector.begin();
             for(int t = 0; t < phases; t++)
             {
@@ -321,9 +322,6 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
                 //skip the computation if the difference between the number of left and right events is too high
                 if(abs((int)windowL.size() - (int)windowR.size()) > minEvtsDiff) continue;
-
-//                //skip the computation if the events in left and right window do not match temporally
-//                if(abs(tl - tr) > minTimeDiff) continue;
 
                 double phase = *pit;
                 std::pair<double,double> convright = computeEnergy(windowR, theta, phase);
@@ -346,7 +344,10 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
             }
 
-            double disparity = disparity_sum / energy_sum;
+            if(energy_sum != 0)
+                disparity = disparity_sum / energy_sum;
+            else
+                disparity = 0;
 
             if(disparity != 0)
                 ori_ioc++;
@@ -357,7 +358,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
         }
 
-        if(ori_ioc != 0) {
+        if(ori_ioc != 0)
+        {
             disparityX = (1.0 / ori_ioc)*disparityX;
             disparityY = (1.0 / ori_ioc)*disparityY;
         }
@@ -366,10 +368,12 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
                         " " << sqrt(disparityX*disparityX + disparityY*disparityY) << "\n";
 
         de = new emorph::DisparityEvent(*aep);
-        de->setDx(disparityX);
-        de->setDy(disparityY);
-
-        outBottle.addEvent(*de);
+        if(sqrt(disparityX*disparityX + disparityY*disparityY) != 0)
+        {
+            de->setDx(disparityX);
+            de->setDy(disparityY);
+            outBottle.addEvent(*de);
+        }
 
     }
 

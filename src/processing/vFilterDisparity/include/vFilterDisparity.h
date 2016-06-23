@@ -60,7 +60,6 @@ private:
     int tempWin;
     int minEvtsLeft;
     int minEvtsDiff;
-    int minTimeDiff;
     double threshold;
 
     //list of tuned disparities
@@ -92,7 +91,7 @@ private:
 
 public:
     
-    vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft, int minTimeDiff,
+    vFilterDisparityManager(int height, int width, int tempWin, int orientations, int minEvtsLeft,
                             int minEvtsDiff, int winsize, double threshold, yarp::os::Bottle disparitylist);
 
     bool    open(const std::string moduleName, bool strictness = false);
