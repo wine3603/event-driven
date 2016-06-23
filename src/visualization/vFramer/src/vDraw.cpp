@@ -306,8 +306,12 @@ void blobDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
     cv::Mat canvas(Xlimit, Ylimit, CV_8UC3);
     canvas.setTo(255);
 
-    emorph::vQueue::const_iterator qi;
-    for(qi = eSet.begin(); qi != eSet.end(); qi++) {
+    emorph::vQueue::const_reverse_iterator qi;
+    for(qi = eSet.rbegin(); qi != eSet.rend(); qi++) {
+
+        int dt = eSet.back()->getStamp() - (*qi)->getStamp();
+        if(dt < 0) dt += emorph::vtsHelper::maxStamp();
+        if(dt > twindow) break;
 
         emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
         if(!aep) continue;
@@ -956,10 +960,10 @@ void disparityDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
         int disparity = c;
         float dx = dep->getDx();
         float dy = dep->getDy();
-        disparity = (255*round(sqrt(dx * dx + dy * dy)))/10;
+        disparity = (255*round(sqrt(dx * dx + dy * dy)))/16;
 
-        disparity = std::max(disparity, 0);
-        disparity = std::min(disparity, 255);
+//        disparity = std::max(disparity, 0);
+//        disparity = std::min(disparity, 255);
         dimage.at<unsigned char>(dep->getX(), dep->getY()) = (unsigned char)disparity;
 
 //        std::cout << "disparity " << disparity << std::endl;
