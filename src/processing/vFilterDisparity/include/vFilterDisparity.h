@@ -21,6 +21,8 @@
 #include <yarp/os/all.h>
 #include <yarp/sig/all.h>
 #include <yarp/math/Math.h>
+#include <yarp/dev/GazeControl.h>
+#include <yarp/dev/PolyDriver.h>
 #include <iCub/emorph/all.h>
 #include <iCub/emorph/vtsHelper.h>
 #include <iostream>
@@ -37,6 +39,9 @@ private:
     yarp::os::BufferedPort<emorph::vBottle> outPort;
     yarp::os::BufferedPort<yarp::os::Bottle> disparityPort;
 
+    yarp::dev::PolyDriver gazedriver;
+    yarp::dev::IGazeControl *gazecontrol;
+
     //for helping with timestamp wrap around
     emorph::vtsHelper unwrapper;
 
@@ -46,13 +51,17 @@ private:
 
 //    //first in first out structure
     emorph::vQueue FIFO;
-//    emorph::vQueue FIFOL;
-//    emorph::vQueue FIFOR;
+    emorph::vQueue FIFOL;
+    emorph::vQueue FIFOR;
 
     //representation for the events
-    emorph::temporalSurface cFifo;
-    emorph::temporalSurface fifoL;
-    emorph::temporalSurface fifoR;
+    emorph::vSurface2 *cFifo;
+    emorph::vSurface2 *cFifoL;
+    emorph::vSurface2 *cFifoR;
+    emorph::vSurface2 *fifoOfL;
+    emorph::vSurface2 *fifoOnL;
+    emorph::vSurface2 *fifoOfR;
+    emorph::vSurface2 *fifoOnR;
 
     int height;
     int width;

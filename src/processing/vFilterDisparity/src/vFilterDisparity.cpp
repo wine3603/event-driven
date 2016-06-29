@@ -41,7 +41,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int orientations = rf.check("orientations", yarp::os::Value(8)).asInt();
 
     //size of the spatial window
-    int winsize = rf.check("winsize", yarp::os::Value(7)).asInt();
+    int winsize = rf.check("winsize", yarp::os::Value(34)).asInt();
 
     //minimum number of events in the left camera
     int minEvtsLeft = rf.check("minEvtsLeft", yarp::os::Value(10)).asInt();
@@ -50,7 +50,7 @@ bool vFilterDisparityModule::configure(yarp::os::ResourceFinder &rf)
     int minEvtsDiff = rf.check("minEvtsDiff", yarp::os::Value(20)).asInt();
 
     //threshold to apply to the binocular energies
-    double threshold = rf.check("thresh", yarp::os::Value(0.0001)).asDouble();
+    double threshold = rf.check("thresh", yarp::os::Value(0.0005)).asDouble();
 
     //load disparity values from configuration file
     yarp::os::Bottle disparitylist = rf.findGroup("disparity").tail();
@@ -117,6 +117,8 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int temp
     this->disparitylist = disparitylist;
     this->phases = disparitylist.size();
 
+    gazecontrol = 0;
+
     std::cout << "Setting filter parameters... " << std::endl;
     std::cout << "Number of orientations = " << orientations << std::endl;
     ori_vector.resize(orientations);
@@ -160,9 +162,13 @@ vFilterDisparityManager::vFilterDisparityManager(int height, int width, int temp
     odd_conv_right.resize(phases);
     energy.resize(phases);
 
-    cFifo = emorph::temporalSurface(width, height, tempWin * 7812.5);
-    fifoL = emorph::temporalSurface(width, height);
-    fifoR = emorph::temporalSurface(width, height);
+    cFifo = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    cFifoL = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    cFifoR = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoOfL = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoOnL = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoOfR = new emorph::temporalSurface(width, height, tempWin * 7812.5);
+    fifoOnR = new emorph::temporalSurface(width, height, tempWin * 7812.5);
 
     outDisparity.open("estimatedDisparity.txt");
     gaborResponse.open("gaborResponse.txt");
@@ -189,6 +195,16 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
     std::string disparityPortName = "/" + moduleName + "/disp:o";
     bool check3 = disparityPort.open(disparityPortName);
 
+    yarp::os::Property options;
+    options.put("device", "gazecontrollerclient");
+    options.put("local", "/" + moduleName);
+    options.put("remote", "/iKinGazeCtrl");
+    gazedriver.open(options);
+    if(gazedriver.isValid())
+        gazedriver.view(gazecontrol);
+    else
+        std::cerr << "Gaze Driver not opened and will not be used" << std::endl;
+
     return check1 && check2 && check3;
 
 }
@@ -196,10 +212,22 @@ bool vFilterDisparityManager::open(const std::string moduleName, bool strictness
 /**********************************************************/
 void vFilterDisparityManager::close()
 {
+    if(gazedriver.isValid()) {
+        gazecontrol->stopControl();
+        gazedriver.close();
+    }
+
     outDisparity.close();
     gaborResponse.close();
 
     delete disparity_vector;
+    delete cFifo;
+    delete cFifoL;
+    delete cFifoR;
+    delete fifoOfL;
+    delete fifoOnL;
+    delete fifoOfR;
+    delete fifoOnR;
 
     //close ports
     outPort.close();
@@ -242,24 +270,21 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         if(!aep) continue;
 
         //add the current event
-        cFifo.addEvent(*aep);
+        cFifo->addEvent(*aep);
 
-        if(aep->getChannel() == 0) fifoL = cFifo;
-        else fifoR = cFifo;
+        if(aep->getChannel()) {
+            if(aep->getPolarity())
+                fifoOfR->addEvent(*cFifo->getMostRecent());
+            else
+                fifoOnR->addEvent(*cFifo->getMostRecent());
+        } else {
+            if(aep->getPolarity())
+                fifoOfL->addEvent(*cFifo->getMostRecent());
+            else
+                fifoOnL->addEvent(*cFifo->getMostRecent());
+        }
 
-//        //add the current event
-//        FIFO.push_front(aep);
-
-//        if(aep->getChannel() == 0) FIFOL = FIFO;// FIFOL.push_front(aep);
-//        else FIFOR = FIFO;// FIFOR.push_front(aep);
-
-//        bool removed = false;
-
-//        //KEEP FIFO TO LIMITED SIZE
-//        while((int)FIFO.size() > nevents) {
-//            FIFO.pop_back();
-//            removed = true;
-//        }
+//        std::cout << "counts " << cFifo->getEventCount() << " " << fifoOfL->getEventCount() << " " << fifoOfR->getEventCount() << std::endl;
 
         //left channel is used as reference
         if(aep->getChannel() != 0) continue;
@@ -269,11 +294,16 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
         y = aep->getY();
         ts = unwrapper(aep->getStamp());
 
+        if(aep->getPolarity()) {
+            cFifoL = fifoOfL;
+            cFifoR = fifoOfR;
+        } else {
+            cFifoL = fifoOnL;
+            cFifoR = fifoOnR;
+        }
+
         //get spatial window for the left events
-        windowL = fifoL.getSurf(x, y, winsize / 2);
-//        std::pair<emorph::vQueue, int> window = getSpatial(x, y, FIFOL);
-//        windowL = window.first;
-//        int tl = window.second;
+        windowL = cFifoL->getSurf(x, y, winsize / 2); // cFifoL->getSurf(x, y, winsize / 2);
 
         //if the number of events is not sufficient in the left window, skip the computation
         if((int)windowL.size() < minEvtsLeft) continue;
@@ -304,24 +334,24 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             double energy_sum = 0, disparity_sum = 0;
             disparity = 0;
             std::vector<double>::iterator pit = phase_vector.begin();
+            windowR = cFifoR->getSurf(x, y, winsize);
+
             for(int t = 0; t < phases; t++)
             {
-                int deltax = disparity_vector[t]*cos(theta);
-                int deltay = disparity_vector[t]*sin(theta);
-                //get window events from the right camera
-                windowR = fifoR.getSurf(x + deltax, y + deltay, winsize / 2);
-//                std::pair<emorph::vQueue, int> window = getSpatial(x + deltax, y + deltay, FIFOR);
-//                windowR = window.first;
-//                int tr = window.second;
+//                //get window events from the right camera depending on the disparity
+//                int deltax = disparity_vector[t]*cos(theta);
+//                int deltay = disparity_vector[t]*sin(theta);
+//                windowR = cFifoR->getSurf(x + deltax, y + deltay, winsize / 2);
 
+//                std::cout << windowR.size() << std::endl;
                 //skip the computation if the window is empty
-                if(windowR.empty()) continue;
+//                if(windowR.empty()) continue;
 
 //                std::cout << "left " << windowL.size() << " right " << windowR.size() << std::endl;
 //                std::cout << abs((int)windowL.size() - (int)windowR.size()) << std::endl;
 
                 //skip the computation if the difference between the number of left and right events is too high
-                if(abs((int)windowL.size() - (int)windowR.size()) > minEvtsDiff) continue;
+//                if(abs((int)windowL.size() - (int)windowR.size()) > minEvtsDiff) continue;
 
                 double phase = *pit;
                 std::pair<double,double> convright = computeEnergy(windowR, theta, phase);
@@ -349,8 +379,8 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             else
                 disparity = 0;
 
-            if(disparity != 0)
-                ori_ioc++;
+//            if(disparity != 0)
+//                ori_ioc++;
 
             //estimate the disparity for the single direction
             disparityX += disparity * cos(theta);
@@ -358,14 +388,34 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
 
         }
 
-        if(ori_ioc != 0)
-        {
-            disparityX = (1.0 / ori_ioc)*disparityX;
-            disparityY = (1.0 / ori_ioc)*disparityY;
-        }
+        disparityX = (2.0 / orientations)*disparityX;
+        disparityY = (2.0 / orientations)*disparityY;
+
+//        if(ori_ioc != 0)
+//        {
+//            disparityX = (1.0 / ori_ioc)*disparityX;
+//            disparityY = (1.0 / ori_ioc)*disparityY;
+//        }
+
+//        //get current left and right pixel
+//        yarp::sig::Vector pxl(2), pxr(2);
+//        pxl[0] = x;
+//        pxl[1] = y;
+//        pxr[0] = x + disparityX;
+//        pxr[1] = y + disparityY;
+
+//        yarp::sig::Vector dpoint;
+//        if(gazedriver.isValid())
+//            gazecontrol->triangulate3DPoint(pxl, pxr, dpoint);
+////        std::cout << dpoint[2] << std::endl;
+
+//        for(int j=0; j < dpoint.size(); j++)
+//            std::cout << dpoint[j] << " ";
+//        std::cout << std::endl;
 
         outDisparity << x << " " << y << " " << ts << " " << disparityX << " " << disparityY <<
                         " " << sqrt(disparityX*disparityX + disparityY*disparityY) << "\n";
+//                     << dpoint[0]*100 << " " << dpoint[1]*100 << " " << dpoint[2]*100 << "\n";
 
         de = new emorph::DisparityEvent(*aep);
         if(sqrt(disparityX*disparityX + disparityY*disparityY) != 0)
@@ -374,6 +424,15 @@ void vFilterDisparityManager::onRead(emorph::vBottle &bot)
             de->setDy(disparityY);
             outBottle.addEvent(*de);
         }
+
+
+
+//        if(outBottle.size() != 0) {
+//            yarp::os::Bottle &dbot = disparityPort.prepare();
+//            dbot.clear();
+//            dbot.addDouble(dpoint[3]);
+//            disparityPort.write();
+//        }
 
     }
 
