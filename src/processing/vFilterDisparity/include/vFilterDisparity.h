@@ -94,7 +94,7 @@ private:
     std::ofstream gaborResponse;
 
     std::pair<emorph::vQueue, int> getSpatial(int x0, int y0, emorph::vQueue FIFOc);
-    std::pair<double,double> computeEnergy(emorph::vQueue window, double theta, double phase);
+    std::pair<double,double> computeEnergy(emorph::vQueue &window, double theta, double phase);
     void computeMonocularEnergy(double theta);
     double computeBinocularEnergy();
 

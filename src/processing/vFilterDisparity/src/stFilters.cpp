@@ -33,16 +33,16 @@ std::pair<double,double> stFilters::filtering(int& dx,int& dy,double& theta,int&
     double st_even = 0, st_odd = 0;
 
      //Spatial Filter computation
-     double D = (1/ (2 * M_PI * pow(var_spatial,2)));
+     double D = (1.0 / (2.0 * M_PI * pow(var_spatial,2.0)));
 
      //rotate events
      double dx_theta =  dx * cos(theta) + dy * sin(theta);
      double dy_theta = -dx * sin(theta) + dy * cos(theta);
 
      //apply filter
-     double gaussian_spatial = exp( - ( pow(dx_theta, 2) + pow(dy_theta,2) ) / ( 2 * pow(var_spatial,2) ) );
-     double even_spatial = D * gaussian_spatial  * cos( (2 * M_PI * f_spatial * dx_theta ) + phase );
-     double odd_spatial = D * gaussian_spatial * sin( (2 * M_PI * f_spatial * dx_theta) + phase );
+     double gaussian_spatial = exp( - ( pow(dx_theta, 2.0) + pow(dy_theta,2.0) ) / ( 2.0 * pow(var_spatial,2.0) ) );
+     double even_spatial = D * gaussian_spatial  * cos( (2.0 * M_PI * f_spatial * dx_theta ) + phase );
+     double odd_spatial = D * gaussian_spatial * sin( (2.0 * M_PI * f_spatial * dx_theta) + phase );
 
 //     if(temp_decay) {
 //         //Temporal Filter computation

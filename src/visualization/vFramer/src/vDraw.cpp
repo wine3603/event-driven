@@ -960,13 +960,14 @@ void disparityDraw::draw(cv::Mat &image, const emorph::vQueue &eSet)
         int disparity = c;
         float dx = dep->getDx();
         float dy = dep->getDy();
-        disparity = (255*round(sqrt(dx * dx + dy * dy)))/16;
+//        disparity = (255*dx)/100;
+        disparity = (255*round(sqrt(dx * dx + dy * dy)))/32;
 
 //        disparity = std::max(disparity, 0);
 //        disparity = std::min(disparity, 255);
         dimage.at<unsigned char>(dep->getX(), dep->getY()) = (unsigned char)disparity;
 
-//        std::cout << "disparity " << disparity << std::endl;
+        std::cout << "disparity " << disparity << std::endl;
 
     }
 
