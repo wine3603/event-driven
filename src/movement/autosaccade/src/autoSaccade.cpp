@@ -41,7 +41,8 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     yarp::os::Property options;
     options.put("device", "remote_controlboard");
     options.put("local", "/" + moduleName);
-    options.put("remote", "/" + condev + "/head");
+    //options.put("remote", "/" + condev + "/head");
+    options.put("remote","/icubSim/head");
     pc = 0; ec = 0;
 
     mdriver.open(options);
@@ -195,7 +196,14 @@ bool saccadeModule::updateModule()
     unsigned long int latestStamp = eventBottleManager.getTime();
     unsigned long int vCount = 1000000 * eventBottleManager.popCount();
 
+//    double latestStamp = yarp::os::Time::now();
+
+//    std::cout << "latestStamp Update= " << latestStamp << std::endl;
+//    std::cout << "prevStamp = " << prevStamp << std::endl;
+    std::cout << "vCount = " << vCount << std::endl;
+
     double vPeriod = latestStamp - prevStamp;
+
     prevStamp = latestStamp;
 
     //this should only occur on first bottle to initialise
@@ -207,7 +215,7 @@ bool saccadeModule::updateModule()
         std::cout << "perform saccade: ";
     }
     std::cout << vPeriod/1000000 << "s | " << vCount/vPeriod
-              << "v/s" << std::endl;
+              << " v/s" << std::endl;
 
     return true;
 }
@@ -262,6 +270,8 @@ void EventBottleManager::onRead(emorph::vBottle &bot)
     if(q.empty()) return;
 
     latestStamp = unwrapper(q.back()->getStamp());
+//    std::cout << "latestStamp = " << latestStamp << std::endl;
+//    std::cout << "q.size() = " << q.size() << std::endl;
 
     mutex.wait();
     vCount += q.size();
