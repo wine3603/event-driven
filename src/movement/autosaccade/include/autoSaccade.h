@@ -72,12 +72,16 @@ private:
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
-    yarp::dev::IPositionControl *pc;
+//    yarp::dev::IPositionControl *pc;
+    yarp::dev::IGazeControl *gazeControl;
     yarp::dev::IEncoders *ec;
     void performSaccade();
 
+    std::vector<yarp::sig::Vector> trajectory;
     //timestamps for comparison
     double prevStamp;
+
+    void generateTrajectory();
 
 public:
 

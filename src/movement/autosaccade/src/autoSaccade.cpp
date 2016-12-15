@@ -15,6 +15,22 @@
  */
 
 #include "autoSaccade.h"
+#include <math.h>
+
+/**********************************************************/
+void saccadeModule::generateTrajectory(){
+    double cx = 160, cy = 120, r = 10;
+    double step = M_PI/18;
+    for (double i = 0; i < 2*M_PI; i+= step){
+        yarp::sig::Vector circlePoint(2);
+        circlePoint[0] = (int)(cx + r * cos(i));
+        circlePoint[1] = (int)(cy + r * sin(i));
+        trajectory.push_back(circlePoint);
+    }
+    for (int i = 0; i < trajectory.size(); i++){
+        std::cout << "point " << i << " = " << trajectory[i].toString().c_str() << std::endl;
+    }
+}
 
 /**********************************************************/
 bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
@@ -39,26 +55,39 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 
     std::string condev = rf.check("robot", yarp::os::Value("none")).asString();
     yarp::os::Property options;
-    options.put("device", "remote_controlboard");
+    options.put("device", "gazecontrollerclient");
     options.put("local", "/" + moduleName);
     //options.put("remote", "/" + condev + "/head");
-    options.put("remote","/icubSim/head");
-    pc = 0; ec = 0;
+//    options.put("remote","/icubSim/head");
+    options.put("remote","/iKinGazeCtrl");
+//    pc = 0;
+    ec = 0;
 
     mdriver.open(options);
     if(!mdriver.isValid())
         std::cerr << "Did not connect to robot/simulator" << std::endl;
     else {
-        mdriver.view(pc);
+//        mdriver.view(pc);
+        mdriver.view(gazeControl);
         mdriver.view(ec);
     }
 
-    if(!pc)
-        std::cerr << "Did not connect to position control" << std::endl;
-    else {
-        int t; pc->getAxes(&t);
-        std::cout << "Number of Joints: " << t << std::endl;
-    }
+    generateTrajectory();
+
+    gazeControl->blockNeckPitch();
+    gazeControl->blockNeckRoll();
+    gazeControl->blockNeckYaw();
+
+
+//    if(!pc)
+//        std::cerr << "Did not connect to position control" << std::endl;
+//    else {
+//        int t; pc->getAxes(&t);
+//        std::cout << "Number of Joints: " << t << std::endl;
+//    }
+
+    if(!gazeControl)
+        std::cerr << "Did not connect to gaze controller" << std::endl;
 
     if(!ec)
        std::cerr << "Did not connect to encoders" << std::endl;
@@ -119,30 +148,42 @@ bool saccadeModule::close()
     std::cout << "Closing" << std::endl;
     rpcPort.close();
     eventBottleManager.close();
-    delete pc;
+//    delete pc;
+    delete gazeControl;
     delete ec;
     mdriver.close();
     std::cout << "Finished Closing" << std::endl;
     return true;
 }
 
+
 void saccadeModule::performSaccade()
 {
-    if(!pc || !ec) {
+    if(!gazeControl) {
         std::cerr << "Saccade cannot be performed" << std::endl;
         return;
     }
-    double vel3, vel4;
-    pc->getRefSpeed(3, &vel3);
-    pc->getRefSpeed(4, &vel4);
 
-    pc->setRefSpeed(3, sVel);
-    pc->setRefSpeed(4, sVel);
+    for (int i = 0; i < trajectory.size(); i++) {
+        yarp::sig::Vector px = trajectory[i];
+        gazeControl->lookAtMonoPixel(0, px);
+        gazeControl->waitMotionDone();
+    }
+
+//    double vel3, vel4;
+//    pc->getRefSpeed(3, &vel3);
+//    pc->getRefSpeed(4, &vel4);
+//
+//    pc->setRefSpeed(3, sVel);
+//    pc->setRefSpeed(4, sVel);
 
     double pos3, pos4;
     ec->getEncoder(3, &pos3);
     ec->getEncoder(4, &pos4);
 
+
+
+  /*
 
     //move up
     bool movedone = false;
@@ -183,10 +224,10 @@ void saccadeModule::performSaccade()
     pc->setRefSpeed(3, vel3);
     pc->setRefSpeed(4, vel4);
 
-
+*/
 }
 
-/**********************************************************/
+/*
 bool saccadeModule::updateModule()
 {
     //if there is no connection don't do anything yet
@@ -211,7 +252,7 @@ bool saccadeModule::updateModule()
 
     if(vPeriod == 0 || (vCount / vPeriod) < minVpS) {
         //perform saccade
-        if(pc && ec) performSaccade();
+        if(gazeControl && ec) performSaccade();
         std::cout << "perform saccade: ";
     }
     std::cout << vPeriod/1000000 << "s | " << vCount/vPeriod
@@ -219,8 +260,11 @@ bool saccadeModule::updateModule()
 
     return true;
 }
+*/
 
-/**********************************************************/
+bool saccadeModule::updateModule() {
+    performSaccade();
+}
 double saccadeModule::getPeriod()
 {
     return checkPeriod;
@@ -232,7 +276,6 @@ bool saccadeModule::respond(const yarp::os::Bottle &command,
     //fill in all command/response plus module update methods here
     return true;
 }
-
 
 /**********************************************************/
 EventBottleManager::EventBottleManager()
