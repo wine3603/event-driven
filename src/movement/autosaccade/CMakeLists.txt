@@ -5,6 +5,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 SET(PROJECTNAME autoSaccade)
 PROJECT(${PROJECTNAME})
 
+find_package(ICUB)
+
 file(GLOB source src/*.cpp)
 file(GLOB header include/*.h)
 
@@ -13,10 +15,11 @@ source_group("Header Files" FILES ${header})
 
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
-                    ${EMORPHLIB_INCLUDE_DIRS})
+                    ${EMORPHLIB_INCLUDE_DIRS}
+                    ${ICUB_INCLUDE_DIRS})
 
 add_executable(${PROJECTNAME} ${source} ${header})
 
-target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eMorphLib )
+target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eMorphLib iKin)
 
 install(TARGETS ${PROJECTNAME} DESTINATION bin)

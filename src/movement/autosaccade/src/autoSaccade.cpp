@@ -16,18 +16,20 @@
 
 #include "autoSaccade.h"
 #include <math.h>
-
+#include <iostream>
+#include <fstream>
 /**********************************************************/
 void saccadeModule::generateTrajectory(){
-    double cx = 160, cy = 120, r = 10;
+    double cx = 0, cy = 0, r = 0.5;
     double step = M_PI/18;
     for (double i = 0; i < 2*M_PI; i+= step){
         yarp::sig::Vector circlePoint(2);
-        circlePoint[0] = (int)(cx + r * cos(i));
-        circlePoint[1] = (int)(cy + r * sin(i));
+        circlePoint[0] = cx + r * cos(i);
+        circlePoint[1] = cy + r * sin(i);
+
         trajectory.push_back(circlePoint);
     }
-    for (int i = 0; i < trajectory.size(); i++){
+    for (unsigned int i = 0; i < trajectory.size(); i++){
         std::cout << "point " << i << " = " << trajectory[i].toString().c_str() << std::endl;
     }
 }
@@ -61,7 +63,7 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 //    options.put("remote","/icubSim/head");
     options.put("remote","/iKinGazeCtrl");
 //    pc = 0;
-    ec = 0;
+//    ec = 0;
 
     mdriver.open(options);
     if(!mdriver.isValid())
@@ -69,25 +71,26 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     else {
 //        mdriver.view(pc);
         mdriver.view(gazeControl);
-        mdriver.view(ec);
+//        mdriver.view(ec);
     }
 
-    generateTrajectory();
-
-    gazeControl->blockNeckPitch();
-    gazeControl->blockNeckRoll();
-    gazeControl->blockNeckYaw();
-
-
-//    if(!pc)
-//        std::cerr << "Did not connect to position control" << std::endl;
-//    else {
-//        int t; pc->getAxes(&t);
-//        std::cout << "Number of Joints: " << t << std::endl;
-//    }
 
     if(!gazeControl)
         std::cerr << "Did not connect to gaze controller" << std::endl;
+
+    generateTrajectory();
+
+
+
+//    gazeControl->setSaccadesMode(true);
+/*
+    if(!pc)
+        std::cerr << "Did not connect to position control" << std::endl;
+    else {
+        int t; pc->getAxes(&t);
+        std::cout << "Number of Joints: " << t << std::endl;
+    }
+
 
     if(!ec)
        std::cerr << "Did not connect to encoders" << std::endl;
@@ -96,10 +99,10 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
         std::cout << "Number of Joints: " << t << std::endl;
     }
 
-
+*/
     //set other variables we need from the
     checkPeriod = rf.check("checkPeriod",
-                           yarp::os::Value(0.5)).asDouble();
+                           yarp::os::Value(0.01)).asDouble();
     minVpS = rf.check("minVpS", yarp::os::Value(800)).asDouble();
     prevStamp = 4294967295; //max value
 
@@ -128,6 +131,7 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 
     eventBottleManager.open(moduleName);
 
+
     return true ;
 }
 
@@ -150,7 +154,7 @@ bool saccadeModule::close()
     eventBottleManager.close();
 //    delete pc;
     delete gazeControl;
-    delete ec;
+//    delete ec;
     mdriver.close();
     std::cout << "Finished Closing" << std::endl;
     return true;
@@ -164,68 +168,110 @@ void saccadeModule::performSaccade()
         return;
     }
 
-    for (int i = 0; i < trajectory.size(); i++) {
+    yarp::sig::Vector ang(3);
+    ang[0] = 0;
+    ang[1] = -40;
+    ang[2] = 0;
+
+    gazeControl->lookAtRelAngles(ang);
+    gazeControl->waitMotionDone();
+
+    gazeControl->blockNeckPitch();
+    gazeControl->blockNeckRoll();
+    gazeControl->blockNeckYaw();
+
+    gazeControl->getHeadPose(x,o);
+    rootToHead = yarp::math::axis2dcm(o);
+    x.push_back(1);
+    rootToHead.setCol(3,x);
+    std::cout << "x = " << x.toString().c_str() << std::endl;
+    std::cout << "o = " << o.toString().c_str() << std::endl;
+    headToRoot = yarp::math::SE3inv(rootToHead);
+    std::cout << "headToRoot = " << yarp::math::dcm2rpy(headToRoot).toString().c_str() << std::endl;
+    std::ofstream headCircle;
+    headCircle.open("/home/miacono/Desktop/headCircle.txt");
+    std::ofstream rootCircle;
+    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
+    headCircle << "x,y,z" << "\n";
+    rootCircle << "x,y,z" << "\n";
+
+    for (unsigned int i = 0; i < trajectory.size(); i++) {
         yarp::sig::Vector px = trajectory[i];
-        gazeControl->lookAtMonoPixel(0, px);
-        gazeControl->waitMotionDone();
+//        gazeControl->lookAtMonoPixel(0, px);
+        yarp::sig::Vector fixationPoint(4);
+        fixationPoint[0] = px[0];
+        fixationPoint[1] = -1.5;
+        fixationPoint[2] = px[1];
+        fixationPoint[3] = 1;
+        headCircle << fixationPoint[0] << ","<< fixationPoint[1] << ","<< fixationPoint[2] << "\n";
+        fixationPoint = yarp::math::operator*(headToRoot,fixationPoint);
+
+        rootCircle << fixationPoint[0] << ","<< fixationPoint[1] << ","<< fixationPoint[2] << "\n";
+//        gazeControl->lookAtFixationPoint(fixationPoint.subVector(0,2));
+//        gazeControl->waitMotionDone();
     }
+    headCircle.close();
+    rootCircle.close();
 
-//    double vel3, vel4;
-//    pc->getRefSpeed(3, &vel3);
-//    pc->getRefSpeed(4, &vel4);
-//
-//    pc->setRefSpeed(3, sVel);
-//    pc->setRefSpeed(4, sVel);
+    /*
 
-    double pos3, pos4;
-    ec->getEncoder(3, &pos3);
-    ec->getEncoder(4, &pos4);
+      double vel3, vel4;
+      pc->getRefSpeed(3, &vel3);
+      pc->getRefSpeed(4, &vel4);
+
+      pc->setRefSpeed(3, sVel);
+      pc->setRefSpeed(4, sVel);
+
+      double pos3, pos4;
+      ec->getEncoder(3, &pos3);
+      ec->ger(4, &pos4);
 
 
+      //move up
+      bool movedone = false;
+      pc->positionMove(3, pos3 + sMag);
+      while(!movedone)
+          pc->checkMotionDone(3, &movedone);
 
-  /*
+      //move down
+      movedone = false;
+      pc->positionMove(3, pos3 - sMag);
+      while(!movedone)
+          pc->checkMotionDone(3, &movedone);
 
-    //move up
-    bool movedone = false;
-    pc->positionMove(3, pos3 + sMag);
-    while(!movedone)
-        pc->checkMotionDone(3, &movedone);
+      //move back up
+      movedone = false;
+      pc->positionMove(3, pos3);
+      while(!movedone)
+          pc->checkMotionDone(3, &movedone);
 
-    //move down
-    movedone = false;
-    pc->positionMove(3, pos3 - sMag);
-    while(!movedone)
-        pc->checkMotionDone(3, &movedone);
+      //move left
+      movedone = false;
+      pc->positionMove(4, pos4 + sMag);
+      while(!movedone)
+          pc->checkMotionDone(4, &movedone);
 
-    //move back up
-    movedone = false;
-    pc->positionMove(3, pos3);
-    while(!movedone)
-        pc->checkMotionDone(3, &movedone);
+      //move right
+      movedone = false;
+      pc->positionMove(4, pos4 - sMag);
+      while(!movedone)
+          pc->checkMotionDone(4, &movedone);
 
-    //move left
-    movedone = false;
-    pc->positionMove(4, pos4 + sMag);
-    while(!movedone)
-        pc->checkMotionDone(4, &movedone);
+      //move back
+      movedone = false;
+      pc->positionMove(4, pos4);
+      while(!movedone)
+          pc->checkMotionDone(4, &movedone);
 
-    //move right
-    movedone = false;
-    pc->positionMove(4, pos4 - sMag);
-    while(!movedone)
-        pc->checkMotionDone(4, &movedone);
+      pc->setRefSpeed(3, vel3);
+      pc->setRefSpeed(4, vel4);
 
-    //move back
-    movedone = false;
-    pc->positionMove(4, pos4);
-    while(!movedone)
-        pc->checkMotionDone(4, &movedone);
-
-    pc->setRefSpeed(3, vel3);
-    pc->setRefSpeed(4, vel4);
-
-*/
+  */
 }
+
+
+// Update module to be used. Commented out for debugging purposes
+
 
 /*
 bool saccadeModule::updateModule()
@@ -264,6 +310,7 @@ bool saccadeModule::updateModule()
 
 bool saccadeModule::updateModule() {
     performSaccade();
+    return true;
 }
 double saccadeModule::getPeriod()
 {

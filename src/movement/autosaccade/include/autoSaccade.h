@@ -25,6 +25,7 @@
 #include <yarp/os/all.h>
 #include <iCub/emorph/all.h>
 #include <yarp/dev/all.h>
+#include <iCub/iKin/iKinFwd.h>
 
 class EventBottleManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
@@ -74,7 +75,10 @@ private:
     yarp::dev::PolyDriver mdriver;
 //    yarp::dev::IPositionControl *pc;
     yarp::dev::IGazeControl *gazeControl;
-    yarp::dev::IEncoders *ec;
+//    yarp::dev::IEncoders *ec;
+    yarp::sig::Matrix rootToHead;
+    yarp::sig::Matrix headToRoot;
+    yarp::sig::Vector x,o;
     void performSaccade();
 
     std::vector<yarp::sig::Vector> trajectory;
