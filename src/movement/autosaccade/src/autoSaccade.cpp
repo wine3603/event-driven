@@ -20,7 +20,7 @@
 #include <fstream>
 /**********************************************************/
 void saccadeModule::generateTrajectory(){
-    double cx = 0, cy = 0, r = 0.5;
+    double cx = 0, cy = 0.3, r = 0.15;
     double step = M_PI/18;
     for (double i = 0; i < 2*M_PI; i+= step){
         yarp::sig::Vector circlePoint(2);
@@ -32,6 +32,23 @@ void saccadeModule::generateTrajectory(){
     for (unsigned int i = 0; i < trajectory.size(); i++){
         std::cout << "point " << i << " = " << trajectory[i].toString().c_str() << std::endl;
     }
+
+//    yarp::sig::Vector point1(3);
+//    point1[0] = 1;
+//    point1[1] = 0;
+//    point1[2] = 0;
+//    trajectory.push_back(point1);
+//    yarp::sig::Vector point2(3);
+//    point2[0] = 0;
+//    point2[1] = 1;
+//    point2[2] = 0;
+//    trajectory.push_back(point2);
+//    yarp::sig::Vector point3(3);
+//    point3[0] = 0;
+//    point3[1] = 0;
+//    point3[2] = 1;
+//    trajectory.push_back(point3);
+
 }
 
 /**********************************************************/
@@ -78,11 +95,12 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     if(!gazeControl)
         std::cerr << "Did not connect to gaze controller" << std::endl;
 
+    gazeControl->blockNeckPitch();
+    gazeControl->blockNeckRoll();
+    gazeControl->blockNeckYaw();
+
     generateTrajectory();
 
-
-
-//    gazeControl->setSaccadesMode(true);
 /*
     if(!pc)
         std::cerr << "Did not connect to position control" << std::endl;
@@ -105,7 +123,7 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
                            yarp::os::Value(0.01)).asDouble();
     minVpS = rf.check("minVpS", yarp::os::Value(800)).asDouble();
     prevStamp = 4294967295; //max value
-
+/*
     sMag = rf.check("sMag", yarp::os::Value(2)).asDouble();
     sVel = rf.check("sVel", yarp::os::Value(1000)).asDouble();
 
@@ -128,7 +146,7 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
         std::cout << "Hard-coded limit of sMag < 1000" << std::endl;
         sVel = 1000;
     }
-
+*/
     eventBottleManager.open(moduleName);
 
 
@@ -168,47 +186,39 @@ void saccadeModule::performSaccade()
         return;
     }
 
-    yarp::sig::Vector ang(3);
-    ang[0] = 0;
-    ang[1] = -40;
-    ang[2] = 0;
-
-    gazeControl->lookAtRelAngles(ang);
-    gazeControl->waitMotionDone();
-
-    gazeControl->blockNeckPitch();
-    gazeControl->blockNeckRoll();
-    gazeControl->blockNeckYaw();
-
     gazeControl->getHeadPose(x,o);
     rootToHead = yarp::math::axis2dcm(o);
     x.push_back(1);
     rootToHead.setCol(3,x);
+    headToRoot = yarp::math::SE3inv(rootToHead);
+
+    /*DEBUG*/
     std::cout << "x = " << x.toString().c_str() << std::endl;
     std::cout << "o = " << o.toString().c_str() << std::endl;
-    headToRoot = yarp::math::SE3inv(rootToHead);
-    std::cout << "headToRoot = " << yarp::math::dcm2rpy(headToRoot).toString().c_str() << std::endl;
+    std::cout << "headToRoot = " << headToRoot.toString().c_str() << std::endl;
     std::ofstream headCircle;
     headCircle.open("/home/miacono/Desktop/headCircle.txt");
     std::ofstream rootCircle;
     rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
     headCircle << "x,y,z" << "\n";
     rootCircle << "x,y,z" << "\n";
+    /*DEBUG*/
 
+    gazeControl->setEyesTrajTime(0.003);
     for (unsigned int i = 0; i < trajectory.size(); i++) {
-        yarp::sig::Vector px = trajectory[i];
-//        gazeControl->lookAtMonoPixel(0, px);
+        yarp::sig::Vector currTrajPoint = trajectory[i];
         yarp::sig::Vector fixationPoint(4);
-        fixationPoint[0] = px[0];
-        fixationPoint[1] = -1.5;
-        fixationPoint[2] = px[1];
+        fixationPoint[0] = -1.5;
+        fixationPoint[1] = currTrajPoint[0];
+        fixationPoint[2] = currTrajPoint[1];
         fixationPoint[3] = 1;
-        headCircle << fixationPoint[0] << ","<< fixationPoint[1] << ","<< fixationPoint[2] << "\n";
-        fixationPoint = yarp::math::operator*(headToRoot,fixationPoint);
 
-        rootCircle << fixationPoint[0] << ","<< fixationPoint[1] << ","<< fixationPoint[2] << "\n";
-//        gazeControl->lookAtFixationPoint(fixationPoint.subVector(0,2));
-//        gazeControl->waitMotionDone();
+        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+//        fixationPoint = yarp::math::operator*(headToRoot,fixationPoint);
+
+        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+        gazeControl->lookAtFixationPoint(fixationPoint.subVector(0, 2));
+        gazeControl->waitMotionDone(0.003,0.009);
     }
     headCircle.close();
     rootCircle.close();
@@ -269,11 +279,20 @@ void saccadeModule::performSaccade()
   */
 }
 
+void saccadeModule::look_down() const {
+    yarp::sig::Vector ang(3);
+    ang[0] = 0;
+    ang[1] = -40;
+    ang[2] = 0;
 
-// Update module to be used. Commented out for debugging purposes
+    gazeControl->lookAtRelAngles(ang);
+    gazeControl->waitMotionDone();
+}
+
+/****  UPDATE MODULE TO BE USED. Commented out for debugging purposes ****
 
 
-/*
+
 bool saccadeModule::updateModule()
 {
     //if there is no connection don't do anything yet
@@ -308,25 +327,22 @@ bool saccadeModule::updateModule()
 }
 */
 
+/*********** DEBUG **********/
 bool saccadeModule::updateModule() {
     performSaccade();
     return true;
 }
-double saccadeModule::getPeriod()
-{
+
+double saccadeModule::getPeriod() {
     return checkPeriod;
 }
 
-bool saccadeModule::respond(const yarp::os::Bottle &command,
-                              yarp::os::Bottle &reply)
-{
+bool saccadeModule::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply){
     //fill in all command/response plus module update methods here
     return true;
 }
 
-/**********************************************************/
-EventBottleManager::EventBottleManager()
-{
+EventBottleManager::EventBottleManager() {
 
     //here we should initialise the module
     vCount = 0;
@@ -334,9 +350,8 @@ EventBottleManager::EventBottleManager()
 
     
 }
-/**********************************************************/
-bool EventBottleManager::open(const std::string &name)
-{
+
+bool EventBottleManager::open(const std::string &name) {
     //and open the input port
 
     this->useCallback();
@@ -347,9 +362,7 @@ bool EventBottleManager::open(const std::string &name)
     return true;
 }
 
-/**********************************************************/
-void EventBottleManager::onRead(emorph::vBottle &bot)
-{
+void EventBottleManager::onRead(emorph::vBottle &bot) {
     //create event queue
     emorph::vQueue q = bot.getSorted<emorph::AddressEvent>();
     //create queue iterator
@@ -370,14 +383,12 @@ void EventBottleManager::onRead(emorph::vBottle &bot)
 
 }
 
-unsigned long int EventBottleManager::getTime()
-{
+unsigned long int EventBottleManager::getTime() {
     return latestStamp;
 
 }
 
-unsigned long int EventBottleManager::popCount()
-{
+unsigned long int EventBottleManager::popCount() {
     mutex.wait();
     unsigned long int r = vCount;
     vCount = 0;

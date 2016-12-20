@@ -26,6 +26,7 @@
 #include <iCub/emorph/all.h>
 #include <yarp/dev/all.h>
 #include <iCub/iKin/iKinFwd.h>
+#include <yarp/math/FrameTransform.h>
 
 class EventBottleManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
@@ -98,6 +99,7 @@ public:
     virtual double getPeriod();
     virtual bool updateModule();
 
+    void look_down() const;
 };
 
 
