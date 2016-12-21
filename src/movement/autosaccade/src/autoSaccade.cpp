@@ -20,7 +20,7 @@
 #include <fstream>
 /**********************************************************/
 void saccadeModule::generateTrajectory(){
-    double cx = 0, cy = -0.4, r = 0.15;
+    double cx = 0, cy = -0.25, r = 0.035;
     double step = M_PI/18;
     for (double i = 0; i < 2*M_PI; i+= step){
         yarp::sig::Vector circlePoint(2);
