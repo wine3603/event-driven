@@ -95,6 +95,8 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     if(!gazeControl)
         std::cerr << "Did not connect to gaze controller" << std::endl;
 
+//    look_down();
+
     gazeControl->blockNeckPitch();
     gazeControl->blockNeckRoll();
     gazeControl->blockNeckYaw();
@@ -190,18 +192,18 @@ void saccadeModule::performSaccade()
     rootToHead = yarp::math::axis2dcm(o);
     x.push_back(1);
     rootToHead.setCol(3,x);
-    headToRoot = yarp::math::SE3inv(rootToHead);
+//    headToRoot = yarp::math::SE3inv(rootToHead);
 
     /*DEBUG*/
-    std::cout << "x = " << x.toString().c_str() << std::endl;
-    std::cout << "o = " << o.toString().c_str() << std::endl;
-    std::cout << "headToRoot = " << headToRoot.toString().c_str() << std::endl;
-    std::ofstream headCircle;
-    headCircle.open("/home/miacono/Desktop/headCircle.txt");
-    std::ofstream rootCircle;
-    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
-    headCircle << "x,y,z" << "\n";
-    rootCircle << "x,y,z" << "\n";
+//    std::cout << "x = " << x.toString().c_str() << std::endl;
+//    std::cout << "o = " << o.toString().c_str() << std::endl;
+//    std::cout << "headToRoot = " << headToRoot.toString().c_str() << std::endl;
+//    std::ofstream headCircle;
+//    headCircle.open("/home/miacono/Desktop/headCircle.txt");
+//    std::ofstream rootCircle;
+//    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
+//    headCircle << "x,y,z" << "\n";
+//    rootCircle << "x,y,z" << "\n";
     /*DEBUG*/
 
     gazeControl->setEyesTrajTime(0.003);
@@ -213,15 +215,15 @@ void saccadeModule::performSaccade()
         fixationPoint[2] = currTrajPoint[1];
         fixationPoint[3] = 1;
 
-        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
-//        fixationPoint = yarp::math::operator*(headToRoot,fixationPoint);
+//        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+//        fixationPoint *= rootToHead;
 
-        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+//        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
         gazeControl->lookAtFixationPoint(fixationPoint.subVector(0, 2));
         gazeControl->waitMotionDone(0.003,0.009);
     }
-    headCircle.close();
-    rootCircle.close();
+//    headCircle.close();
+//    rootCircle.close();
 
     /*
 

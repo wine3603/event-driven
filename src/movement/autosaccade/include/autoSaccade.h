@@ -26,7 +26,8 @@
 #include <iCub/emorph/all.h>
 #include <yarp/dev/all.h>
 #include <iCub/iKin/iKinFwd.h>
-#include <yarp/math/FrameTransform.h>
+#include <yarp/math/Math.h>
+using namespace yarp::math;
 
 class EventBottleManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
