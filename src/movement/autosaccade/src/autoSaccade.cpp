@@ -20,7 +20,7 @@
 #include <fstream>
 /**********************************************************/
 void saccadeModule::generateTrajectory(){
-    double cx = 0, cy = 0.3, r = 0.15;
+    double cx = 0, cy = -0.4, r = 0.15;
     double step = M_PI/18;
     for (double i = 0; i < 2*M_PI; i+= step){
         yarp::sig::Vector circlePoint(2);
@@ -192,38 +192,39 @@ void saccadeModule::performSaccade()
     rootToHead = yarp::math::axis2dcm(o);
     x.push_back(1);
     rootToHead.setCol(3,x);
-//    headToRoot = yarp::math::SE3inv(rootToHead);
+    headToRoot = yarp::math::SE3inv(rootToHead);
+    /*DEBUG*/
+    std::cout << "x = " << x.toString().c_str() << std::endl;
+    std::cout << "o = " << o.toString().c_str() << std::endl;
+    std::cout << "rpy = " << dcm2rpy(rootToHead).toString().c_str() << std::endl;
+    std::ofstream headCircle;
+    headCircle.open("/home/miacono/Desktop/headCircle.txt");
+    std::ofstream rootCircle;
+    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
+    headCircle << "x,y,z" << "\n";
+    rootCircle << "x,y,z" << "\n";
+    /*DEBUG*/
 
-    /*DEBUG*/
-//    std::cout << "x = " << x.toString().c_str() << std::endl;
-//    std::cout << "o = " << o.toString().c_str() << std::endl;
-//    std::cout << "headToRoot = " << headToRoot.toString().c_str() << std::endl;
-//    std::ofstream headCircle;
-//    headCircle.open("/home/miacono/Desktop/headCircle.txt");
-//    std::ofstream rootCircle;
-//    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
-//    headCircle << "x,y,z" << "\n";
-//    rootCircle << "x,y,z" << "\n";
-    /*DEBUG*/
+    Quaternion q;
 
     gazeControl->setEyesTrajTime(0.003);
     for (unsigned int i = 0; i < trajectory.size(); i++) {
         yarp::sig::Vector currTrajPoint = trajectory[i];
         yarp::sig::Vector fixationPoint(4);
-        fixationPoint[0] = -1.5;
-        fixationPoint[1] = currTrajPoint[0];
-        fixationPoint[2] = currTrajPoint[1];
+        fixationPoint[0] = currTrajPoint[0];
+        fixationPoint[1] = currTrajPoint[1];
+        fixationPoint[2] = 1.5;
         fixationPoint[3] = 1;
 
-//        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
-//        fixationPoint *= rootToHead;
+        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+        fixationPoint *= headToRoot;
 
-//        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
         gazeControl->lookAtFixationPoint(fixationPoint.subVector(0, 2));
         gazeControl->waitMotionDone(0.003,0.009);
     }
-//    headCircle.close();
-//    rootCircle.close();
+    headCircle.close();
+    rootCircle.close();
 
     /*
 
