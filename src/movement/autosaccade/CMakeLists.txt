@@ -20,6 +20,6 @@ include_directories(${PROJECT_SOURCE_DIR}/include
 
 add_executable(${PROJECTNAME} ${source} ${header})
 
-target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eMorphLib iKin YARP_math)
+target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eMorphLib iKin)
 
 install(TARGETS ${PROJECTNAME} DESTINATION bin)
