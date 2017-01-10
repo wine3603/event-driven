@@ -69,25 +69,20 @@ private:
     double checkPeriod;
     double minVpS;
 
-    //saccade parameters
-    double sMag;
-    double sVel;
-
     //robot control settings
     yarp::dev::PolyDriver mdriver;
-//    yarp::dev::IPositionControl *pc;
     yarp::dev::IGazeControl *gazeControl;
-//    yarp::dev::IEncoders *ec;
+    //Variables for frames transformation
     yarp::sig::Matrix rootToHead;
     yarp::sig::Matrix headToRoot;
     yarp::sig::Vector x,o;
-    void performSaccade();
 
     std::vector<yarp::sig::Vector> trajectory;
     //timestamps for comparison
     double prevStamp;
 
     void generateTrajectory();
+    void performSaccade();
 
 public:
 
@@ -100,7 +95,6 @@ public:
     virtual double getPeriod();
     virtual bool updateModule();
 
-    void look_down() const;
 };
 
 

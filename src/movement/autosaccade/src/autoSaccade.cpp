@@ -16,9 +16,11 @@
 
 #include "autoSaccade.h"
 #include <math.h>
-#include <iostream>
-#include <fstream>
-/**********************************************************/
+#include <limits>
+
+/**
+ * Generates a set of fixation points to be placed in front of iCub eyes
+ */
 void saccadeModule::generateTrajectory(){
     double cx = 0, cy = -0.25, r = 0.035;
     double step = M_PI/18;
@@ -32,26 +34,8 @@ void saccadeModule::generateTrajectory(){
     for (unsigned int i = 0; i < trajectory.size(); i++){
         std::cout << "point " << i << " = " << trajectory[i].toString().c_str() << std::endl;
     }
-
-//    yarp::sig::Vector point1(3);
-//    point1[0] = 1;
-//    point1[1] = 0;
-//    point1[2] = 0;
-//    trajectory.push_back(point1);
-//    yarp::sig::Vector point2(3);
-//    point2[0] = 0;
-//    point2[1] = 1;
-//    point2[2] = 0;
-//    trajectory.push_back(point2);
-//    yarp::sig::Vector point3(3);
-//    point3[0] = 0;
-//    point3[1] = 0;
-//    point3[2] = 1;
-//    trajectory.push_back(point3);
-
 }
 
-/**********************************************************/
 bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 {
     //set the name of the module
@@ -76,26 +60,17 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     yarp::os::Property options;
     options.put("device", "gazecontrollerclient");
     options.put("local", "/" + moduleName);
-    //options.put("remote", "/" + condev + "/head");
-//    options.put("remote","/icubSim/head");
     options.put("remote","/iKinGazeCtrl");
-//    pc = 0;
-//    ec = 0;
-
     mdriver.open(options);
     if(!mdriver.isValid())
         std::cerr << "Did not connect to robot/simulator" << std::endl;
     else {
-//        mdriver.view(pc);
         mdriver.view(gazeControl);
-//        mdriver.view(ec);
     }
 
 
     if(!gazeControl)
         std::cerr << "Did not connect to gaze controller" << std::endl;
-
-//    look_down();
 
     gazeControl->blockNeckPitch();
     gazeControl->blockNeckRoll();
@@ -103,61 +78,18 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 
     generateTrajectory();
 
-/*
-    if(!pc)
-        std::cerr << "Did not connect to position control" << std::endl;
-    else {
-        int t; pc->getAxes(&t);
-        std::cout << "Number of Joints: " << t << std::endl;
-    }
 
-
-    if(!ec)
-       std::cerr << "Did not connect to encoders" << std::endl;
-    else {
-        int t; ec->getAxes(&t);
-        std::cout << "Number of Joints: " << t << std::endl;
-    }
-
-*/
     //set other variables we need from the
     checkPeriod = rf.check("checkPeriod",
                            yarp::os::Value(0.01)).asDouble();
     minVpS = rf.check("minVpS", yarp::os::Value(800)).asDouble();
-    prevStamp = 4294967295; //max value
-/*
-    sMag = rf.check("sMag", yarp::os::Value(2)).asDouble();
-    sVel = rf.check("sVel", yarp::os::Value(1000)).asDouble();
+    prevStamp =  std::numeric_limits<double>::max(); //max value
 
-    if(sMag < -5) {
-        std::cout << "Hard-coded limit of sMag < 5" << std::endl;
-        sMag = -5;
-    }
-
-    if(sMag > 5) {
-        std::cout << "Hard-coded limit of sMag < 5" << std::endl;
-        sMag = 5;
-    }
-
-    if(sVel < 0) {
-        std::cout << "Hard-coded limit of sVel > 10" << std::endl;
-        sVel = 10;
-    }
-
-    if(sVel > 1000) {
-        std::cout << "Hard-coded limit of sMag < 1000" << std::endl;
-        sVel = 1000;
-    }
-*/
     eventBottleManager.open(moduleName);
-
-
     return true ;
 }
 
-/**********************************************************/
-bool saccadeModule::interruptModule()
-{
+bool saccadeModule::interruptModule() {
     std::cout << "Interrupting" << std::endl;
     rpcPort.interrupt();
     eventBottleManager.interrupt();
@@ -165,9 +97,7 @@ bool saccadeModule::interruptModule()
     return true;
 }
 
-/**********************************************************/
-bool saccadeModule::close()
-{
+bool saccadeModule::close() {
 
     std::cout << "Closing" << std::endl;
     rpcPort.close();
@@ -181,34 +111,24 @@ bool saccadeModule::close()
 }
 
 
-void saccadeModule::performSaccade()
-{
+void saccadeModule::performSaccade() {
     if(!gazeControl) {
         std::cerr << "Saccade cannot be performed" << std::endl;
         return;
     }
 
+    //Computing transformation between root and head
     gazeControl->getHeadPose(x,o);
     rootToHead = yarp::math::axis2dcm(o);
     x.push_back(1);
     rootToHead.setCol(3,x);
     headToRoot = yarp::math::SE3inv(rootToHead);
-    /*DEBUG*/
-    std::cout << "x = " << x.toString().c_str() << std::endl;
-    std::cout << "o = " << o.toString().c_str() << std::endl;
-    std::cout << "rpy = " << dcm2rpy(rootToHead).toString().c_str() << std::endl;
-    std::ofstream headCircle;
-    headCircle.open("/home/miacono/Desktop/headCircle.txt");
-    std::ofstream rootCircle;
-    rootCircle.open("/home/miacono/Desktop/rootCircle.txt");
-    headCircle << "x,y,z" << "\n";
-    rootCircle << "x,y,z" << "\n";
-    /*DEBUG*/
 
-    Quaternion q;
-
-    gazeControl->setEyesTrajTime(0.003);
+    //Iteratively fixate next point of trajectory
+    gazeControl->setEyesTrajTime(0.1);
     for (unsigned int i = 0; i < trajectory.size(); i++) {
+
+        //Fixation point is generated in head frame coordinates
         yarp::sig::Vector currTrajPoint = trajectory[i];
         yarp::sig::Vector fixationPoint(4);
         fixationPoint[0] = currTrajPoint[0];
@@ -216,88 +136,15 @@ void saccadeModule::performSaccade()
         fixationPoint[2] = 1.5;
         fixationPoint[3] = 1;
 
-        headCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
+        //Trasforming into root coordinates
         fixationPoint *= headToRoot;
 
-        rootCircle << fixationPoint[0] << "," << fixationPoint[1] << "," << fixationPoint[2] << "\n";
         gazeControl->lookAtFixationPoint(fixationPoint.subVector(0, 2));
         gazeControl->waitMotionDone(0.003,0.009);
     }
-    headCircle.close();
-    rootCircle.close();
-
-    /*
-
-      double vel3, vel4;
-      pc->getRefSpeed(3, &vel3);
-      pc->getRefSpeed(4, &vel4);
-
-      pc->setRefSpeed(3, sVel);
-      pc->setRefSpeed(4, sVel);
-
-      double pos3, pos4;
-      ec->getEncoder(3, &pos3);
-      ec->ger(4, &pos4);
-
-
-      //move up
-      bool movedone = false;
-      pc->positionMove(3, pos3 + sMag);
-      while(!movedone)
-          pc->checkMotionDone(3, &movedone);
-
-      //move down
-      movedone = false;
-      pc->positionMove(3, pos3 - sMag);
-      while(!movedone)
-          pc->checkMotionDone(3, &movedone);
-
-      //move back up
-      movedone = false;
-      pc->positionMove(3, pos3);
-      while(!movedone)
-          pc->checkMotionDone(3, &movedone);
-
-      //move left
-      movedone = false;
-      pc->positionMove(4, pos4 + sMag);
-      while(!movedone)
-          pc->checkMotionDone(4, &movedone);
-
-      //move right
-      movedone = false;
-      pc->positionMove(4, pos4 - sMag);
-      while(!movedone)
-          pc->checkMotionDone(4, &movedone);
-
-      //move back
-      movedone = false;
-      pc->positionMove(4, pos4);
-      while(!movedone)
-          pc->checkMotionDone(4, &movedone);
-
-      pc->setRefSpeed(3, vel3);
-      pc->setRefSpeed(4, vel4);
-
-  */
 }
 
-void saccadeModule::look_down() const {
-    yarp::sig::Vector ang(3);
-    ang[0] = 0;
-    ang[1] = -40;
-    ang[2] = 0;
-
-    gazeControl->lookAtRelAngles(ang);
-    gazeControl->waitMotionDone();
-}
-
-/****  UPDATE MODULE TO BE USED. Commented out for debugging purposes ****
-
-
-
-bool saccadeModule::updateModule()
-{
+bool saccadeModule::updateModule() {
     //if there is no connection don't do anything yet
     if(!eventBottleManager.getInputCount()) return true;
 
@@ -320,19 +167,12 @@ bool saccadeModule::updateModule()
 
     if(vPeriod == 0 || (vCount / vPeriod) < minVpS) {
         //perform saccade
-        if(gazeControl && ec) performSaccade();
+        if(gazeControl) performSaccade();
         std::cout << "perform saccade: ";
     }
     std::cout << vPeriod/1000000 << "s | " << vCount/vPeriod
               << " v/s" << std::endl;
 
-    return true;
-}
-*/
-
-/*********** DEBUG **********/
-bool saccadeModule::updateModule() {
-    performSaccade();
     return true;
 }
 
