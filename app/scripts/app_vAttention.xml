@@ -15,7 +15,7 @@
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /uniform --x 350 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /activationMap --x 350 --y 000 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
@@ -44,18 +44,6 @@
     </module>
 
     <module>
-        <name>yarpview</name>
-        <parameters>--name /gaussian --x 00 --y 700 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
-
-    <module>
-        <name>yarpview</name>
-        <parameters>--name /DOG --x 350 --y 700 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
-
-    <module>
         <name>yarpdataplayer</name>
         <node>localhost</node>
     </module>
@@ -73,20 +61,8 @@
     </connection>
 
     <connection>
-        <from>/vAttention/salMapRight:o</from>
-        <to>/viewRight</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/DOG:o</from>
-        <to>/DOG</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/gaussian:o</from>
-        <to>/gaussian</to>
+        <from>/vAttention/activationMap:o</from>
+        <to>/activationMap</to>
         <protocol>tcp</protocol>
     </connection>
 
@@ -111,12 +87,6 @@
     <connection>
         <from>/vAttention/orient135:o</from>
         <to>/orient135</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/uniform:o</from>
-        <to>/uniform</to>
         <protocol>tcp</protocol>
     </connection>
 
