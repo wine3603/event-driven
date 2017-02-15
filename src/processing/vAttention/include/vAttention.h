@@ -67,14 +67,8 @@ private:
     yarp::sig::Matrix uniformFilterMap;
     yarp::sig::Matrix gaussianFilterMap;
     yarp::sig::Matrix bigGaussianFilterMap;
-    yarp::sig::Matrix vertGaussianFilterMap;
-    yarp::sig::Matrix vertBigGaussianFilterMap;
-    yarp::sig::Matrix verticalGaussianFilterMap;
-    yarp::sig::Matrix horizontalGaussianFilterMap;
     yarp::sig::Matrix DOGFilterMap;
     yarp::sig::Matrix negDOGFilterMap;
-    yarp::sig::Matrix vertDOGFilterMap;
-    yarp::sig::Matrix vertNegDOGFilterMap;
     yarp::sig::Matrix orient0FilterMap;
     yarp::sig::Matrix orient45FilterMap;
     yarp::sig::Matrix orient90FilterMap;
@@ -109,8 +103,8 @@ private:
                         int cMax = -1);
     void load_filter(const std::string filename, yarp::sig::Matrix &filterMap, int &filterSize);
     void computeAttentionPoint(const yarp::sig::Matrix &map);
-    void generateGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
-                                    int &filterSize, int gaussianFilterSize);
+    void generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
+                                        double theta, int &filterSize, int gaussianFilterSize);
     void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double B, int theta,
                                  int &filterSize);
     void drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int r, int c, yarp::sig::PixelBgr &pixelBgr) ;

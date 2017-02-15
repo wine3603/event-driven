@@ -164,13 +164,16 @@ vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, 
     double A = 1/(sqrt(2*M_PI) * sigma);
     double Abig = 1/(sqrt(2*M_PI) * sigmaBig);
 
-    generateGaussianFilter(gaussianFilterMap, A, sigma, sigma, filterSize, 15);
-    generateGaussianFilter(bigGaussianFilterMap, Abig, sigmaBig, sigmaBig, filterSize, 15);
+    generateOrientedGaussianFilter(gaussianFilterMap, A, sigma/3, sigma, 0, filterSize, 15);
+    printMap(gaussianFilterMap);
 
-//    generateGaussianFilter(vertGaussianFilterMap, A, sigma/3, sigma, filterSize, 15);
-//    generateGaussianFilter(vertBigGaussianFilterMap, Abig, sigmaBig/3, sigmaBig, filterSize, 15);
+    generateOrientedGaussianFilter(bigGaussianFilterMap, A, sigma/3, sigma, 45, filterSize, 15);
+    printMap(bigGaussianFilterMap);
 
+//    generateOrientedGaussianFilter(bigGaussianFilterMap, Abig, sigmaBig, sigmaBig, 0, filterSize, 15);
 
+//    generateOrientedGaussianFilter(vertGaussianFilterMap, A, sigma/3, sigma, filterSize, 15);
+//    generateOrientedGaussianFilter(vertBigGaussianFilterMap, Abig, sigmaBig/3, sigmaBig, filterSize, 15);
 
     DOGFilterMap = gaussianFilterMap - bigGaussianFilterMap;
 //    vertDOGFilterMap = vertGaussianFilterMap - vertBigGaussianFilterMap;
@@ -178,13 +181,14 @@ vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, 
     negDOGFilterMap = DOGFilterMap * (-1.0);
 //    vertNegDOGFilterMap = vertDOGFilterMap * (-1.0);
 
-//    generateGaussianFilter(verticalGaussianFilterMap, 1, 15, 0.5, filterSize, 20);
-//    generateGaussianFilter(horizontalGaussianFilterMap, 1, 0.5, 15, filterSize, 20);
+//    generateOrientedGaussianFilter(verticalGaussianFilterMap, 1, 15, 0.5, filterSize, 20);
+//    generateOrientedGaussianFilter(horizontalGaussianFilterMap, 1, 0.5, 15, filterSize, 20);
 
     generateGaborFilter(orient0FilterMap, 21, 5, 0, filterSize);
-//    generateGaborFilter(orient45FilterMap, 21, 5, 45, filterSize);
+
+    generateGaborFilter(orient45FilterMap, 21, 5, 45, filterSize);
     generateGaborFilter(orient90FilterMap, 21, 5, 90, filterSize);
-//    generateGaborFilter(orient135FilterMap, 21, 5, 135, filterSize);
+    generateGaborFilter(orient135FilterMap, 21, 5, 135, filterSize);
 
     this->salMapPadding = filterSize / 2;
 
@@ -212,18 +216,27 @@ vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, 
 }
 
 
-void vAttentionManager::generateGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
-                                               int &filterSize, int gaussianFilterSize) {
+void vAttentionManager::generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX,
+                                                       double sigmaY,
+                                                       double theta, int &filterSize, int gaussianFilterSize) {
     //Resize to desired size
     filterMap.resize(gaussianFilterSize, gaussianFilterSize);
+    filterMap.zero();
+
+    double theta_rad = theta * M_PI /180;
+    double a = cos(theta_rad);
+    double b = sin(theta_rad);
+    double c = cos (theta_rad + M_PI_2);
+    double d = sin (theta_rad + M_PI_2);
 
     //Generate gaussian filter
-    for (int r = 0; r < gaussianFilterSize; r++) {
-        for (int c = 0; c < gaussianFilterSize; c++) {
+    for (int row = 0; row < gaussianFilterSize; row++) {
+        for (int col = 0; col < gaussianFilterSize; col++) {
             double center = gaussianFilterSize / 2;
-            double rDist = r - center;
-            double cDist = c - center;
-            filterMap(r, c) =A * exp(-(pow(rDist, 2) / (2 * pow(sigmaX, 2)) + pow(cDist, 2) / (2 * pow(sigmaY, 2))));
+            double rDist = row - center;
+            double cDist = col - center;
+            filterMap(row, col) =A * exp(-(pow((a*rDist+b*cDist), 2) / (2 * pow(sigmaX, 2))
+                                           + pow((c*rDist+d*cDist), 2) / (2 * pow(sigmaY, 2))));
         }
     }
     //Update filterSize to comply with new filter
@@ -420,7 +433,7 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
 
     convertToImage(convolvedOrient0FeatureMap,imageOrient45);
     convertToImage(convolvedOrient90FeatureMap,imageOrient135);
-    salMapLeft =convolvedOrient0FeatureMap + convolvedOrient90FeatureMap;
+    salMapLeft =orient0FeatureMap + orient90FeatureMap;
 //    salMapLeft *= 5000;
     computeAttentionPoint(salMapLeft);
 
