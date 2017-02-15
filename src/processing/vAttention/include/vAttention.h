@@ -37,7 +37,7 @@ private:
     // output port where the output saliency map image (left) is sent
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outSalMapLeftPort;
     // output port where the output saliency map image (right) is sent
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outSalMapRightPort;
+    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outActivationMapPort;
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outorient0Port;
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outorient90Port;
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outorient45Port;
@@ -67,7 +67,14 @@ private:
     yarp::sig::Matrix uniformFilterMap;
     yarp::sig::Matrix gaussianFilterMap;
     yarp::sig::Matrix bigGaussianFilterMap;
+    yarp::sig::Matrix vertGaussianFilterMap;
+    yarp::sig::Matrix vertBigGaussianFilterMap;
+    yarp::sig::Matrix verticalGaussianFilterMap;
+    yarp::sig::Matrix horizontalGaussianFilterMap;
     yarp::sig::Matrix DOGFilterMap;
+    yarp::sig::Matrix negDOGFilterMap;
+    yarp::sig::Matrix vertDOGFilterMap;
+    yarp::sig::Matrix vertNegDOGFilterMap;
     yarp::sig::Matrix orient0FilterMap;
     yarp::sig::Matrix orient45FilterMap;
     yarp::sig::Matrix orient90FilterMap;
@@ -77,25 +84,41 @@ private:
     yarp::sig::Matrix uniformFeatureMap;
     yarp::sig::Matrix DOGFeatureMap;
     yarp::sig::Matrix orient0FeatureMap;
+    yarp::sig::Matrix convolvedOrient0FeatureMap;
+    yarp::sig::Matrix convolvedOrient90FeatureMap;
     yarp::sig::Matrix orient45FeatureMap;
     yarp::sig::Matrix orient90FeatureMap;
     yarp::sig::Matrix orient135FeatureMap;
     yarp::sig::Matrix gaussianFeatureMap;
 
-    void updateMap(yarp::sig::Matrix &map, yarp::sig::Matrix &filterMap, emorph::AddressEvent *aep,
-                       unsigned long int dt);
-    void normaliseMap(yarp::sig::Matrix &map, yarp::sig::Matrix &normalisedMap);
+    //Normalized feature maps
+    yarp::sig::Matrix normalizedUniformFeatureMap;
+    yarp::sig::Matrix normalizedDOGFeatureMap;
+    yarp::sig::Matrix normalizedOrient0FeatureMap;
+    yarp::sig::Matrix normalizedOrient45FeatureMap;
+    yarp::sig::Matrix normalizedOrient90FeatureMap;
+    yarp::sig::Matrix normalizedOrient135FeatureMap;
+    yarp::sig::Matrix normalizedGaussianFeatureMap;
+
+    void updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, emorph::AddressEvent *aep,
+                   unsigned long int dt);
+    void normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Matrix &normalisedMap);
     void decayMap(yarp::sig::Matrix &map, unsigned long int dt);
-    void printMap(yarp::sig::Matrix &map);
-    void convertToImage(yarp::sig::Matrix &map, yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int rMax = -1,
-                            int cMax = -1);
-    void load_filter(std::string filename, yarp::sig::Matrix &filterMap, int &filterSize);
-    void computeAttentionPoint(yarp::sig::Matrix &map);
-    void generateGaussianFilter(yarp::sig::Matrix& filterMap, double sigma, int gaussianFilterSize, int &filterSize);
-    void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, int theta, int &filterSize);
+    void printMap(const yarp::sig::Matrix &map);
+    void convertToImage(const yarp::sig::Matrix &map, yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int rMax = -1,
+                        int cMax = -1);
+    void load_filter(const std::string filename, yarp::sig::Matrix &filterMap, int &filterSize);
+    void computeAttentionPoint(const yarp::sig::Matrix &map);
+    void generateGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
+                                    int &filterSize, int gaussianFilterSize);
+    void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double B, int theta,
+                                 int &filterSize);
     void drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int r, int c, yarp::sig::PixelBgr &pixelBgr) ;
-    void computeBoundingBox(yarp::sig::Matrix &map, double threshold);
+    void computeBoundingBox(const yarp::sig::Matrix &map, double threshold);
     void maxInMap(const yarp::sig::Matrix &map);
+    void convolve(const yarp::sig::Matrix &featureMap, yarp::sig::Matrix &convolvedFeatureMap,
+                      const yarp::sig::Matrix &filterMap);
+    void pool(yarp::sig::Matrix & featureMap);
 
 public:
 
