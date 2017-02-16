@@ -44,6 +44,30 @@
     </module>
 
     <module>
+        <name>yarpview</name>
+        <parameters>--name /DOGorient0 --x 700 --y 00 --RefreshTime 16 </parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>yarpview</name>
+        <parameters>--name /DOGorient45 --x 00 --y 350 --RefreshTime 16 </parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>yarpview</name>
+        <parameters>--name /DOGorient90 --x 350 --y 350 --RefreshTime 16 </parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>yarpview</name>
+        <parameters>--name /DOGorient135 --x 700 --y 350 --RefreshTime 16 </parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
         <name>yarpdataplayer</name>
         <node>localhost</node>
     </module>
@@ -87,6 +111,30 @@
     <connection>
         <from>/vAttention/orient135:o</from>
         <to>/orient135</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/vAttention/DOGorient0:o</from>
+        <to>/DOGorient0</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/vAttention/DOGorient45:o</from>
+        <to>/DOGorient45</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/vAttention/DOGorient90:o</from>
+        <to>/DOGorient90</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/vAttention/DOGorient135:o</from>
+        <to>/DOGorient135</to>
         <protocol>tcp</protocol>
     </connection>
 
