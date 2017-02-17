@@ -212,7 +212,7 @@ vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, 
     this->salMapPadding = filterSize / 2 + filterSize %2;
 
     //for speed we predefine the memory for some matrices
-    //The saliency map is bigger than the image by the maximum size among the loaded filters
+    //The saliency map is bigger than the image of the maximum size among the loaded filters
     int mapSize = sensorSize + 2 * salMapPadding;
 
     salMapLeft = yarp::sig::Matrix(mapSize, mapSize);
@@ -495,6 +495,7 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
 
     salMapLeft = threshOrient0FeatureMap + threshOrient45FeatureMap + threshOrient90FeatureMap + threshOrient135FeatureMap;
     salMapLeft /= 4;
+    computeAttentionPoint(salMapLeft);
 
     convertToImage(salMapLeft, imageLeft, salMapPadding, attPointY, attPointX);
 
@@ -591,7 +592,7 @@ void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matri
     for (int rf = 0; rf < filterRows; rf++) {
         for (int cf = 0; cf < filterCols; cf++) {
             map(x + rf, y + cf) += filterMap(rf, cf);
-            clamp (map(x + rf, y + cf), -2000, 2000);
+            clamp (map(x + rf, y + cf), -2000.0, 2000.0);
         }
     }
 
@@ -625,10 +626,21 @@ void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Ma
 
 void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
 
-    maxInMap(map);
-    activationMap(attPointY,attPointX) +=255;
+    yarp::sig::Matrix decisionMap = map;
+    int rectSize = 20;
+
+    for (int i = -rectSize; i < rectSize; ++i) {
+        clamp(i,0,map.rows());
+        for (int j = -rectSize; j < rectSize; ++j) {
+            clamp(j, 0,map.cols());
+            decisionMap(i + attPointY,j + attPointX) *= 0.5;
+        }
+    }
+    maxInMap(decisionMap);
+    activationMap(attPointY,attPointX) += 5;
     maxInMap(activationMap);
-    activationMap *= 0.95;
+//    activationMap *= 0.95;
+
 }
 
 void vAttentionManager::maxInMap(const yarp::sig::Matrix &map) {
@@ -649,20 +661,20 @@ void vAttentionManager::maxInMap(const yarp::sig::Matrix &map) {
 void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double threshold) {
     double internalEnergy = 0;
     double previousInternalEnergy = 0;
-    int boxWidth = 0;
-    int boxHeight = 0;
+    int centerDistTop = 0;
+    int centerDistBottom = 0;
+    int centerDistLeft = 0;
+    int centerDistRight = 0;
+    int increase = 5;
     int topX, topY;
     int bottomX, bottomY;
     do{
-
         previousInternalEnergy = internalEnergy;
         internalEnergy = 0;
-        boxWidth += 5;
-        boxHeight += 5;
-        topY = max(attPointY - boxHeight/2,0);
-        bottomY = min(attPointY + boxHeight/2, map.rows());
-        topX = max(attPointX-boxWidth/2,0);
-        bottomX = min (attPointX + boxWidth/2, map.cols());
+        topY = max(attPointY - centerDistBottom/2,0);
+        bottomY = min(attPointY + centerDistBottom/2, map.rows());
+        topX = max(attPointX-centerDistTop/2,0);
+        bottomX = min (attPointX + centerDistTop/2, map.cols());
         //compute energy inside the box
         for (int r = topY; r < bottomY; ++r) {
             for (int c = topX; c < bottomX; ++c) {
@@ -716,8 +728,10 @@ void vAttentionManager::threshold(const yarp::sig::Matrix &map, yarp::sig::Matri
     }
 }
 
-void vAttentionManager::clamp(double &val, double min, double max) {
+template <typename T>
+void vAttentionManager::clamp(T &val, T min, T max) {
     val = std::max (min, val);
     val = std::min (max, val);
 }
+
 //empty line to make gcc happy

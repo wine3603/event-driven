@@ -26,6 +26,7 @@
 #include <math.h>
 #include <ostream>
 
+
 class vAttentionManager : public yarp::os::BufferedPort<emorph::vBottle>
 {
 private:
@@ -135,7 +136,8 @@ private:
 
     void threshold(const yarp::sig::Matrix &map, yarp::sig::Matrix &thresholdedMap, double threshold, bool binary = false);
 
-    void clamp (double& val, double min, double max);
+    template <typename T>
+    void clamp(T &val, T min, T max);
 
 public:
 
