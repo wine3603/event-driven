@@ -15,55 +15,55 @@
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /activationMap --x 350 --y 000 --RefreshTime 16 </parameters>
+        <parameters>--name /activationMap --x 00 --y 000 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient0 --x 700 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /orient0 --x 00 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient45 --x 00 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /orient45 --x 350 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient90 --x 350 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /orient90 --x 700 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient135 --x 700 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /orient135 --x 1050 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient0 --x 700 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /DOGorient0 --x 00 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient45 --x 00 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /DOGorient45 --x 350 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient90 --x 350 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /DOGorient90 --x 700 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient135 --x 700 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /DOGorient135 --x 1050 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
