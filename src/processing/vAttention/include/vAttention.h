@@ -55,12 +55,12 @@ private:
     int salMapPadding;
     int numIterations;
     double tau;
+    double prevT;
     double thrSal; // threshold to put a maximum on the saliency map (whatever is above thr will be set to the maximum value)
     double normSal;
 
     emorph::vtsHelper unwrap;
 
-    yarp::sig::Matrix timeMap;
     yarp::sig::Matrix activationMap;
     yarp::sig::Matrix salMapLeft;
     yarp::sig::Matrix salMapRight;
@@ -95,26 +95,47 @@ private:
     yarp::sig::Matrix normalizedOrient90DOGFeatureMap;
     yarp::sig::Matrix normalizedOrient135DOGFeatureMap;
 
-    void updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, emorph::AddressEvent *aep,
-                   unsigned long int dt);
+    //Thresholded feature maps
+    yarp::sig::Matrix threshOrient0FeatureMap;
+    yarp::sig::Matrix threshOrient45FeatureMap;
+    yarp::sig::Matrix threshOrient90FeatureMap;
+    yarp::sig::Matrix threshOrient135FeatureMap;
+
+
+    void decayMap (yarp::sig::Matrix& map, double dt);
+
+    void updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int x, int y);
+
     void normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Matrix &normalisedMap);
-    void decayMap(yarp::sig::Matrix &map, unsigned long int dt);
+
     void printMap(const yarp::sig::Matrix &map);
+
     void convertToImage(const yarp::sig::Matrix &map, yarp::sig::ImageOf<yarp::sig::PixelBgr> &image,
                             int mapPaddingSize = 0, int rMax = -1, int cMax = -1);
+
     void load_filter(const std::string filename, yarp::sig::Matrix &filterMap, int &filterSize);
+
     void computeAttentionPoint(const yarp::sig::Matrix &map);
+
     void generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
                                             double theta, int &filterSize, int gaussianFilterSize, int xCenter = 0,
                                             int yCenter = 0);
+
     void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double A, double f,
                              double sigma, double theta, int &filterSize);
+
     void drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int r, int c, yarp::sig::PixelBgr &pixelBgr) ;
+
     void computeBoundingBox(const yarp::sig::Matrix &map, double threshold);
+
     void maxInMap(const yarp::sig::Matrix &map);
+
     void convolve(const yarp::sig::Matrix &featureMap, yarp::sig::Matrix &convolvedFeatureMap,
                   const yarp::sig::Matrix &filterMap);
-    void pool(yarp::sig::Matrix & featureMap);
+
+    void threshold(const yarp::sig::Matrix &map, yarp::sig::Matrix &thresholdedMap, double threshold, bool binary = false);
+
+    void clamp (double& val, double min, double max);
 
 public:
 
