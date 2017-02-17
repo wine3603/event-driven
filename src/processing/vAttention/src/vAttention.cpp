@@ -394,17 +394,17 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
     threshold(orient135FeatureMap, orient135FeatureMap, 0);
 
     //Normalise Gabor
-    normaliseMap(orient0FeatureMap,normalizedOrient0FeatureMap);
-    normaliseMap(orient45FeatureMap,normalizedOrient45FeatureMap);
-    normaliseMap(orient90FeatureMap,normalizedOrient90FeatureMap);
-    normaliseMap(orient135FeatureMap,normalizedOrient135FeatureMap);
+//    normaliseMap(orient0FeatureMap,normalizedOrient0FeatureMap);
+//    normaliseMap(orient45FeatureMap,normalizedOrient45FeatureMap);
+//    normaliseMap(orient90FeatureMap,normalizedOrient90FeatureMap);
+//    normaliseMap(orient135FeatureMap,normalizedOrient135FeatureMap);
 
-
-    double th = 0.0002;
-    threshold(normalizedOrient0FeatureMap, threshOrient0FeatureMap, th, true);
-    threshold(normalizedOrient45FeatureMap, threshOrient45FeatureMap, th, true);
-    threshold(normalizedOrient90FeatureMap, threshOrient90FeatureMap, th, true);
-    threshold(normalizedOrient135FeatureMap, threshOrient135FeatureMap, th, true);
+//    double th = 0.0002;
+    double th = 50;
+    threshold(orient0FeatureMap, threshOrient0FeatureMap, th, true);
+    threshold(orient45FeatureMap, threshOrient45FeatureMap, th, true);
+    threshold(orient90FeatureMap, threshOrient90FeatureMap, th, true);
+    threshold(orient135FeatureMap, threshOrient135FeatureMap, th, true);
 
 
     //Normalise Gaussian
@@ -490,14 +490,16 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
 //    convertToImage(orient135DOGFilterMap, imageDOGorient135, 0);
 
 
-    salMapLeft = normalizedOrient0FeatureMap + normalizedOrient45FeatureMap + normalizedOrient90FeatureMap + normalizedOrient135FeatureMap;
+//    salMapLeft = normalizedOrient0FeatureMap + normalizedOrient45FeatureMap + normalizedOrient90FeatureMap + normalizedOrient135FeatureMap;
 //             + normalizedOrient0DOGFeatureMap + normalizedOrient45DOGFeatureMap + normalizedOrient90DOGFeatureMap + normalizedOrient135DOGFeatureMap;
-    salMapLeft *= 200000;
-    threshold(salMapLeft, salMapLeft, 100);
-    computeAttentionPoint(salMapLeft);
+
+    salMapLeft = threshOrient0FeatureMap + threshOrient45FeatureMap + threshOrient90FeatureMap + threshOrient135FeatureMap;
+    salMapLeft /= 4;
 
     convertToImage(salMapLeft, imageLeft, salMapPadding, attPointY, attPointX);
+
     convertToImage(activationMap, imageActivation, salMapPadding, attPointY, attPointX);
+
 
     // --- writing images of left and right saliency maps on output port
     if (outSalMapLeftPort.getOutputCount()) {
@@ -610,41 +612,6 @@ void vAttentionManager::decayMap(yarp::sig::Matrix &map, double dt) {
     map*= decayFactor;
 }
 
-//void vAttentionManager::normaliseMap(yarp::sig::Matrix &map) {
-//    double min;
-//    double max;
-//
-//    min = map(0, 0);
-//    max = min;
-//
-//    // ---- find max and min values of saliency map ---- //
-//    for (int r = 0; r < map.rows(); r++) {
-//        for (int c = 0; c < map.cols(); c++) {
-//            if (map(r, c) > max) {
-//                max = map(r, c);
-//            }
-//            if (map(r, c) < min) {
-//                min = map(r, c);
-//            }
-//        }
-//    }
-//
-//    if (max == min) {
-//        return;
-//    }
-//    double value;
-//    double salValue;
-//    // ---- normalise ---- //
-//    for (int r = 0; r < map.rows(); r++) {
-//        for (int c = 0; c < map.cols(); c++) {
-//            salValue = map(r,c);
-//            value = (map(r, c) - min) / (max - min);
-//            map(r, c) = value;
-//        }
-//    }
-//}
-
-
 void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Matrix &normalisedMap) {
     double totalEnergy;
     normalisedMap = map;
@@ -659,7 +626,7 @@ void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Ma
 void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
 
     maxInMap(map);
-    activationMap(attPointY,attPointX) ++;
+    activationMap(attPointY,attPointX) +=255;
     maxInMap(activationMap);
     activationMap *= 0.95;
 }
