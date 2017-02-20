@@ -497,15 +497,19 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
     salMapLeft /= 4;
     computeAttentionPoint(salMapLeft);
 
-    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointY, attPointX);
+    int topX,topY,bottomX,bottomY;
+    computeBoundingBox(salMapLeft, 10, attPointRow, attPointCol, topY, topX, bottomY, bottomX);
 
-    convertToImage(activationMap, imageActivation, salMapPadding, attPointY, attPointX);
+    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
+    drawBoundingBox(imageLeft, topY, topX, bottomY, bottomX);
+    convertToImage(activationMap, imageActivation, salMapPadding, attPointRow, attPointCol);
 
 
     // --- writing images of left and right saliency maps on output port
     if (outSalMapLeftPort.getOutputCount()) {
         outSalMapLeftPort.write();
     }
+
     if (outActivationMapPort.getOutputCount()) {
         outActivationMapPort.write();
     }
@@ -556,7 +560,7 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
             shiftedR = r + mapPaddingSize;
             shiftedC = c + mapPaddingSize;
 
-           double pixelValue = map(shiftedR, shiftedC);
+            double pixelValue = map(shiftedR, shiftedC);
             //Attention point is highlighted in red, negative values in blue, positive in green
             if (shiftedR == rMax && shiftedC == cMax) {
                 pixelBgr.r = 255;
@@ -633,11 +637,11 @@ void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
         clamp(i,0,map.rows());
         for (int j = -rectSize; j < rectSize; ++j) {
             clamp(j, 0,map.cols());
-            decisionMap(i + attPointY,j + attPointX) *= 0.5;
+            decisionMap(i + attPointRow,j + attPointCol) *= 0.5;
         }
     }
     maxInMap(decisionMap);
-    activationMap(attPointY,attPointX) += 5;
+    activationMap(attPointRow,attPointCol) += 5;
     maxInMap(activationMap);
 //    activationMap *= 0.95;
 
@@ -645,46 +649,117 @@ void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
 
 void vAttentionManager::maxInMap(const yarp::sig::Matrix &map) {
     double max = 0;
-    attPointX = 0;
-    attPointY = 0;
+    attPointCol = 0;
+    attPointRow = 0;
     for (int r = 0; r < map.rows(); r++) {
         for (int c = 0; c < map.cols(); c++) {
             if (map(r, c) > max) {
                 max = map(r, c);
-                attPointY = r;
-                attPointX = c;
+                attPointRow = r;
+                attPointCol = c;
             }
         }
     }
 }
 
-void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double threshold) {
+
+bool vAttentionManager::energyInArea(const yarp::sig::Matrix &map, int topRow, int topCol, int bottomRow, int bottomCol,
+                                     double &energy) {
+    energy = 0;
+    for (int row = topRow; row < bottomRow; ++row) {
+        for (int col = topCol; col < bottomCol; ++col) {
+            if (row < 0 || col < 0 || row >= map.rows() || col >= map.cols()) {
+                yInfo() << "Index out of bound";
+                energy = 0;
+                return false;
+            }
+            energy += map(row,col);
+        }
+    }
+    return true;
+}
+
+void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double threshold, int centerRow, int centerCol,
+                                           int &topRow, int &topCol, int &bottomRow, int &bottomCol) {
     double internalEnergy = 0;
     double previousInternalEnergy = 0;
-    int centerDistTop = 0;
-    int centerDistBottom = 0;
-    int centerDistLeft = 0;
-    int centerDistRight = 0;
+    double energyTop = 0;
+    double energyBottom = 0;
+    double energyLeft = 0;
+    double energyRight = 0;
     int increase = 5;
-    int topX, topY;
-    int bottomX, bottomY;
-    do{
-        previousInternalEnergy = internalEnergy;
-        internalEnergy = 0;
-        topY = max(attPointY - centerDistBottom/2,0);
-        bottomY = min(attPointY + centerDistBottom/2, map.rows());
-        topX = max(attPointX-centerDistTop/2,0);
-        bottomX = min (attPointX + centerDistTop/2, map.cols());
-        //compute energy inside the box
-        for (int r = topY; r < bottomY; ++r) {
-            for (int c = topX; c < bottomX; ++c) {
-                internalEnergy += map(r,c);
-            }
-        }
-    }while (internalEnergy - previousInternalEnergy < threshold);
+    topCol = centerCol - increase;
+    topRow = centerRow - increase;
+    bottomCol = centerCol + increase;
+    bottomRow = centerRow + increase;
+    clamp(topCol, 0, map.cols()-1);
+    clamp(topRow, 0, map.rows()-1);
+    clamp(bottomCol, 0, map.cols()-1);
+    clamp(bottomRow, 0, map.rows()-1);
 
+    bool top = energyInArea(map, topRow - increase, topCol, topRow, bottomCol, energyTop);
+    bool bottom = energyInArea(map, bottomRow, topCol, bottomRow + increase, bottomCol, energyBottom);
+    bool right = energyInArea(map, topRow, bottomCol, bottomRow, bottomCol + increase, energyRight);
+    bool left = energyInArea(map, topRow, topCol - increase, bottomRow, topCol, energyLeft);
+
+    energyInArea(map, topRow, topCol, bottomRow, bottomCol, internalEnergy);
+
+    double *maxEnergy;
+
+    while (internalEnergy - previousInternalEnergy > threshold){
+        if (!top && !bottom && !left && !right)
+            break;
+
+        maxEnergy = &energyTop;
+        if (energyBottom > *maxEnergy)
+            maxEnergy = &energyBottom;
+        if (energyLeft > *maxEnergy)
+            maxEnergy = &energyLeft;
+        if (energyRight > *maxEnergy)
+            maxEnergy = &energyRight;
+
+        if (top && maxEnergy == &energyTop){
+            topRow -= increase;
+            clamp(topRow, 0, map.rows()-1);
+            top = energyInArea(map, topRow - increase, topCol, topRow, bottomCol, energyTop);
+        }
+        if (bottom && maxEnergy == &energyBottom){
+            bottomRow += increase;
+            clamp(bottomRow, 0, map.rows()-1);
+            bottom = energyInArea(map, bottomRow, topCol, bottomRow + increase, bottomCol, energyBottom);
+        }
+        if (left && maxEnergy == &energyLeft){
+            topCol -= increase;
+            clamp(topCol, 0, map.cols()-1);
+            left = energyInArea(map, topRow, topCol - increase, bottomRow, topCol, energyLeft);
+        }
+        if (right && maxEnergy == &energyRight){
+            bottomCol += increase;
+            clamp(bottomCol, 0, map.cols()-1);
+            right = energyInArea(map, topRow, bottomCol, bottomRow, bottomCol + increase, energyRight);
+        }
+        previousInternalEnergy = internalEnergy;
+        energyInArea(map, topRow, topCol, bottomRow, bottomCol, internalEnergy);
+    }
     //TODO debug and draw bounding box
 }
+
+void vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+                                        int bottomRow, int bottomCol) {
+    for (int i = topCol; i < bottomCol; ++i) {
+        image(i,topRow) = yarp::sig::PixelBgr(255,0,0);
+    }
+    for (int i = topCol; i < bottomCol; ++i) {
+        image(i,bottomRow) = yarp::sig::PixelBgr(255,0,0);
+    }
+    for (int i = topRow; i < bottomRow; ++i) {
+        image(topCol,i) = yarp::sig::PixelBgr(255,0,0);
+    }
+    for (int i = topRow; i < bottomRow; ++i) {
+        image(bottomCol,i) = yarp::sig::PixelBgr(255,0,0);
+    }
+
+};
 
 void vAttentionManager::convolve(const yarp::sig::Matrix &featureMap, yarp::sig::Matrix &convolvedFeatureMap,
                                  const yarp::sig::Matrix &filterMap) {
