@@ -22,7 +22,7 @@
  * Generates a set of fixation points to be placed in front of iCub eyes
  */
 void saccadeModule::generateTrajectory(){
-    double cx = 0, cy = -0.25, r = 0.035;
+    double cx = 0, cy = 0.0, r = 0.15;
     double step = M_PI/18;
     for (double i = 0; i < 2*M_PI; i+= step){
         yarp::sig::Vector circlePoint(2);
@@ -72,17 +72,29 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     if(!gazeControl)
         std::cerr << "Did not connect to gaze controller" << std::endl;
 
+    gazeControl->storeContext(&context0);
+
+    gazeControl->setTrackingMode(false);
+    gazeControl->setStabilizationMode(false);
     gazeControl->blockNeckPitch();
     gazeControl->blockNeckRoll();
     gazeControl->blockNeckYaw();
+    gazeControl->setEyesTrajTime(0.1);
+
+    if(!gazeControl->getHeadPose(x,o)) {
+        yError() << "Could not retrieve head pose";
+        return false;
+    }
 
     generateTrajectory();
 
 
+    isSaccading = false;
     //set other variables we need from the
     checkPeriod = rf.check("checkPeriod",
-                           yarp::os::Value(0.01)).asDouble();
-    minVpS = rf.check("minVpS", yarp::os::Value(800)).asDouble();
+                           yarp::os::Value(0.1)).asDouble();
+    minVpS = rf.check("minVpS", yarp::os::Value(5000)).asDouble();
+    maxVps = rf.check("maxVpS", yarp::os::Value(55000)).asDouble();
     prevStamp =  std::numeric_limits<double>::max(); //max value
 
     eventBottleManager.open(moduleName);
@@ -119,13 +131,13 @@ void saccadeModule::performSaccade() {
 
     //Computing transformation between root and head
     gazeControl->getHeadPose(x,o);
+
     rootToHead = yarp::math::axis2dcm(o);
     x.push_back(1);
     rootToHead.setCol(3,x);
     headToRoot = yarp::math::SE3inv(rootToHead);
 
     //Iteratively fixate next point of trajectory
-    gazeControl->setEyesTrajTime(0.1);
     for (unsigned int i = 0; i < trajectory.size(); i++) {
 
         //Fixation point is generated in head frame coordinates
@@ -140,23 +152,19 @@ void saccadeModule::performSaccade() {
         fixationPoint *= headToRoot;
 
         gazeControl->lookAtFixationPoint(fixationPoint.subVector(0, 2));
-        gazeControl->waitMotionDone(0.003,0.009);
+        gazeControl->waitMotionDone(0.001,0.01);
     }
+
 }
 
 bool saccadeModule::updateModule() {
     //if there is no connection don't do anything yet
     if(!eventBottleManager.getInputCount()) return true;
 
+
     //check the last time stamp and count
     unsigned long int latestStamp = eventBottleManager.getTime();
     unsigned long int vCount = 1000000 * eventBottleManager.popCount();
-
-//    double latestStamp = yarp::os::Time::now();
-
-//    std::cout << "latestStamp Update= " << latestStamp << std::endl;
-//    std::cout << "prevStamp = " << prevStamp << std::endl;
-    std::cout << "vCount = " << vCount << std::endl;
 
     double vPeriod = latestStamp - prevStamp;
 
@@ -165,14 +173,21 @@ bool saccadeModule::updateModule() {
     //this should only occur on first bottle to initialise
     if(vPeriod < 0) return true;
 
+
     if(vPeriod == 0 || (vCount / vPeriod) < minVpS) {
-        //perform saccade
-        if(gazeControl) performSaccade();
-        std::cout << "perform saccade: ";
+           isSaccading = true;
+        }
+
+    if(vCount == 0 || vPeriod == 0 || (vCount / vPeriod) > maxVps) {
+       isSaccading = false;
     }
+
     std::cout << vPeriod/1000000 << "s | " << vCount/vPeriod
               << " v/s" << std::endl;
-
+    if(gazeControl && isSaccading){
+        performSaccade();
+        std::cout << "perform saccade: ";
+    }
     return true;
 }
 

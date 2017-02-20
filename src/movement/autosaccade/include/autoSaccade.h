@@ -65,9 +65,13 @@ private:
     //the event bottle input and output handler
     EventBottleManager      eventBottleManager;
 
+    int context0;
+    
     //timing parameters
     double checkPeriod;
     double minVpS;
+    double maxVps;
+    bool isSaccading;
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
