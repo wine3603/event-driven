@@ -51,8 +51,8 @@ private:
 
     int sensorSize;
     int filterSize;
-    int attPointY;
-    int attPointX;
+    int attPointRow;
+    int attPointCol;
     int salMapPadding;
     int numIterations;
     double tau;
@@ -112,22 +112,26 @@ private:
     void printMap(const yarp::sig::Matrix &map);
 
     void convertToImage(const yarp::sig::Matrix &map, yarp::sig::ImageOf<yarp::sig::PixelBgr> &image,
-                            int mapPaddingSize = 0, int rMax = -1, int cMax = -1);
+                        int mapPaddingSize = 0, int rMax = -1, int cMax = -1);
 
     void load_filter(const std::string filename, yarp::sig::Matrix &filterMap, int &filterSize);
 
     void computeAttentionPoint(const yarp::sig::Matrix &map);
 
     void generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
-                                            double theta, int &filterSize, int gaussianFilterSize, int xCenter = 0,
-                                            int yCenter = 0);
+                                        double theta, int &filterSize, int gaussianFilterSize, int xCenter = 0,
+                                        int yCenter = 0);
 
     void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double A, double f,
                              double sigma, double theta, int &filterSize);
 
     void drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int r, int c, yarp::sig::PixelBgr &pixelBgr) ;
 
-    void computeBoundingBox(const yarp::sig::Matrix &map, double threshold);
+    void computeBoundingBox(const yarp::sig::Matrix &map, double threshold, int centerRow, int centerCol,
+                                int &topRow, int &topCol, int &bottomRow, int &bottomCol);
+
+    void drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+                             int bottomRow, int bottomCol);
 
     void maxInMap(const yarp::sig::Matrix &map);
 
@@ -138,6 +142,9 @@ private:
 
     template <typename T>
     void clamp(T &val, T min, T max);
+
+    bool energyInArea(const yarp::sig::Matrix &map, int topRow, int topCol, int bottomRow, int bottomCol,
+                          double &energy);
 
 public:
 
