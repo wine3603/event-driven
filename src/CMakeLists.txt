@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
 if(NOT V_BUILD_ZYNQ)
-
-if(NOT EMORPH_BUILD_ZYNQ)
     add_subdirectory(processing)
     add_subdirectory(visualization)
     #add_subdirectory(obsolete)
