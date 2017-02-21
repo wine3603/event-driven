@@ -49,7 +49,8 @@ private:
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outDOGorient135Port;
 
 
-    int sensorSize;
+    int sensorWidth;
+    int sensorHeight;
     int filterSize;
     int attPointRow;
     int attPointCol;
@@ -148,7 +149,8 @@ private:
 
 public:
 
-    vAttentionManager(int sensorSize, double tau, double thrSal, std::string &filtersPath);
+    vAttentionManager(int sensorWidth, int sensorHeight, double tau, double thrSal,
+                          std::string &filtersPath);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
