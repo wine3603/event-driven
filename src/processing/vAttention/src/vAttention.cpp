@@ -45,13 +45,14 @@ bool vAttentionModule::configure(yarp::os::ResourceFinder &rf) {
     attach(handlerPort);                  // attach to port
 
     /* set parameters */
-    int sensorSize = rf.check("sensorSize", yarp::os::Value(128)).asInt();
+    int sensorWidth = rf.check("sensorWidth", yarp::os::Value(304)).asInt();
+    int sensorHeight = rf.check("sensorHeight", yarp::os::Value(240)).asInt();
     double tau = rf.check("tau", yarp::os::Value(1.5)).asDouble();
     double thrSal = rf.check("thr", yarp::os::Value(20)).asDouble();
     string filtersPath = rf.check("filtersPath", yarp::os::Value("../../src/processing/vAttention/filters/")).asString();
 
     /* create the thread and pass pointers to the module parameters */
-    attManager = new vAttentionManager(sensorSize, tau, thrSal, filtersPath);
+    attManager = new vAttentionManager(sensorWidth, sensorHeight, tau, thrSal, filtersPath);
 
     return attManager->open(moduleName, strictness);
 
@@ -145,8 +146,10 @@ void vAttentionManager::load_filter(const string filename, yarp::sig::Matrix &fi
     filterSize = max(filterSize, maxDimension);
 }
 
-vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, std::string &filtersPath) {
-    this->sensorSize = sensorSize;
+vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double tau, double thrSal,
+                                     std::string &filtersPath) {
+    this->sensorWidth = sensorWidth;
+    this->sensorHeight = sensorHeight;
     this->tau = tau;
     this->thrSal = thrSal;
     this->prevT = yarp::os::Time::now();
@@ -213,19 +216,20 @@ vAttentionManager::vAttentionManager(int sensorSize, double tau, double thrSal, 
 
     //for speed we predefine the memory for some matrices
     //The saliency map is bigger than the image of the maximum size among the loaded filters
-    int mapSize = sensorSize + 2 * salMapPadding;
+    int mapWidth = sensorWidth + 2 * salMapPadding;
+    int mapHeight = sensorHeight + 2 * salMapPadding;
 
-    salMapLeft = yarp::sig::Matrix(mapSize, mapSize);
-    salMapRight = yarp::sig::Matrix(mapSize, mapSize);
-    orient0FeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient45FeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient90FeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient135FeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient0DOGFeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient45DOGFeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient90DOGFeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    orient135DOGFeatureMap = yarp::sig::Matrix(mapSize, mapSize);
-    activationMap = yarp::sig::Matrix(mapSize, mapSize);
+    salMapLeft = yarp::sig::Matrix(mapHeight, mapWidth);
+    salMapRight = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient0FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient45FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient90FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient135FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient0DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient45DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient90DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    orient135DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    activationMap = yarp::sig::Matrix(mapHeight, mapWidth);
 
     salMapLeft.zero();
     salMapRight.zero();
@@ -669,7 +673,6 @@ bool vAttentionManager::energyInArea(const yarp::sig::Matrix &map, int topRow, i
     for (int row = topRow; row < bottomRow; ++row) {
         for (int col = topCol; col < bottomCol; ++col) {
             if (row < 0 || col < 0 || row >= map.rows() || col >= map.cols()) {
-                yInfo() << "Index out of bound";
                 energy = 0;
                 return false;
             }

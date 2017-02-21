@@ -3,7 +3,7 @@
 
     <module>
         <name> vAttention </name>
-        <parameters> --sensorSize 128 --tau 120000 --thr 20 --filtersPath /home/miacono/workspace/event-driven/src/processing/vAttention/filters</parameters>
+        <parameters> --sensorWidth 304 --sensorHeight 240 --tau 120000 --thr 20 --filtersPath /home/miacono/workspace/event-driven/src/processing/vAttention/filters</parameters>
         <node> localhost </node>
     </module>
 
