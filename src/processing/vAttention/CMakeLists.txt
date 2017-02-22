@@ -14,10 +14,10 @@ source_group("Header Files" FILES ${header})
 
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
-                    ${EMORPHLIB_INCLUDE_DIRS})
+                    ${EVENTDRIVENLIBS_INCLUDE_DIRS})
 
 add_executable(${PROJECTNAME} ${source} ${header})
 
-target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eMorphLib)
+target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} eventdriven)
 
 install(TARGETS ${PROJECTNAME} DESTINATION bin)

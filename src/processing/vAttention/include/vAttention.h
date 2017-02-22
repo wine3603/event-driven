@@ -21,20 +21,19 @@
 #include <yarp/os/all.h>
 #include <yarp/sig/all.h>
 #include <yarp/math/Math.h>
-#include <iCub/emorph/all.h>
-#include <iCub/emorph/vtsHelper.h>
+#include <iCub/eventdriven/all.h>
+#include <iCub/eventdriven/vtsHelper.h>
 #include <math.h>
 #include <ostream>
 
-
-class vAttentionManager : public yarp::os::BufferedPort<emorph::vBottle>
+class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle>
 {
 private:
 
     bool strictness;
 
     // output port for the vBottle with the new events computed by the module
-    yarp::os::BufferedPort<emorph::vBottle> outPort; // /vBottle:o
+    yarp::os::BufferedPort<ev::vBottle> outPort; // /vBottle:o
     // output port where the output saliency map image (left) is sent
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outSalMapLeftPort;
     // output port where the output saliency map image (right) is sent
@@ -61,7 +60,7 @@ private:
     double thrSal; // threshold to put a maximum on the saliency map (whatever is above thr will be set to the maximum value)
     double normSal;
 
-    emorph::vtsHelper unwrap;
+    ev::vtsHelper unwrap;
 
     yarp::sig::Matrix activationMap;
     yarp::sig::Matrix salMapLeft;
@@ -157,7 +156,7 @@ public:
     void    interrupt();
 
     //this is the entry point to your main functionality
-    void    onRead(emorph::vBottle &bot);
+    void    onRead(ev::vBottle &bot);
 
 
 

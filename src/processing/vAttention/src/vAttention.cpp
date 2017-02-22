@@ -295,7 +295,7 @@ bool vAttentionManager::open(const std::string moduleName, bool strictness) {
 
     // why is the input port treated differently???? both in open and close
     std::string inPortName = "/" + moduleName + "/vBottle:i";
-    bool check = BufferedPort<emorph::vBottle>::open(inPortName);
+    bool check = BufferedPort<ev::vBottle>::open(inPortName);
 
     if (strictness) outPort.setStrict();
     std::string outPortName = "/" + moduleName + "/vBottle:o";
@@ -339,7 +339,7 @@ bool vAttentionManager::open(const std::string moduleName, bool strictness) {
 void vAttentionManager::close() {
     //close ports
     outPort.close();
-    yarp::os::BufferedPort<emorph::vBottle>::close();
+    yarp::os::BufferedPort<ev::vBottle>::close();
     outSalMapLeftPort.close();
     outActivationMapPort.close();
 }
@@ -347,20 +347,22 @@ void vAttentionManager::close() {
 void vAttentionManager::interrupt() {
     //pass on the interrupt call to everything needed
     outPort.interrupt();
-    yarp::os::BufferedPort<emorph::vBottle>::interrupt();
+    yarp::os::BufferedPort<ev::vBottle>::interrupt();
     outSalMapLeftPort.interrupt();
     outActivationMapPort.interrupt();
 }
 
-void vAttentionManager::onRead(emorph::vBottle &bot) {
+void vAttentionManager::onRead(ev::vBottle &bot) {
     numIterations ++;
     /* get the event queue in the vBottle bot */
-    emorph::vQueue q = bot.get<emorph::AddressEvent>();
+    ev::vQueue q = bot.get<ev::AddressEvent>();
+
     q.sort(true);
 
     int x,y;
-    for (emorph::vQueue::iterator qi = q.begin(); qi != q.end(); qi++) {
-        emorph::AddressEvent *aep = (*qi)->getAs<emorph::AddressEvent>();
+    for (ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++) {
+        ev::event<ev::AddressEvent> aep = ev::getas<ev::AddressEvent>(*qi);
+
         if (!aep) continue;
 
         x = aep->getX();
@@ -424,7 +426,7 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
      if(pFeaOn[posFeaImage] > thrOn) {
      std::cout << "adding On event to vBottle" << std::endl;
 
-     emorph::AddressEvent ae = *aep;
+     ev::AddressEvent ae = *aep;
      ae.setPolarity(1);
      ae.setX(xevent);
      ae.setY(yevent);
@@ -434,7 +436,7 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
      }
      else if(pFeaOff[posFeaImage] < thrOff) {
      std::cout << "adding Off event to vBottle" << std::endl;
-     emorph::AddressEvent ae = *aep;
+     ev::AddressEvent ae = *aep;
      ae.setPolarity(0);
      ae.setX(xevent);
      ae.setY(yevent);
@@ -442,7 +444,7 @@ void vAttentionManager::onRead(emorph::vBottle &bot) {
      outBottle->addEvent(ae);
 
      }
-    emorph::vBottle &outBottle = outPort.prepare();
+    ev::vBottle &outBottle = outPort.prepare();
     outBottle.clear();
     yarp::os::Stamp st;
     this->getEnvelope(st);
