@@ -47,7 +47,7 @@ bool vAttentionModule::configure(yarp::os::ResourceFinder &rf) {
     /* set parameters */
     int sensorWidth = rf.check("sensorWidth", yarp::os::Value(304)).asInt();
     int sensorHeight = rf.check("sensorHeight", yarp::os::Value(240)).asInt();
-    double tau = rf.check("tau", yarp::os::Value(1.5)).asDouble();
+    double tau = rf.check("tau", yarp::os::Value(4.0)).asDouble();
     double thrSal = rf.check("thr", yarp::os::Value(20)).asDouble();
     string filtersPath = rf.check("filtersPath", yarp::os::Value("../../src/processing/vAttention/filters/")).asString();
 
@@ -187,10 +187,10 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
 //    orient135DOGFilterMap = gauss2 + gauss1 - gauss3;
 
 
-    int gaborFilterSize = 15;
-    double sigmaGabor =(double) gaborFilterSize / 5.5;
+    int gaborFilterSize = 30;
+    double sigmaGabor =(double) gaborFilterSize / 4.0;
     double fGabor = 2.0 /(double) gaborFilterSize;
-    double amplGabor = 6;
+    double amplGabor = .7;
 //    amplGabor *= 100;
 
     //Generating Gabor filters
@@ -201,7 +201,7 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
 
     gaborFilterSize = 21;
     fGabor = 2.0 /(double) gaborFilterSize;
-    sigmaGabor =(double) gaborFilterSize / 5.5;
+    sigmaGabor =(double) gaborFilterSize / 8.0;
     amplGabor = -15;
 
 //    amplGabor *= 100;
@@ -481,10 +481,10 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     convertToImage(threshOrient90FeatureMap, imageOrient90, salMapPadding);
     convertToImage(threshOrient135FeatureMap, imageOrient135, salMapPadding);
 
-    convertToImage(orient0DOGFeatureMap, imageDOGorient0, salMapPadding);
-    convertToImage(orient45DOGFeatureMap, imageDOGorient45, salMapPadding);
-    convertToImage(orient90DOGFeatureMap, imageDOGorient90, salMapPadding);
-    convertToImage(orient135DOGFeatureMap, imageDOGorient135, salMapPadding);
+//    convertToImage(orient0DOGFeatureMap, imageDOGorient0, salMapPadding);
+//    convertToImage(orient45DOGFeatureMap, imageDOGorient45, salMapPadding);
+//    convertToImage(orient90DOGFeatureMap, imageDOGorient90, salMapPadding);
+//    convertToImage(orient135DOGFeatureMap, imageDOGorient135, salMapPadding);
 
 //    convertToImage(orient0FilterMap, imageOrient0,0);
 //    convertToImage(orient45FilterMap, imageOrient45, 0);
@@ -513,17 +513,6 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
 
 
     // --- writing images of left and right saliency maps on output port
-
-//    std::cout << "imageLeft.width() = " << imageLeft.width() << std::endl;
-//    std::cout << "imageLeft.height() = " << imageLeft.height() << std::endl;
-//    int count = 0;
-//    for (int i = 0; i < imageLeft.height(); ++i) {
-//        for (int j = 0; j < imageLeft.width(); ++j) {
-//            if (imageLeft(i,j).b == 0 && imageLeft(i,j).r == 0 && imageLeft(i,j).g == 0)
-//                count++;
-//        }
-//    }
-//    std::cout << "count = " << count << std::endl;
 
     if (outSalMapLeftPort.getOutputCount()) {
         outSalMapLeftPort.write();
@@ -650,13 +639,19 @@ void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Ma
 void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
 
     yarp::sig::Matrix decisionMap = map;
+//    std::cout << "map.rows() = " << map.rows() << std::endl;
+//    std::cout << "map.cols() = " << map.cols() << std::endl;
+
     int rectSize = 20;
 
-    for (int i = -rectSize; i < rectSize; ++i) {
-        clamp(i,0,map.rows());
-        for (int j = -rectSize; j < rectSize; ++j) {
-            clamp(j, 0,map.cols());
-            decisionMap(i + attPointRow,j + attPointCol) *= 0.5;
+    int row, col;
+    for (int i = attPointRow - rectSize; i < attPointRow + rectSize; ++i) {
+        row = i;
+        clamp(row,0,map.rows());
+        for (int j = attPointCol - rectSize; j < attPointCol + rectSize; ++j) {
+            col = j;
+            clamp(col, 0,map.cols());
+            decisionMap(row, col) *= 0.5;
         }
     }
     maxInMap(decisionMap);
