@@ -56,7 +56,8 @@ private:
     int salMapPadding;
     int numIterations;
     double tau;
-    double prevT;
+    unsigned long int prevT;
+
     double thrSal; // threshold to put a maximum on the saliency map (whatever is above thr will be set to the maximum value)
     double normSal;
 
@@ -105,7 +106,7 @@ private:
 
     void decayMap (yarp::sig::Matrix& map, double dt);
 
-    void updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int x, int y);
+    void updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int row, int col);
 
     void normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Matrix &normalisedMap);
 

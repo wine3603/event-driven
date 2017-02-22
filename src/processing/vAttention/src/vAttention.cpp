@@ -372,23 +372,25 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
         if (aep->getChannel() == 0) {
             //TODO handle left and right salMap
             //Update gabor
-            updateMap(orient0FeatureMap, orient0FilterMap, x, y);
-            updateMap(orient45FeatureMap, orient45FilterMap, x, y);
-            updateMap(orient90FeatureMap, orient90FilterMap, x, y);
-            updateMap(orient135FeatureMap, orient135FilterMap, x, y);
+            updateMap(orient0FeatureMap, orient0FilterMap, y, x);
+            updateMap(orient45FeatureMap, orient45FilterMap, y, x);
+            updateMap(orient90FeatureMap, orient90FilterMap, y, x);
+            updateMap(orient135FeatureMap, orient135FilterMap, y, x);
             //Update Gaussian
-//            updateMap(orient0DOGFeatureMap, orient0DOGFilterMap, x, y, dt);
-//            updateMap(orient45DOGFeatureMap, orient45DOGFilterMap, x, y, dt);
-//            updateMap(orient90DOGFeatureMap, orient90DOGFilterMap, x, y, dt);
-//            updateMap(orient135DOGFeatureMap, orient135DOGFilterMap, x, y, dt);
+//            updateMap(orient0DOGFeatureMap, orient0DOGFilterMap, y, x, dt);
+//            updateMap(orient45DOGFeatureMap, orient45DOGFilterMap, y, x, dt);
+//            updateMap(orient90DOGFeatureMap, orient90DOGFilterMap, y, x, dt);
+//            updateMap(orient135DOGFeatureMap, orient135DOGFilterMap, y, x, dt);
         } else {
             //TODO
         }
     }
 
-    double t = yarp::os::Time::now();
-    double dt = t - prevT;
+    unsigned long int t = unwrap (q.back().get()->getStamp());
+
+    double dt = (double)(t - prevT) * (80*pow(10,-9));
     prevT = t;
+
     decayMap(orient0FeatureMap, dt);
     decayMap(orient45FeatureMap, dt);
     decayMap(orient90FeatureMap, dt);
@@ -411,7 +413,6 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     threshold(orient45FeatureMap, threshOrient45FeatureMap, th, true);
     threshold(orient90FeatureMap, threshOrient90FeatureMap, th, true);
     threshold(orient135FeatureMap, threshOrient135FeatureMap, th, true);
-
 
     //Normalise Gaussian
 //    normaliseMap(orient0DOGFeatureMap,normalizedOrient0DOGFeatureMap);
@@ -512,6 +513,18 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
 
 
     // --- writing images of left and right saliency maps on output port
+
+//    std::cout << "imageLeft.width() = " << imageLeft.width() << std::endl;
+//    std::cout << "imageLeft.height() = " << imageLeft.height() << std::endl;
+//    int count = 0;
+//    for (int i = 0; i < imageLeft.height(); ++i) {
+//        for (int j = 0; j < imageLeft.width(); ++j) {
+//            if (imageLeft(i,j).b == 0 && imageLeft(i,j).r == 0 && imageLeft(i,j).g == 0)
+//                count++;
+//        }
+//    }
+//    std::cout << "count = " << count << std::endl;
+
     if (outSalMapLeftPort.getOutputCount()) {
         outSalMapLeftPort.write();
     }
@@ -551,14 +564,14 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
                                        int mapPaddingSize, int rMax, int cMax) {
 
     /*prepare output vBottle with images */
-    int imageRows = map.rows() - mapPaddingSize;
-    int imageCols = map.cols() - mapPaddingSize;
+    int imageRows = map.rows() - 2 * mapPaddingSize;
+    int imageCols = map.cols() - 2 * mapPaddingSize;
     image.resize(imageRows,imageCols);
     image.setTopIsLowIndex(true);
     image.zero();
 
     int shiftedR, shiftedC;
-    for (int r = imageRows - 1; r > 0; r--) {
+    for (int r = 0; r < imageRows; r++) {
         for (int c = 0; c < imageCols; c++) {
             yarp::sig::PixelBgr pixelBgr;
 
@@ -576,7 +589,7 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
                 pixelBgr.g = std::min(fabs(pixelValue), 255.0);
             }
 
-            image(c, imageRows - r) = pixelBgr;
+            image(r, c) = pixelBgr;
         }
     }
 }
@@ -593,7 +606,7 @@ void vAttentionManager::drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &ima
     }
 }
 
-void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int x, int y) {
+void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int row, int col) {
 
     int filterRows = filterMap.rows();
     int filterCols = filterMap.cols();
@@ -601,8 +614,8 @@ void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matri
     // ---- increase energy in the location of the event ---- //
     for (int rf = 0; rf < filterRows; rf++) {
         for (int cf = 0; cf < filterCols; cf++) {
-            map(x + rf, y + cf) += filterMap(rf, cf);
-            clamp (map(x + rf, y + cf), -2000.0, 2000.0);
+            map(row + rf, col + cf) += filterMap(rf, cf);
+            clamp (map(row + rf, col + cf), -2000.0, 2000.0);
         }
     }
 
@@ -813,5 +826,6 @@ void vAttentionManager::clamp(T &val, T min, T max) {
     val = std::max (min, val);
     val = std::min (max, val);
 }
+
 
 //empty line to make gcc happy
