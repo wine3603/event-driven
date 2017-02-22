@@ -131,8 +131,8 @@ private:
     void computeBoundingBox(const yarp::sig::Matrix &map, double threshold, int centerRow, int centerCol,
                                 int &topRow, int &topCol, int &bottomRow, int &bottomCol);
 
-    void drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
-                             int bottomRow, int bottomCol);
+    bool drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+                         int bottomRow, int bottomCol);
 
     void maxInMap(const yarp::sig::Matrix &map);
 

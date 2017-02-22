@@ -500,15 +500,23 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
 //    salMapLeft = normalizedOrient0FeatureMap + normalizedOrient45FeatureMap + normalizedOrient90FeatureMap + normalizedOrient135FeatureMap;
 //             + normalizedOrient0DOGFeatureMap + normalizedOrient45DOGFeatureMap + normalizedOrient90DOGFeatureMap + normalizedOrient135DOGFeatureMap;
 
-    salMapLeft = threshOrient0FeatureMap + threshOrient45FeatureMap + threshOrient90FeatureMap + threshOrient135FeatureMap;
-    salMapLeft /= 4;
-    computeAttentionPoint(salMapLeft);
+//    salMapLeft = threshOrient0FeatureMap + threshOrient45FeatureMap + threshOrient90FeatureMap + threshOrient135FeatureMap;
+//    salMapLeft /= 4;
+    salMapLeft.zero();
+    for (int i = 100; i < 150; ++i) {
+        for (int j = 100; j < 150; ++j) {
+            salMapLeft(i,j) = 255;
+        }
+    }
+//    computeAttentionPoint(salMapLeft);
 
-    int topX,topY,bottomX,bottomY;
-    computeBoundingBox(salMapLeft, 10, attPointRow, attPointCol, topY, topX, bottomY, bottomX);
+    int topCol,topRow,bottomCol,bottomRow;
+    computeBoundingBox(salMapLeft, 10, 125, 125, topRow, topCol, bottomRow, bottomCol);
+    convertToImage(salMapLeft, imageLeft, salMapPadding, 125,125);
+//    computeBoundingBox(salMapLeft, 10, attPointRow, attPointCol, topRow, topCol, bottomRow, bottomCol);
 
-    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
-    drawBoundingBox(imageLeft, topY, topX, bottomY, bottomX);
+//    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
+    drawBoundingBox(imageLeft, topRow - salMapPadding, topCol - salMapPadding, bottomRow - salMapPadding, bottomCol - salMapPadding);
     convertToImage(activationMap, imageActivation, salMapPadding, attPointRow, attPointCol);
 
 
@@ -555,7 +563,7 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
     /*prepare output vBottle with images */
     int imageRows = map.rows() - 2 * mapPaddingSize;
     int imageCols = map.cols() - 2 * mapPaddingSize;
-    image.resize(imageRows,imageCols);
+    image.resize(imageCols, imageRows);
     image.setTopIsLowIndex(true);
     image.zero();
 
@@ -578,7 +586,7 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
                 pixelBgr.g = std::min(fabs(pixelValue), 255.0);
             }
 
-            image(r, c) = pixelBgr;
+            image(c, r) = pixelBgr;
         }
     }
 }
@@ -754,24 +762,37 @@ void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double 
         previousInternalEnergy = internalEnergy;
         energyInArea(map, topRow, topCol, bottomRow, bottomCol, internalEnergy);
     }
-    //TODO debug and draw bounding box
+    //TODO debug
 }
 
-void vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+bool vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
                                         int bottomRow, int bottomCol) {
+    bool inRange = true;
+    inRange &= (topRow >= 0 && topRow < image.height());
+    inRange &= (topCol >= 0 && topCol < image.width());
+    inRange &= (bottomRow >= 0 && bottomRow < image.height());
+    inRange &= (bottomCol >= 0 && bottomCol < image.width());
+    if (!inRange)
+        return false;
+
     for (int i = topCol; i < bottomCol; ++i) {
-        image(i,topRow) = yarp::sig::PixelBgr(255,0,0);
+        if (i >= 0 && i < image.width())
+            image(i, topRow) = yarp::sig::PixelBgr(255,0,0);
     }
     for (int i = topCol; i < bottomCol; ++i) {
-        image(i,bottomRow) = yarp::sig::PixelBgr(255,0,0);
+        if (i >= 0 && i < image.width())
+            image(i, bottomRow) = yarp::sig::PixelBgr(255,0,0);
     }
     for (int i = topRow; i < bottomRow; ++i) {
-        image(topCol,i) = yarp::sig::PixelBgr(255,0,0);
+        if (i >= 0 && i < image.height())
+            image(topCol, i) = yarp::sig::PixelBgr(255,0,0);
     }
     for (int i = topRow; i < bottomRow; ++i) {
-        image(bottomCol,i) = yarp::sig::PixelBgr(255,0,0);
+        if (i >= 0 && i < image.height())
+            image(bottomCol, i) = yarp::sig::PixelBgr(255,0,0);
     }
 
+    return true;
 };
 
 void vAttentionManager::convolve(const yarp::sig::Matrix &featureMap, yarp::sig::Matrix &convolvedFeatureMap,
