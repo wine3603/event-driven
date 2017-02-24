@@ -4,12 +4,12 @@
 
 cmake_minimum_required(VERSION 2.6)
 
-add_subdirectory(vFlow)
-add_subdirectory(vAttention)
+#add_subdirectory(vFlow)
+#add_subdirectory(vAttention)
 #add_subdirectory(vFeatureMap)
 #add_subdirectory(vSaliencyMap)
 #add_subdirectory(vAnalysis)
-add_subdirectory(vCluster)
+#add_subdirectory(vCluster)
 add_subdirectory(vPepper)
 
 if(ICUB_FOUND)
@@ -17,8 +17,8 @@ if(ICUB_FOUND)
 #    add_subdirectory(vCircleDisparity)
 endif(ICUB_FOUND)
 
-add_subdirectory(vCorner)
-add_subdirectory(vRepTest)
+#add_subdirectory(vCorner)
+#add_subdirectory(vRepTest)
 
 if(OPENCV_FOUND)
     add_subdirectory(vUndistortCam)

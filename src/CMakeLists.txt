@@ -17,7 +17,6 @@ if(NOT V_BUILD_ZYNQ)
         add_subdirectory(robotio)
         file(GLOB xmldocumentation ${xmldocumentation} ${CMAKE_CURRENT_SOURCE_DIR}/robotio/*/*.xml)
     endif(ICUB_FOUND)
-endif(NOT EMORPH_BUILD_ZYNQ)
 
 endif(NOT V_BUILD_ZYNQ)
 
