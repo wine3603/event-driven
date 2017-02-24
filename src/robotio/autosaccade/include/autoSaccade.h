@@ -63,7 +63,9 @@ private:
     yarp::os::RpcServer     rpcPort;
 
     //the event bottle input and output handler
-    EventBottleManager      eventBottleManager;
+//    EventBottleManager      eventBottleManager;
+
+    yarp::os::Port eventCount;
 
     int context0;
     

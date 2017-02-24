@@ -97,14 +97,15 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     maxVps = rf.check("maxVpS", yarp::os::Value(55000)).asDouble();
     prevStamp =  std::numeric_limits<double>::max(); //max value
 
-    eventBottleManager.open(moduleName);
+    eventCount.open(moduleName + "/eventCount:i");
+
     return true ;
 }
 
 bool saccadeModule::interruptModule() {
     std::cout << "Interrupting" << std::endl;
     rpcPort.interrupt();
-    eventBottleManager.interrupt();
+    eventCount.interrupt();
     std::cout << "Finished Interrupting" << std::endl;
     return true;
 }
@@ -113,7 +114,7 @@ bool saccadeModule::close() {
 
     std::cout << "Closing" << std::endl;
     rpcPort.close();
-    eventBottleManager.close();
+    eventCount.close();
 //    delete pc;
     delete gazeControl;
 //    delete ec;
@@ -159,12 +160,14 @@ void saccadeModule::performSaccade() {
 
 bool saccadeModule::updateModule() {
     //if there is no connection don't do anything yet
-    if(!eventBottleManager.getInputCount()) return true;
+    if(!eventCount.getInputCount()) return true;
 
+    yarp::os::Bottle vCountBottle;
 
+    eventCount.read(vCountBottle);
     //check the last time stamp and count
-    unsigned long int latestStamp = eventBottleManager.getTime();
-    unsigned long int vCount = 1000000 * eventBottleManager.popCount();
+    double latestStamp = yarp::os::Time::now();
+    int vCount = vCountBottle.get(0).asInt();
 
     double vPeriod = latestStamp - prevStamp;
 
