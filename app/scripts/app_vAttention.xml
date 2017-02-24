@@ -79,7 +79,7 @@
     </connection>
 
     <connection>
-        <from>/vAttention/salMapLeft:o</from>
+        <from>/vAttention/salMapLeftEdges:o</from>
         <to>/viewLeft</to>
         <protocol>tcp</protocol>
     </connection>

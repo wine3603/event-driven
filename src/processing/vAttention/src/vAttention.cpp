@@ -160,7 +160,7 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     int gaborSize = 15;
     double sigmaGabor =(double) gaborSize / 4.0;
     double fGabor = 2.0 /(double) gaborSize;
-    double amplGabor = 0.7;
+    double amplGabor = 0.4;
 //    amplGabor *= 100;
 
     filterSize = max(gaborSize, filterSize);
@@ -170,7 +170,7 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     generateGaborFilter(gabor90, gaborSize, amplGabor, fGabor, sigmaGabor, 90);
     generateGaborFilter(gabor135, gaborSize, amplGabor, fGabor, sigmaGabor, 135);
 
-    gaborSize = 15;
+    gaborSize = 11;
     fGabor = 1.0 /(double) gaborSize;
     sigmaGabor =(double) gaborSize / 4.0;
     amplGabor = -1.5;
@@ -193,8 +193,9 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     int mapWidth = sensorWidth / boxWidth + 2 * salMapPadding;
     int mapHeight = sensorHeight / boxHeight + 2 * salMapPadding;
 
-    eventMap = yarp::sig::Matrix(sensorHeight / 2, sensorWidth / 2);
-    salMapLeft = yarp::sig::Matrix(mapHeight, mapWidth);
+    eventMap = yarp::sig::Matrix(sensorHeight / boxHeight, sensorWidth / boxWidth);
+    salMapLeftEdges = yarp::sig::Matrix(mapHeight, mapWidth);
+    salMapLeftSpread = yarp::sig::Matrix(mapHeight, mapWidth);
     salMapRight = yarp::sig::Matrix(mapHeight, mapWidth);
     gabor0FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
     gabor45FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
@@ -206,7 +207,7 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     negGabor135FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
     activationMap = yarp::sig::Matrix(mapHeight, mapWidth);
 
-    salMapLeft.zero();
+    salMapLeftEdges.zero();
     salMapRight.zero();
     activationMap.zero();
 }
@@ -347,7 +348,7 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
         }
     }
 
-    int IORSize = 10;
+    int IORSize = 5;
     double ampl;
     int topRowIOR = attPointRow - IORSize;
     int bottomRowIOR = attPointRow + IORSize;
@@ -358,15 +359,14 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
         for (int c = 0; c < eventMap.cols(); ++c) {
             ampl = (double) eventMap(r, c);
             if (ampl != 0) {
-//                ampl = 1;
                 updateMap(gabor0FeatureMap, ampl * gabor0, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
                 updateMap(gabor45FeatureMap, ampl * gabor45, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
                 updateMap(gabor90FeatureMap, ampl * gabor90, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
                 updateMap(gabor135FeatureMap, ampl * gabor135, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
-                updateMap(negGabor0FeatureMap, ampl * negGabor0, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
-                updateMap(negGabor45FeatureMap, ampl * negGabor45, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
-                updateMap(negGabor90FeatureMap, ampl * negGabor90, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
-                updateMap(negGabor135FeatureMap, ampl * negGabor135, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+//                updateMap(negGabor0FeatureMap, ampl * negGabor0, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+//                updateMap(negGabor45FeatureMap, ampl * negGabor45, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+//                updateMap(negGabor90FeatureMap, ampl * negGabor90, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+//                updateMap(negGabor135FeatureMap, ampl * negGabor135, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
             }
         }
     }
@@ -388,15 +388,15 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
 
     decayMap(activationMap, dt);
 
-    threshold(gabor0FeatureMap, gabor0FeatureMap, 0);
-    threshold(gabor45FeatureMap, gabor45FeatureMap, 0);
-    threshold(gabor90FeatureMap, gabor90FeatureMap, 0);
-    threshold(gabor135FeatureMap, gabor135FeatureMap, 0);
-
-    threshold(negGabor0FeatureMap, negGabor0FeatureMap, 0);
-    threshold(negGabor45FeatureMap, negGabor45FeatureMap, 0);
-    threshold(negGabor90FeatureMap, negGabor90FeatureMap, 0);
-    threshold(negGabor135FeatureMap, negGabor135FeatureMap, 0);
+//    threshold(gabor0FeatureMap, gabor0FeatureMap, 0);
+//    threshold(gabor45FeatureMap, gabor45FeatureMap, 0);
+//    threshold(gabor90FeatureMap, gabor90FeatureMap, 0);
+//    threshold(gabor135FeatureMap, gabor135FeatureMap, 0);
+//
+//    threshold(negGabor0FeatureMap, negGabor0FeatureMap, 0);
+//    threshold(negGabor45FeatureMap, negGabor45FeatureMap, 0);
+//    threshold(negGabor90FeatureMap, negGabor90FeatureMap, 0);
+//    threshold(negGabor135FeatureMap, negGabor135FeatureMap, 0);
 
     double th = 50;
     bool binary = false;
@@ -410,6 +410,17 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     threshold(negGabor90FeatureMap, threshNegGabor90FeatureMap, th, binary);
     threshold(negGabor135FeatureMap, threshNegGabor135FeatureMap, th, binary);
 
+    if (binary) {
+        threshGabor0FeatureMap *= 255;
+        threshGabor45FeatureMap *= 255;
+        threshGabor90FeatureMap *= 255;
+        threshGabor135FeatureMap *= 255;
+
+        threshNegGabor0FeatureMap *= 255;
+        threshNegGabor45FeatureMap *= 255;
+        threshNegGabor90FeatureMap *= 255;
+        threshNegGabor135FeatureMap *= 255;
+    }
     //  --- convert to images for display --- //
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageLeft = outSalMapLeftPort.prepare();
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageActivation = outActivationMapPort.prepare();
@@ -424,15 +435,7 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor90 = outNegGabor90Port.prepare();
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor135 = outNegGabor135Port.prepare();
 
-//    threshGabor0FeatureMap *= 255;
-//    threshGabor45FeatureMap *= 255;
-//    threshGabor90FeatureMap *= 255;
-//    threshGabor135FeatureMap *= 255;
-//
-//    threshNegGabor0FeatureMap *= 255;
-//    threshNegGabor45FeatureMap *= 255;
-//    threshNegGabor90FeatureMap *= 255;
-//    threshNegGabor135FeatureMap *= 255;
+
 
     convertToImage(threshGabor0FeatureMap, imageGabor0, salMapPadding);
     convertToImage(threshGabor45FeatureMap, imageGabor45, salMapPadding);
@@ -457,44 +460,52 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
 
 
 
-    salMapLeft.zero();
+    salMapLeftEdges.zero();
     for (int i = 100; i < 150; ++i) {
         for (int j = 100; j < 150; ++j) {
-            salMapLeft(i,j) = 255;
+            salMapLeftEdges(i,j) = 255;
         }
     }
-    computeBoundingBox(salMapLeft, 10, 125, 125, topRow, topCol, bottomRow, bottomCol);
-    convertToImage(salMapLeft, imageLeft, salMapPadding, 125,125);
+    computeBoundingBox(salMapLeftEdges, 10, 125, 125, topRow, topCol, bottomRow, bottomCol);
+    convertToImage(salMapLeftEdges, imageLeft, salMapPadding, 125,125);
 */
 
-//    salMapLeft = threshGabor0FeatureMap + threshGabor45FeatureMap + threshGabor90FeatureMap + threshGabor135FeatureMap;
-    salMapLeft = threshNegGabor0FeatureMap + threshNegGabor45FeatureMap + threshNegGabor90FeatureMap + threshNegGabor135FeatureMap,
+    salMapLeftEdges = threshGabor0FeatureMap + threshGabor45FeatureMap + threshGabor90FeatureMap + threshGabor135FeatureMap;
+    normaliseMap(salMapLeftEdges,salMapLeftEdges);
+    salMapLeftSpread = threshNegGabor0FeatureMap + threshNegGabor45FeatureMap + threshNegGabor90FeatureMap + threshNegGabor135FeatureMap,
+    normaliseMap(salMapLeftSpread,salMapLeftSpread);
 
-            salMapLeft /= 4;
+//            salMapLeftEdges = salMapLeftSpread;
+    salMapLeftEdges*= 200000;
 
-    int prevAttRow = attPointRow;
-    int prevAttCol = attPointCol;
-    computeAttentionPoint(salMapLeft, attPointRow, attPointCol);
+//    threshold(salMapLeftEdges, salMapLeftEdges, 50);
+    int r1 = salMapPadding;
+    int c1 = salMapPadding;
+    int r2 = salMapLeftEdges.rows() - salMapPadding;
+    int c2 = salMapLeftEdges.cols() - salMapPadding;
+    computeAttentionPoint(salMapLeftEdges.submatrix(r1,r2,c1,c2), attPointRow, attPointCol);
+    attPointRow += salMapPadding;
+    attPointCol += salMapPadding;
 //    int rectSize = 15;
 //
 //    for (int r = attPointRow - rectSize; r < attPointRow + rectSize; ++r) {
-//        if (r < 0 || r >= salMapLeft.rows())
+//        if (r < 0 || r >= salMapLeftEdges.rows())
 //            continue;
 //        for (int c = attPointCol - rectSize; c < attPointCol + rectSize; ++c) {
-//            if (c < 0 || r >= salMapLeft.cols())
+//            if (c < 0 || r >= salMapLeftEdges.cols())
 //                continue;
-//            salMapLeft(r, c) *= 0.3;
+//            salMapLeftEdges(r, c) *= 0.3;
 //        }
 //    }
 //    std::cout << "attPointCol = " << attPointCol << std::endl;
 //    std::cout << "attPointRow = " << attPointRow << std::endl;
     int topCol,topRow,bottomCol,bottomRow;
-//    computeBoundingBox(salMapLeft, 10, attPointRow, attPointCol, topRow, topCol, bottomRow, bottomCol);
+//    computeBoundingBox(salMapLeftEdges, 10, attPointRow, attPointCol, topRow, topCol, bottomRow, bottomCol);
     topRow = attPointRow - IORSize;
     topCol = attPointCol - IORSize;
     bottomRow = attPointRow + IORSize;
     bottomCol = attPointCol + IORSize;
-    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
+    convertToImage(salMapLeftEdges, imageLeft, salMapPadding, attPointRow, attPointCol);
     drawBoundingBox(imageLeft, topRow - salMapPadding, topCol - salMapPadding, bottomRow - salMapPadding, bottomCol - salMapPadding);
 
     convertToImage(activationMap, imageActivation, salMapPadding, attPointRow, attPointCol);
@@ -588,16 +599,20 @@ void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matri
     int filterRows = filterMap.rows();
     int filterCols = filterMap.cols();
     int rMap, cMap;
+    bool inIOR;
     // ---- increase energy in the location of the event ---- //
     for (int rFil = 0; rFil < filterRows; rFil++) {
         for (int cFil = 0; cFil < filterCols; cFil++) {
             rMap = row + rFil;
             cMap = col + cFil;
-            if (rMap >= topRow && rMap < bottomRow)
-                if (cMap >= topCol && cMap < bottomCol)
-                    continue;
-            map(row + rFil, col + cFil) += filterMap(rFil, cFil);
-            clamp (map(row + rFil, col + cFil), -2000.0, 2000.0);
+            inIOR = (rMap >= topRow && rMap < bottomRow);
+            inIOR &= (cMap >= topCol && cMap < bottomCol);
+            if (inIOR) {
+                map(rMap, cMap) = 0;
+            } else {
+                map(rMap, cMap) += filterMap(rFil, cFil);
+                clamp(map(row + rFil, col + cFil), -2000.0, 2000.0);
+            }
         }
     }
 
@@ -632,7 +647,7 @@ void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Ma
 void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map, int &attPointRow, int &attPointCol) {
 
     maxInMap(map, attPointRow, attPointCol);
-    activationMap(attPointRow,attPointCol) +=100;
+    activationMap(attPointRow, attPointCol) += 20;
     maxInMap(activationMap, attPointRow, attPointCol);
 
 //    int rectSize = 15;
@@ -744,34 +759,41 @@ void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double 
     //TODO debug. There is one extra iteration towards the top
 }
 
-bool vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+void vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
                                         int bottomRow, int bottomCol) {
-    bool inRange = true;
-    inRange &= (topRow >= 0 && topRow < image.height());
-    inRange &= (topCol >= 0 && topCol < image.width());
-    inRange &= (bottomRow >= 0 && bottomRow < image.height());
-    inRange &= (bottomCol >= 0 && bottomCol < image.width());
-    if (!inRange)
-        return false;
+//    bool inRange = true;
+//    inRange &= (topRow >= 0 && topRow < image.height());
+//    inRange &= (topCol >= 0 && topCol < image.width());
+//    inRange &= (bottomRow >= 0 && bottomRow < image.height());
+//    inRange &= (bottomCol >= 0 && bottomCol < image.width());
+//    if (!inRange)
+//        return false;
 
-    for (int i = topCol; i < bottomCol; ++i) {
-        if (i >= 0 && i < image.width())
-            image(i, topRow) = yarp::sig::PixelBgr(255,0,0);
-    }
-    for (int i = topCol; i < bottomCol; ++i) {
-        if (i >= 0 && i < image.width())
-            image(i, bottomRow) = yarp::sig::PixelBgr(255,0,0);
-    }
-    for (int i = topRow; i < bottomRow; ++i) {
-        if (i >= 0 && i < image.height())
-            image(topCol, i) = yarp::sig::PixelBgr(255,0,0);
-    }
-    for (int i = topRow; i < bottomRow; ++i) {
-        if (i >= 0 && i < image.height())
-            image(bottomCol, i) = yarp::sig::PixelBgr(255,0,0);
-    }
+    if (topRow >= 0 && topRow < image.height())
+        for (int i = topCol; i <= bottomCol; ++i) {
+            if (i >= 0 && i < image.width())
+                image(i, topRow) = yarp::sig::PixelBgr(255,0,0);
+        }
 
-    return true;
+    if (bottomRow >= 0 && bottomRow < image.height())
+        for (int i = topCol; i <= bottomCol; ++i) {
+            if (i >= 0 && i < image.width())
+                image(i, bottomRow) = yarp::sig::PixelBgr(255,0,0);
+        }
+
+    if (topCol >= 0 && topCol < image.width())
+        for (int i = topRow; i <= bottomRow; ++i) {
+            if (i >= 0 && i < image.height())
+                image(topCol, i) = yarp::sig::PixelBgr(255,0,0);
+        }
+
+    if (bottomCol >= 0 && bottomCol < image.width())
+        for (int i = topRow; i <= bottomRow; ++i) {
+            if (i >= 0 && i < image.height())
+                image(bottomCol, i) = yarp::sig::PixelBgr(255,0,0);
+        }
+
+//    return true;
 };
 
 void vAttentionManager::convolve(const yarp::sig::Matrix &featureMap, yarp::sig::Matrix &convolvedFeatureMap,

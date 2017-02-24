@@ -67,7 +67,8 @@ private:
     yarp::sig::Matrix eventMap;
 
     yarp::sig::Matrix activationMap;
-    yarp::sig::Matrix salMapLeft;
+    yarp::sig::Matrix salMapLeftEdges;
+    yarp::sig::Matrix salMapLeftSpread;
     yarp::sig::Matrix salMapRight;
 
     //Filters
@@ -128,7 +129,7 @@ private:
     void computeBoundingBox(const yarp::sig::Matrix &map, double threshold, int centerRow, int centerCol,
                                 int &topRow, int &topCol, int &bottomRow, int &bottomCol);
 
-    bool drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
+    void drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
                          int bottomRow, int bottomCol);
 
     void maxInMap(const yarp::sig::Matrix &map, int &rowMax, int &colMax);
