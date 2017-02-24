@@ -47,7 +47,7 @@ bool vAttentionModule::configure(yarp::os::ResourceFinder &rf) {
     /* set parameters */
     int sensorWidth = rf.check("sensorWidth", yarp::os::Value(304)).asInt();
     int sensorHeight = rf.check("sensorHeight", yarp::os::Value(240)).asInt();
-    double tau = rf.check("tau", yarp::os::Value(4.0)).asDouble();
+    double tau = rf.check("tau", yarp::os::Value(8.0)).asDouble();
     double thrSal = rf.check("thr", yarp::os::Value(20)).asDouble();
     string filtersPath = rf.check("filtersPath", yarp::os::Value("../../src/processing/vAttention/filters/")).asString();
 
@@ -155,80 +155,55 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     this->prevT = yarp::os::Time::now();
     normSal = thrSal / 255;
 
+    filterSize = 0;
 
-//    //Generating gaussian filters
-//    double sigmaGauss = 3;
-//
-//    double gaussAmpl = 10;// 1/(sqrt(2*M_PI) * sigmaGauss);
-//    int gaussSize = 24;
-//
-//    yarp::sig::Matrix gauss1;
-//    yarp::sig::Matrix gauss2;
-//    yarp::sig::Matrix gauss3;
-//
-//    generateOrientedGaussianFilter(gauss1, gaussAmpl, sigmaGauss / 4, sigmaGauss, 0, filterSize, gaussSize, gaussSize / 2, gaussSize *2/3);
-//    generateOrientedGaussianFilter(gauss2, gaussAmpl, sigmaGauss / 4, sigmaGauss, 0, filterSize, gaussSize, gaussSize / 2, gaussSize / 3);
-//    generateOrientedGaussianFilter(gauss3, gaussAmpl, sigmaGauss / 4, sigmaGauss, 0, filterSize, gaussSize, gaussSize/2, gaussSize/2);
-//    orient0DOGFilterMap = gauss2 + gauss1 - gauss3;
-//
-//    generateOrientedGaussianFilter(gauss1, gaussAmpl, sigmaGauss / 4, sigmaGauss, 45, filterSize, gaussSize, gaussSize * 1/3, gaussSize * 1/3);
-//    generateOrientedGaussianFilter(gauss2, gaussAmpl, sigmaGauss / 4, sigmaGauss, 45, filterSize, gaussSize, gaussSize * 2/3, gaussSize * 2/3);
-//    generateOrientedGaussianFilter(gauss3, gaussAmpl, sigmaGauss / 4, sigmaGauss, 45, filterSize, gaussSize, gaussSize/2, gaussSize/2);
-//    orient45DOGFilterMap = gauss2 + gauss1 - gauss3;
-//
-//    generateOrientedGaussianFilter(gauss1, gaussAmpl, sigmaGauss / 4, sigmaGauss, 90, filterSize, gaussSize, gaussSize * 1/3, gaussSize * 1/2);
-//    generateOrientedGaussianFilter(gauss2, gaussAmpl, sigmaGauss / 4, sigmaGauss, 90, filterSize, gaussSize, gaussSize * 2/3, gaussSize * 1/2);
-//    generateOrientedGaussianFilter(gauss3, gaussAmpl, sigmaGauss / 4, sigmaGauss, 90, filterSize, gaussSize, gaussSize/2, gaussSize/2);
-//    orient90DOGFilterMap = gauss2 + gauss1 - gauss3;
-//
-//    generateOrientedGaussianFilter(gauss1, gaussAmpl, sigmaGauss / 4, sigmaGauss, 135, filterSize, gaussSize, gaussSize * 2/3, gaussSize * 1/3);
-//    generateOrientedGaussianFilter(gauss2, gaussAmpl, sigmaGauss / 4, sigmaGauss, 135, filterSize, gaussSize, gaussSize * 1/3, gaussSize * 2/3);
-//    generateOrientedGaussianFilter(gauss3, gaussAmpl, sigmaGauss / 4, sigmaGauss, 135, filterSize, gaussSize, gaussSize/2, gaussSize/2);
-//    orient135DOGFilterMap = gauss2 + gauss1 - gauss3;
-
-
-    int gaborFilterSize = 30;
-    double sigmaGabor =(double) gaborFilterSize / 4.0;
-    double fGabor = 2.0 /(double) gaborFilterSize;
-    double amplGabor = .7;
+    int gaborSize = 15;
+    double sigmaGabor =(double) gaborSize / 4.0;
+    double fGabor = 2.0 /(double) gaborSize;
+    double amplGabor = 0.7;
 //    amplGabor *= 100;
 
+    filterSize = max(gaborSize, filterSize);
     //Generating Gabor filters
-    generateGaborFilter(orient0FilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 0, filterSize);
-    generateGaborFilter(orient45FilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 45, filterSize);
-    generateGaborFilter(orient90FilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 90, filterSize);
-    generateGaborFilter(orient135FilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 135, filterSize);
+    generateGaborFilter(gabor0, gaborSize, amplGabor, fGabor, sigmaGabor, 0);
+    generateGaborFilter(gabor45, gaborSize, amplGabor, fGabor, sigmaGabor, 45);
+    generateGaborFilter(gabor90, gaborSize, amplGabor, fGabor, sigmaGabor, 90);
+    generateGaborFilter(gabor135, gaborSize, amplGabor, fGabor, sigmaGabor, 135);
 
-    gaborFilterSize = 21;
-    fGabor = 2.0 /(double) gaborFilterSize;
-    sigmaGabor =(double) gaborFilterSize / 8.0;
-    amplGabor = -15;
+    gaborSize = 15;
+    fGabor = 1.0 /(double) gaborSize;
+    sigmaGabor =(double) gaborSize / 4.0;
+    amplGabor = -1.5;
+    filterSize = max(gaborSize, filterSize);
 
 //    amplGabor *= 100;
-//    fGabor = 3.0 /(double) filterSize;
-    generateGaborFilter(orient0DOGFilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 0, filterSize);
-    generateGaborFilter(orient45DOGFilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 45, filterSize);
-    generateGaborFilter(orient90DOGFilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 90, filterSize);
-    generateGaborFilter(orient135DOGFilterMap, gaborFilterSize, amplGabor, fGabor, sigmaGabor, 135, filterSize);
+    generateGaborFilter(negGabor0, gaborSize, amplGabor, fGabor, sigmaGabor, 0);
+    generateGaborFilter(negGabor45, gaborSize, amplGabor, fGabor, sigmaGabor, 45);
+    generateGaborFilter(negGabor90, gaborSize, amplGabor, fGabor, sigmaGabor, 90);
+    generateGaborFilter(negGabor135, gaborSize, amplGabor, fGabor, sigmaGabor, 135);
 
 
     this->salMapPadding = filterSize / 2 + filterSize %2;
 
     //for speed we predefine the memory for some matrices
     //The saliency map is bigger than the image of the maximum size among the loaded filters
-    int mapWidth = sensorWidth + 2 * salMapPadding;
-    int mapHeight = sensorHeight + 2 * salMapPadding;
+    boxWidth = 2;
+    boxHeight = 2;
 
+    int mapWidth = sensorWidth / boxWidth + 2 * salMapPadding;
+    int mapHeight = sensorHeight / boxHeight + 2 * salMapPadding;
+
+    eventMap = yarp::sig::Matrix(sensorHeight / 2, sensorWidth / 2);
     salMapLeft = yarp::sig::Matrix(mapHeight, mapWidth);
     salMapRight = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient0FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient45FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient90FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient135FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient0DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient45DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient90DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
-    orient135DOGFeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    gabor0FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    gabor45FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    gabor90FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    gabor135FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    negGabor0FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    negGabor45FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    negGabor90FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
+    negGabor135FeatureMap = yarp::sig::Matrix(mapHeight, mapWidth);
     activationMap = yarp::sig::Matrix(mapHeight, mapWidth);
 
     salMapLeft.zero();
@@ -238,8 +213,7 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
 
 
 void vAttentionManager::generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
-                                                       double theta, int &filterSize, int gaussianFilterSize, int xCenter,
-                                                       int yCenter) {
+                                                       double theta, int gaussianFilterSize, int xCenter, int yCenter) {
     //Resize to desired size
     filterMap.resize(gaussianFilterSize, gaussianFilterSize);
     filterMap.zero();
@@ -260,12 +234,10 @@ void vAttentionManager::generateOrientedGaussianFilter(yarp::sig::Matrix &filter
                                            + pow((c*rDist+d*cDist), 2) / (2 * pow(sigmaY, 2))));
         }
     }
-    //Update filterSize to comply with new filter
-    filterSize = max(gaussianFilterSize, filterSize);
 }
 
 void vAttentionManager::generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double A, double f,
-                                            double sigma, double theta, int &filterSize)
+                                            double sigma, double theta)
 {
     filterMap.resize(gaborFilterSize, gaborFilterSize);
     filterMap.zero();
@@ -281,9 +253,6 @@ void vAttentionManager::generateGaborFilter(yarp::sig::Matrix &filterMap, int ga
             filterMap(x,y) =A * exp(-(pow(x1,2.0)+pow(y1,2.0))/(2*pow(sigma,2))) * cos(2.0*M_PI*f*(x1*cos(th_r)+y1*sin(th_r)));
         }
     }
-
-    filterSize = max(gaborFilterSize,filterSize);
-
 }
 bool vAttentionManager::open(const std::string moduleName, bool strictness) {
     this->strictness = strictness;
@@ -307,29 +276,29 @@ bool vAttentionManager::open(const std::string moduleName, bool strictness) {
     outPortName = "/" + moduleName + "/activationMap:o";
     check &= outActivationMapPort.open(outPortName);
 
-    outPortName = "/" + moduleName + "/orient0:o";
-    check &= outOrient0Port.open(outPortName);
+    outPortName = "/" + moduleName + "/gabor0:o";
+    check &= outGabor0Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/orient45:o";
-    check &= outOrient45Port.open(outPortName);
+    outPortName = "/" + moduleName + "/gabor45:o";
+    check &= outGabor45Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/orient90:o";
-    check &= outOrient90Port.open(outPortName);
+    outPortName = "/" + moduleName + "/gabor90:o";
+    check &= outGabor90Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/orient135:o";
-    check &= outOrient135Port.open(outPortName);
+    outPortName = "/" + moduleName + "/gabor135:o";
+    check &= outGabor135Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/DOGorient0:o";
-    check &= outDOGorient0Port.open(outPortName);
+    outPortName = "/" + moduleName + "/negGabor0:o";
+    check &= outNegGabor0Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/DOGorient45:o";
-    check &= outDOGorient45Port.open(outPortName);
+    outPortName = "/" + moduleName + "/negGabor45:o";
+    check &= outNegGabor45Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/DOGorient90:o";
-    check &= outDOGorient90Port.open(outPortName);
+    outPortName = "/" + moduleName + "/negGabor90:o";
+    check &= outNegGabor90Port.open(outPortName);
 
-    outPortName = "/" + moduleName + "/DOGorient135:o";
-    check &= outDOGorient135Port.open(outPortName);
+    outPortName = "/" + moduleName + "/negGabor135:o";
+    check &= outNegGabor135Port.open(outPortName);
 
     std::cout << "\ninitialisation correctly ended" << std::endl;
 
@@ -353,36 +322,52 @@ void vAttentionManager::interrupt() {
 }
 
 void vAttentionManager::onRead(ev::vBottle &bot) {
-    numIterations ++;
+//    numIterations ++;
     /* get the event queue in the vBottle bot */
     ev::vQueue q = bot.get<ev::AddressEvent>();
 
     q.sort(true);
 
-    int x,y;
+    int x,y, xScaled, yScaled;
+    eventMap.zero();
     for (ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++) {
         ev::event<ev::AddressEvent> aep = ev::getas<ev::AddressEvent>(*qi);
 
         if (!aep) continue;
+        //TODO handle left and right salMap
 
         x = aep->getX();
         y = aep->getY();
-
-        // --- increase energy of saliency map  --- //
         if (aep->getChannel() == 0) {
-            //TODO handle left and right salMap
-            //Update gabor
-            updateMap(orient0FeatureMap, orient0FilterMap, y, x);
-            updateMap(orient45FeatureMap, orient45FilterMap, y, x);
-            updateMap(orient90FeatureMap, orient90FilterMap, y, x);
-            updateMap(orient135FeatureMap, orient135FilterMap, y, x);
-            //Update Gaussian
-//            updateMap(orient0DOGFeatureMap, orient0DOGFilterMap, y, x, dt);
-//            updateMap(orient45DOGFeatureMap, orient45DOGFilterMap, y, x, dt);
-//            updateMap(orient90DOGFeatureMap, orient90DOGFilterMap, y, x, dt);
-//            updateMap(orient135DOGFeatureMap, orient135DOGFilterMap, y, x, dt);
+            xScaled = x / boxWidth;
+            yScaled = y / boxHeight;
+            eventMap(yScaled, xScaled) ++;
         } else {
             //TODO
+        }
+    }
+
+    int IORSize = 10;
+    double ampl;
+    int topRowIOR = attPointRow - IORSize;
+    int bottomRowIOR = attPointRow + IORSize;
+    int topColIOR = attPointCol - IORSize;
+    int bottomColIOR = attPointCol + IORSize;
+
+    for (int r = 0; r < eventMap.rows(); ++r) {
+        for (int c = 0; c < eventMap.cols(); ++c) {
+            ampl = (double) eventMap(r, c);
+            if (ampl != 0) {
+//                ampl = 1;
+                updateMap(gabor0FeatureMap, ampl * gabor0, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(gabor45FeatureMap, ampl * gabor45, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(gabor90FeatureMap, ampl * gabor90, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(gabor135FeatureMap, ampl * gabor135, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(negGabor0FeatureMap, ampl * negGabor0, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(negGabor45FeatureMap, ampl * negGabor45, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(negGabor90FeatureMap, ampl * negGabor90, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+                updateMap(negGabor135FeatureMap, ampl * negGabor135, r, c, topRowIOR, topColIOR, bottomRowIOR, bottomColIOR);
+            }
         }
     }
 
@@ -391,134 +376,128 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     double dt = (double)(t - prevT) * (80*pow(10,-9));
     prevT = t;
 
-    decayMap(orient0FeatureMap, dt);
-    decayMap(orient45FeatureMap, dt);
-    decayMap(orient90FeatureMap, dt);
-    decayMap(orient135FeatureMap, dt);
+    decayMap(gabor0FeatureMap, dt);
+    decayMap(gabor45FeatureMap, dt);
+    decayMap(gabor90FeatureMap, dt);
+    decayMap(gabor135FeatureMap, dt);
 
-    threshold(orient0FeatureMap, orient0FeatureMap, 0);
-    threshold(orient45FeatureMap, orient45FeatureMap, 0);
-    threshold(orient90FeatureMap, orient90FeatureMap, 0);
-    threshold(orient135FeatureMap, orient135FeatureMap, 0);
+    decayMap(negGabor0FeatureMap, dt);
+    decayMap(negGabor45FeatureMap, dt);
+    decayMap(negGabor90FeatureMap, dt);
+    decayMap(negGabor135FeatureMap, dt);
 
-    //Normalise Gabor
-//    normaliseMap(orient0FeatureMap,normalizedOrient0FeatureMap);
-//    normaliseMap(orient45FeatureMap,normalizedOrient45FeatureMap);
-//    normaliseMap(orient90FeatureMap,normalizedOrient90FeatureMap);
-//    normaliseMap(orient135FeatureMap,normalizedOrient135FeatureMap);
+    decayMap(activationMap, dt);
 
-//    double th = 0.0002;
+    threshold(gabor0FeatureMap, gabor0FeatureMap, 0);
+    threshold(gabor45FeatureMap, gabor45FeatureMap, 0);
+    threshold(gabor90FeatureMap, gabor90FeatureMap, 0);
+    threshold(gabor135FeatureMap, gabor135FeatureMap, 0);
+
+    threshold(negGabor0FeatureMap, negGabor0FeatureMap, 0);
+    threshold(negGabor45FeatureMap, negGabor45FeatureMap, 0);
+    threshold(negGabor90FeatureMap, negGabor90FeatureMap, 0);
+    threshold(negGabor135FeatureMap, negGabor135FeatureMap, 0);
+
     double th = 50;
-    threshold(orient0FeatureMap, threshOrient0FeatureMap, th, true);
-    threshold(orient45FeatureMap, threshOrient45FeatureMap, th, true);
-    threshold(orient90FeatureMap, threshOrient90FeatureMap, th, true);
-    threshold(orient135FeatureMap, threshOrient135FeatureMap, th, true);
+    bool binary = false;
+    threshold(gabor0FeatureMap, threshGabor0FeatureMap, th, binary);
+    threshold(gabor45FeatureMap, threshGabor45FeatureMap, th, binary);
+    threshold(gabor90FeatureMap, threshGabor90FeatureMap, th, binary);
+    threshold(gabor135FeatureMap, threshGabor135FeatureMap, th, binary);
 
-    //Normalise Gaussian
-//    normaliseMap(orient0DOGFeatureMap,normalizedOrient0DOGFeatureMap);
-//    normaliseMap(orient45DOGFeatureMap,normalizedOrient45DOGFeatureMap);
-//    normaliseMap(orient90DOGFeatureMap,normalizedOrient90DOGFeatureMap);
-//    normaliseMap(orient135DOGFeatureMap,normalizedOrient135DOGFeatureMap);
-
-
-    // ---- adding the event to the output vBottle if it passes thresholds ---- //
-
-    /*
-     if(pFeaOn[posFeaImage] > thrOn) {
-     std::cout << "adding On event to vBottle" << std::endl;
-
-     ev::AddressEvent ae = *aep;
-     ae.setPolarity(1);
-     ae.setX(xevent);
-     ae.setY(yevent);
-
-     outBottle->addEvent(ae);
-
-     }
-     else if(pFeaOff[posFeaImage] < thrOff) {
-     std::cout << "adding Off event to vBottle" << std::endl;
-     ev::AddressEvent ae = *aep;
-     ae.setPolarity(0);
-     ae.setX(xevent);
-     ae.setY(yevent);
-
-     outBottle->addEvent(ae);
-
-     }
-    ev::vBottle &outBottle = outPort.prepare();
-    outBottle.clear();
-    yarp::os::Stamp st;
-    this->getEnvelope(st);
-    outPort.setEnvelope(st);
-    // --- writing vBottle on buffered output port
-    if (strictness) {
-        outPort.writeStrict();
-    } else {
-        outPort.write();
-    }
-     */
+    threshold(negGabor0FeatureMap, threshNegGabor0FeatureMap, th, binary);
+    threshold(negGabor45FeatureMap, threshNegGabor45FeatureMap, th, binary);
+    threshold(negGabor90FeatureMap, threshNegGabor90FeatureMap, th, binary);
+    threshold(negGabor135FeatureMap, threshNegGabor135FeatureMap, th, binary);
 
     //  --- convert to images for display --- //
-
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageLeft = outSalMapLeftPort.prepare();
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageActivation = outActivationMapPort.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageOrient0 = outOrient0Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageOrient45 = outOrient45Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageOrient90 = outOrient90Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageOrient135 = outOrient135Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageDOGorient0 = outDOGorient0Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageDOGorient45 = outDOGorient45Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageDOGorient90 = outDOGorient90Port.prepare();
-    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageDOGorient135 = outDOGorient135Port.prepare();
 
-    threshOrient0FeatureMap *= 255;
-    threshOrient45FeatureMap *= 255;
-    threshOrient90FeatureMap *= 255;
-    threshOrient135FeatureMap *= 255;
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageGabor0 = outGabor0Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageGabor45 = outGabor45Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageGabor90 = outGabor90Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageGabor135 = outGabor135Port.prepare();
 
-    convertToImage(threshOrient0FeatureMap, imageOrient0,salMapPadding);
-    convertToImage(threshOrient45FeatureMap, imageOrient45, salMapPadding);
-    convertToImage(threshOrient90FeatureMap, imageOrient90, salMapPadding);
-    convertToImage(threshOrient135FeatureMap, imageOrient135, salMapPadding);
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor0 = outNegGabor0Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor45 = outNegGabor45Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor90 = outNegGabor90Port.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor135 = outNegGabor135Port.prepare();
 
-//    convertToImage(orient0DOGFeatureMap, imageDOGorient0, salMapPadding);
-//    convertToImage(orient45DOGFeatureMap, imageDOGorient45, salMapPadding);
-//    convertToImage(orient90DOGFeatureMap, imageDOGorient90, salMapPadding);
-//    convertToImage(orient135DOGFeatureMap, imageDOGorient135, salMapPadding);
-
-//    convertToImage(orient0FilterMap, imageOrient0,0);
-//    convertToImage(orient45FilterMap, imageOrient45, 0);
-//    convertToImage(orient90FilterMap, imageOrient90, 0);
-//    convertToImage(orient135FilterMap, imageOrient135, 0);
+//    threshGabor0FeatureMap *= 255;
+//    threshGabor45FeatureMap *= 255;
+//    threshGabor90FeatureMap *= 255;
+//    threshGabor135FeatureMap *= 255;
 //
-//    convertToImage(orient0DOGFilterMap, imageDOGorient0, 0);
-//    convertToImage(orient45DOGFilterMap, imageDOGorient45, 0);
-//    convertToImage(orient90DOGFilterMap, imageDOGorient90, 0);
-//    convertToImage(orient135DOGFilterMap, imageDOGorient135, 0);
+//    threshNegGabor0FeatureMap *= 255;
+//    threshNegGabor45FeatureMap *= 255;
+//    threshNegGabor90FeatureMap *= 255;
+//    threshNegGabor135FeatureMap *= 255;
+
+    convertToImage(threshGabor0FeatureMap, imageGabor0, salMapPadding);
+    convertToImage(threshGabor45FeatureMap, imageGabor45, salMapPadding);
+    convertToImage(threshGabor90FeatureMap, imageGabor90, salMapPadding);
+    convertToImage(threshGabor135FeatureMap, imageGabor135, salMapPadding);
+
+    convertToImage(threshNegGabor0FeatureMap, imageNegGabor0, salMapPadding);
+    convertToImage(threshNegGabor45FeatureMap, imageNegGabor45, salMapPadding);
+    convertToImage(threshNegGabor90FeatureMap, imageNegGabor90, salMapPadding);
+    convertToImage(threshNegGabor135FeatureMap, imageNegGabor135, salMapPadding);
+
+    /* DEBUG STUFF
+    convertToImage(gabor0, imageGabor0,0);
+    convertToImage(gabor45, imageGabor45, 0);
+    convertToImage(gabor90, imageGabor90, 0);
+    convertToImage(gabor135, imageGabor135, 0);
+
+    convertToImage(negGabor0, imageNegGabor0, 0);
+    convertToImage(negGabor45, imageNegGabor45, 0);
+    convertToImage(negGabor90, imageNegGabor90, 0);
+    convertToImage(negGabor135, imageNegGabor135, 0);
 
 
-//    salMapLeft = normalizedOrient0FeatureMap + normalizedOrient45FeatureMap + normalizedOrient90FeatureMap + normalizedOrient135FeatureMap;
-//             + normalizedOrient0DOGFeatureMap + normalizedOrient45DOGFeatureMap + normalizedOrient90DOGFeatureMap + normalizedOrient135DOGFeatureMap;
 
-//    salMapLeft = threshOrient0FeatureMap + threshOrient45FeatureMap + threshOrient90FeatureMap + threshOrient135FeatureMap;
-//    salMapLeft /= 4;
     salMapLeft.zero();
     for (int i = 100; i < 150; ++i) {
         for (int j = 100; j < 150; ++j) {
             salMapLeft(i,j) = 255;
         }
     }
-//    computeAttentionPoint(salMapLeft);
-
-    int topCol,topRow,bottomCol,bottomRow;
     computeBoundingBox(salMapLeft, 10, 125, 125, topRow, topCol, bottomRow, bottomCol);
     convertToImage(salMapLeft, imageLeft, salMapPadding, 125,125);
+*/
+
+//    salMapLeft = threshGabor0FeatureMap + threshGabor45FeatureMap + threshGabor90FeatureMap + threshGabor135FeatureMap;
+    salMapLeft = threshNegGabor0FeatureMap + threshNegGabor45FeatureMap + threshNegGabor90FeatureMap + threshNegGabor135FeatureMap,
+
+            salMapLeft /= 4;
+
+    int prevAttRow = attPointRow;
+    int prevAttCol = attPointCol;
+    computeAttentionPoint(salMapLeft, attPointRow, attPointCol);
+//    int rectSize = 15;
+//
+//    for (int r = attPointRow - rectSize; r < attPointRow + rectSize; ++r) {
+//        if (r < 0 || r >= salMapLeft.rows())
+//            continue;
+//        for (int c = attPointCol - rectSize; c < attPointCol + rectSize; ++c) {
+//            if (c < 0 || r >= salMapLeft.cols())
+//                continue;
+//            salMapLeft(r, c) *= 0.3;
+//        }
+//    }
+//    std::cout << "attPointCol = " << attPointCol << std::endl;
+//    std::cout << "attPointRow = " << attPointRow << std::endl;
+    int topCol,topRow,bottomCol,bottomRow;
 //    computeBoundingBox(salMapLeft, 10, attPointRow, attPointCol, topRow, topCol, bottomRow, bottomCol);
-
-//    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
+    topRow = attPointRow - IORSize;
+    topCol = attPointCol - IORSize;
+    bottomRow = attPointRow + IORSize;
+    bottomCol = attPointCol + IORSize;
+    convertToImage(salMapLeft, imageLeft, salMapPadding, attPointRow, attPointCol);
     drawBoundingBox(imageLeft, topRow - salMapPadding, topCol - salMapPadding, bottomRow - salMapPadding, bottomCol - salMapPadding);
-    convertToImage(activationMap, imageActivation, salMapPadding, attPointRow, attPointCol);
 
+    convertToImage(activationMap, imageActivation, salMapPadding, attPointRow, attPointCol);
 
     // --- writing images of left and right saliency maps on output port
 
@@ -530,29 +509,29 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
         outActivationMapPort.write();
     }
 
-    if (outOrient0Port.getOutputCount()) {
-        outOrient0Port.write();
+    if (outGabor0Port.getOutputCount()) {
+        outGabor0Port.write();
     }
-    if (outOrient45Port.getOutputCount()) {
-        outOrient45Port.write();
+    if (outGabor45Port.getOutputCount()) {
+        outGabor45Port.write();
     }
-    if (outOrient90Port.getOutputCount()) {
-        outOrient90Port.write();
+    if (outGabor90Port.getOutputCount()) {
+        outGabor90Port.write();
     }
-    if (outOrient135Port.getOutputCount()) {
-        outOrient135Port.write();
+    if (outGabor135Port.getOutputCount()) {
+        outGabor135Port.write();
     }
-    if (outDOGorient0Port.getOutputCount()) {
-        outDOGorient0Port.write();
+    if (outNegGabor0Port.getOutputCount()) {
+        outNegGabor0Port.write();
     }
-    if (outDOGorient45Port.getOutputCount()) {
-        outDOGorient45Port.write();
+    if (outNegGabor45Port.getOutputCount()) {
+        outNegGabor45Port.write();
     }
-    if (outDOGorient90Port.getOutputCount()) {
-        outDOGorient90Port.write();
+    if (outNegGabor90Port.getOutputCount()) {
+        outNegGabor90Port.write();
     }
-    if (outDOGorient135Port.getOutputCount()) {
-        outDOGorient135Port.write();
+    if (outNegGabor135Port.getOutputCount()) {
+        outNegGabor135Port.write();
     }
 
 }
@@ -572,7 +551,7 @@ void vAttentionManager::convertToImage(const yarp::sig::Matrix &map, yarp::sig::
         for (int c = 0; c < imageCols; c++) {
             yarp::sig::PixelBgr pixelBgr;
 
-//          Coordinates of saliency map are shifted by salMapPadding wrt the image
+//          Coordinates of saliency map are shifted by mapPaddingSize wrt the image
             shiftedR = r + mapPaddingSize;
             shiftedC = c + mapPaddingSize;
 
@@ -603,16 +582,22 @@ void vAttentionManager::drawSquare( yarp::sig::ImageOf<yarp::sig::PixelBgr> &ima
     }
 }
 
-void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int row, int col) {
+void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matrix &filterMap, int row, int col, int topRow,
+                                  int topCol, int bottomRow, int bottomCol) {
 
     int filterRows = filterMap.rows();
     int filterCols = filterMap.cols();
-
+    int rMap, cMap;
     // ---- increase energy in the location of the event ---- //
-    for (int rf = 0; rf < filterRows; rf++) {
-        for (int cf = 0; cf < filterCols; cf++) {
-            map(row + rf, col + cf) += filterMap(rf, cf);
-            clamp (map(row + rf, col + cf), -2000.0, 2000.0);
+    for (int rFil = 0; rFil < filterRows; rFil++) {
+        for (int cFil = 0; cFil < filterCols; cFil++) {
+            rMap = row + rFil;
+            cMap = col + cFil;
+            if (rMap >= topRow && rMap < bottomRow)
+                if (cMap >= topCol && cMap < bottomCol)
+                    continue;
+            map(row + rFil, col + cFil) += filterMap(rFil, cFil);
+            clamp (map(row + rFil, col + cFil), -2000.0, 2000.0);
         }
     }
 
@@ -644,41 +629,35 @@ void vAttentionManager::normaliseMap(const yarp::sig::Matrix &map, yarp::sig::Ma
     normalisedMap /= totalEnergy;
 }
 
-void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map) {
+void vAttentionManager::computeAttentionPoint(const yarp::sig::Matrix &map, int &attPointRow, int &attPointCol) {
 
-    yarp::sig::Matrix decisionMap = map;
-//    std::cout << "map.rows() = " << map.rows() << std::endl;
-//    std::cout << "map.cols() = " << map.cols() << std::endl;
+    maxInMap(map, attPointRow, attPointCol);
+    activationMap(attPointRow,attPointCol) +=100;
+    maxInMap(activationMap, attPointRow, attPointCol);
 
-    int rectSize = 20;
-
-    int row, col;
-    for (int i = attPointRow - rectSize; i < attPointRow + rectSize; ++i) {
-        row = i;
-        clamp(row,0,map.rows());
-        for (int j = attPointCol - rectSize; j < attPointCol + rectSize; ++j) {
-            col = j;
-            clamp(col, 0,map.cols());
-            decisionMap(row, col) *= 0.5;
-        }
-    }
-    maxInMap(decisionMap);
-    activationMap(attPointRow,attPointCol) += 5;
-    maxInMap(activationMap);
-//    activationMap *= 0.95;
-
+//    int rectSize = 15;
+//
+//    for (int r = attPointRow - rectSize; r < attPointRow + rectSize; ++r) {
+//        if (r < 0 || r >= activationMap.rows())
+//            continue;
+//        for (int c = attPointCol - rectSize; c < attPointCol + rectSize; ++c) {
+//            if (c < 0 || r >= activationMap.cols())
+//                continue;
+//            activationMap(r, c) *= 0.5;
+//        }
+//    }
 }
 
-void vAttentionManager::maxInMap(const yarp::sig::Matrix &map) {
+void vAttentionManager::maxInMap(const yarp::sig::Matrix &map, int &rowMax, int &colMax) {
     double max = 0;
-    attPointCol = 0;
-    attPointRow = 0;
+    rowMax = 0;
+    colMax = 0;
     for (int r = 0; r < map.rows(); r++) {
         for (int c = 0; c < map.cols(); c++) {
             if (map(r, c) > max) {
                 max = map(r, c);
-                attPointRow = r;
-                attPointCol = c;
+                rowMax = r;
+                colMax = c;
             }
         }
     }
@@ -762,7 +741,7 @@ void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double 
         previousInternalEnergy = internalEnergy;
         energyInArea(map, topRow, topCol, bottomRow, bottomCol, internalEnergy);
     }
-    //TODO debug
+    //TODO debug. There is one extra iteration towards the top
 }
 
 bool vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,

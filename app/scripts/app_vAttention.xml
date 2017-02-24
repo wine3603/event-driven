@@ -21,49 +21,49 @@
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient0 --x 00 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /gabor0 --x 00 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient45 --x 350 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /gabor45 --x 350 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient90 --x 700 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /gabor90 --x 700 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /orient135 --x 1050 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /gabor135 --x 1050 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient0 --x 00 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /negGabor0 --x 00 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient45 --x 350 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /negGabor45 --x 350 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient90 --x 700 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /negGabor90 --x 700 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /DOGorient135 --x 1050 --y 350 --RefreshTime 16 </parameters>
+        <parameters>--name /negGabor135 --x 1050 --y 350 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
@@ -91,50 +91,50 @@
     </connection>
 
     <connection>
-        <from>/vAttention/orient0:o</from>
-        <to>/orient0</to>
+        <from>/vAttention/gabor0:o</from>
+        <to>/gabor0</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/orient45:o</from>
-        <to>/orient45</to>
+        <from>/vAttention/gabor45:o</from>
+        <to>/gabor45</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/orient90:o</from>
-        <to>/orient90</to>
+        <from>/vAttention/gabor90:o</from>
+        <to>/gabor90</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/orient135:o</from>
-        <to>/orient135</to>
+        <from>/vAttention/gabor135:o</from>
+        <to>/gabor135</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/DOGorient0:o</from>
-        <to>/DOGorient0</to>
+        <from>/vAttention/negGabor0:o</from>
+        <to>/negGabor0</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/DOGorient45:o</from>
-        <to>/DOGorient45</to>
+        <from>/vAttention/negGabor45:o</from>
+        <to>/negGabor45</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/DOGorient90:o</from>
-        <to>/DOGorient90</to>
+        <from>/vAttention/negGabor90:o</from>
+        <to>/negGabor90</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/DOGorient135:o</from>
-        <to>/DOGorient135</to>
+        <from>/vAttention/negGabor135:o</from>
+        <to>/negGabor135</to>
         <protocol>tcp</protocol>
     </connection>
 
