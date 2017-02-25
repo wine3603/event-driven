@@ -47,7 +47,7 @@ bool vAttentionModule::configure(yarp::os::ResourceFinder &rf) {
     /* set parameters */
     int sensorWidth = rf.check("sensorWidth", yarp::os::Value(304)).asInt();
     int sensorHeight = rf.check("sensorHeight", yarp::os::Value(240)).asInt();
-    double tau = rf.check("tau", yarp::os::Value(8.0)).asDouble();
+    double tau = rf.check("tau", yarp::os::Value(3.0)).asDouble();
     double thrSal = rf.check("thr", yarp::os::Value(20)).asDouble();
     string filtersPath = rf.check("filtersPath", yarp::os::Value("../../src/processing/vAttention/filters/")).asString();
 
@@ -182,6 +182,18 @@ vAttentionManager::vAttentionManager(int sensorWidth, int sensorHeight, double t
     generateGaborFilter(negGabor90, gaborSize, amplGabor, fGabor, sigmaGabor, 90);
     generateGaborFilter(negGabor135, gaborSize, amplGabor, fGabor, sigmaGabor, 135);
 
+    double sigmaX = 1.3;
+    double sigmaY = 1.3;
+    int gaussSize = 15;
+    double amplGauss = 12;
+    generateOrientedGaussianFilter(gabor0, amplGauss,sigmaX,sigmaY,0,gaussSize, gaussSize / 2, gaussSize /2);
+    sigmaX = 1.8;
+    sigmaY = 1.8;
+    generateOrientedGaussianFilter(gabor45, amplGauss,sigmaX,sigmaY,0,gaussSize, gaussSize / 2, gaussSize /2);
+    filterSize = max(gaussSize, filterSize);
+
+
+    gabor0 =  gabor45-gabor0;
 
     this->salMapPadding = filterSize / 2 + filterSize %2;
 
@@ -448,7 +460,6 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     convertToImage(threshNegGabor135FeatureMap, imageNegGabor135, salMapPadding);
 
     /* DEBUG STUFF
-    convertToImage(gabor0, imageGabor0,0);
     convertToImage(gabor45, imageGabor45, 0);
     convertToImage(gabor90, imageGabor90, 0);
     convertToImage(gabor135, imageGabor135, 0);
@@ -607,12 +618,12 @@ void vAttentionManager::updateMap(yarp::sig::Matrix &map, const yarp::sig::Matri
             cMap = col + cFil;
             inIOR = (rMap >= topRow && rMap < bottomRow);
             inIOR &= (cMap >= topCol && cMap < bottomCol);
-            if (inIOR) {
-                map(rMap, cMap) = 0;
-            } else {
+//            if (inIOR) {
+//                map(rMap, cMap) *= 0.5;
+//            } else {
                 map(rMap, cMap) += filterMap(rFil, cFil);
                 clamp(map(row + rFil, col + cFil), -2000.0, 2000.0);
-            }
+//            }
         }
     }
 
@@ -721,7 +732,7 @@ void vAttentionManager::computeBoundingBox(const yarp::sig::Matrix &map, double 
 
     double *maxEnergy;
 
-    while (internalEnergy - previousInternalEnergy > threshold){
+    while ((internalEnergy - previousInternalEnergy) / internalEnergy > threshold){
         if (!top && !bottom && !left && !right)
             break;
 
