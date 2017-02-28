@@ -18,13 +18,7 @@
 #ifndef __VATT__
 #define __VATT__
 
-#include <yarp/os/all.h>
-#include <yarp/sig/all.h>
-#include <yarp/math/Math.h>
-#include <iCub/eventdriven/all.h>
-#include <iCub/eventdriven/vtsHelper.h>
-#include <math.h>
-#include <ostream>
+#include <vFeatureMap.h>
 
 class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle>
 {
