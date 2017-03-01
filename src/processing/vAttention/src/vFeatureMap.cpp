@@ -3,15 +3,136 @@
 //
 
 #include "vFeatureMap.h"
+#include <limits>
+/**vFeatureMap Class Implementation */
 
-vFeatureMap::vFeatureMap(int r, int c, int rPadding, int cPadding) : Matrix(r + rPadding, c + cPadding) {
-    this->rPadding = rPadding;
-    this->cPadding = cPadding;
+void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, vFeatureMap *outputMap, double upBound,
+                                   double lowBound) {
+    int filterRows = filter.rows();
+    int filterCols = filter.cols();
+
+    yAssert(filterRows <= 2 * rPadding);
+    yAssert(filterCols <= 2 * cPadding);
+
+    vFeatureMap* updatedMap;
+    if (!outputMap){
+        updatedMap = this;
+    } else {
+        *outputMap = *this;
+        updatedMap = outputMap;
+    }
+
+    int rMap, cMap;
+    // ---- increase energy in the location of the event ---- //
+    for (int rFil = 0; rFil < filterRows; rFil++) {
+        for (int cFil = 0; cFil < filterCols; cFil++) {
+            rMap = row + rFil;
+            cMap = col + cFil;
+            (*updatedMap)(rMap, cMap) += filter(rFil, cFil);
+
+            if (upBound != 0 && lowBound != 0) {
+                clamp((*updatedMap)(row + rFil, col + cFil), lowBound, upBound);
+            }
+        }
+    }
+
 }
 
-PointXY::PointXY(int x, int y) : x(x), y(y){}
+void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> image) {
 
-PointXY::PointXY() {}
+    int imageRows = (*this).rows() - 2 * rPadding;
+    int imageCols = (*this).cols() - 2 * cPadding;
+    image.resize(imageCols, imageRows);
+    image.setTopIsLowIndex(true);
+    image.zero();
+
+    int shiftedR, shiftedC;
+    for (int r = 0; r < imageRows; r++) {
+        for (int c = 0; c < imageCols; c++) {
+            yarp::sig::PixelBgr pixelBgr;
+
+//          Coordinates of saliency map are shifted by size of padding wrt the image
+            shiftedR = r + rPadding;
+            shiftedC = c + cPadding;
+
+            double pixelValue = (*this)(shiftedR, shiftedC);
+            //negative values in blue, positive in green
+            if (pixelValue <= 0) {
+                pixelBgr.b = std::min(fabs(pixelValue), 255.0);
+            } else {
+                pixelBgr.g = std::min(fabs(pixelValue), 255.0);
+            }
+
+            image(c, r) = pixelBgr;
+        }
+    }
+}
+
+void vFeatureMap::threshold(double threshold, bool binary, vFeatureMap *outputMap) {
+    vFeatureMap* thresholdedMap;
+
+    if (!outputMap){
+        thresholdedMap = this;
+    } else {
+        *outputMap = *this;
+        thresholdedMap = outputMap;
+    }
+
+    for (int i = 0; i < thresholdedMap->rows(); ++i) {
+        for (int j = 0; j < thresholdedMap->cols(); ++j) {
+            double &thVal = (*thresholdedMap)(i, j);
+            double val = (*thresholdedMap)(i,j);
+            if (val < threshold)
+                thVal = 0;
+            else if (binary){
+                thVal = 1;
+            } else {
+                thVal = (*thresholdedMap)(i,j);
+            }
+        }
+    }
+}
+
+void vFeatureMap::normaliseMap(vFeatureMap *outputMap) {
+    vFeatureMap* normalisedMap;
+    if (!outputMap){
+        normalisedMap = this;
+    } else {
+        *outputMap = *this;
+        normalisedMap = outputMap;
+    }
+
+    *normalisedMap /= normalisedMap->totalEnergy();
+}
+
+double vFeatureMap::totalEnergy() {
+    double totalEnergy;
+    for (int r = 0; r < this->rows(); ++r) {
+        for (int c = 0; c < this->cols(); ++c) {
+            totalEnergy += (*this)(r,c);
+        }
+    }
+    return totalEnergy;
+}
+
+void vFeatureMap::max(int &rowMax, int &colMax) {
+    rowMax = 0;
+    colMax = 0;
+    double max = - std::numeric_limits<double >::max();
+
+    for (int r = 0; r < this->rows(); r++) {
+        for (int c = 0; c < this->cols(); c++) {
+            if ( (*this)(r, c) > max) {
+                max = (*this)(r, c);
+                rowMax = r;
+                colMax = c;
+            }
+        }
+    }
+}
+
+
+/**Rectangle Class implementation */
 
 Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero) {
     bool valid = true;
@@ -49,7 +170,6 @@ Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool i
 }
 
 Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY), PointXY(bottomX, bottomY), isTopLeftZero){}
-
 
 int Rectangle::getHeight() {
     return abs(topLeftCorner.y - bottomRightCorner.y);
