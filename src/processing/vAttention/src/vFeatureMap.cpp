@@ -38,10 +38,10 @@ void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, v
 
 }
 
-void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> image) {
+void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image) {
 
-    int imageRows = (*this).rows() - 2 * rPadding;
-    int imageCols = (*this).cols() - 2 * cPadding;
+    int imageRows = rows() - 2 * rPadding;
+    int imageCols = cols() - 2 * cPadding;
     image.resize(imageCols, imageRows);
     image.setTopIsLowIndex(true);
     image.zero();
@@ -93,7 +93,7 @@ void vFeatureMap::threshold(double threshold, bool binary, vFeatureMap *outputMa
     }
 }
 
-void vFeatureMap::normaliseMap(vFeatureMap *outputMap) {
+void vFeatureMap::normalise(vFeatureMap *outputMap) {
     vFeatureMap* normalisedMap;
     if (!outputMap){
         normalisedMap = this;
@@ -131,6 +131,45 @@ void vFeatureMap::max(int &rowMax, int &colMax) {
     }
 }
 
+double vFeatureMap::energyInROI(Rectangle ROI) {
+
+    vFeatureMap croppedMap;
+    this->crop(ROI, &croppedMap);
+    return croppedMap.totalEnergy();
+}
+
+void vFeatureMap::crop(Rectangle ROI, vFeatureMap *outputMap) {
+    PointXY topLeft = ROI.getTopLeftCorner();
+    PointXY botRight = ROI.getBottomRightCorner();
+    yAssert(topLeft.x >= 0 && topLeft.x < this->cols());
+    yAssert(topLeft.y >= 0 && topLeft.x < this->rows());
+    yAssert(botRight.x >= 0 && botRight.x < this->cols());
+    yAssert(botRight.y >= 0 && botRight.x < this->rows());
+
+    int topRow, topCol, bottomRow, bottomCol;
+    topCol = topLeft.x;
+    bottomCol = botRight.x;
+
+    if (!ROI.isTopLeftZero){
+        topRow = (this->rows()-1) - topLeft.y;
+        bottomRow = (this->rows()-1) - botRight.y;
+    } else {
+        topRow = topLeft.y;
+        bottomRow = botRight.y;
+    }
+
+    vFeatureMap* croppedMap;
+
+    if (!outputMap){
+        croppedMap = this;
+    } else {
+        *outputMap = *this;
+        croppedMap = outputMap;
+    }
+
+    yarp::sig::Matrix submatrix = this->submatrix(topRow, bottomRow, topCol, bottomCol);
+    *croppedMap = vFeatureMap(submatrix);
+}
 
 /**Rectangle Class implementation */
 

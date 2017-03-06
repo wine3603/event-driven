@@ -447,10 +447,36 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor90 = outNegGabor90Port.prepare();
     yarp::sig::ImageOf<yarp::sig::PixelBgr> &imageNegGabor135 = outNegGabor135Port.prepare();
 
+//    vFeatureMap m(threshGabor0FeatureMap, salMapPadding, salMapPadding);
+    yarp::sig::Matrix mat (30,30);
+//    yarp::sig::Matrix mat2 (10,10);
+    mat = 100;
+//    mat2 = 200;
+    vFeatureMap m(mat);
+    m(10,10) = 200;
+    vFeatureMap m2;
+    m.normalise(&m2);
+    std::cout << "m = " << m << std::endl;
+    std::cout << "m2 = " << m2 << std::endl;
+    int r,c;
+    m.max(r,c);
+    std::cout << "r = " << r << std::endl;
+    std::cout << "c = " << c << std::endl;
 
+//    m.setSubmatrix(mat2,15,15);
 
-    convertToImage(threshGabor0FeatureMap, imageGabor0, salMapPadding);
-    convertToImage(threshGabor45FeatureMap, imageGabor45, salMapPadding);
+//    std::cout << "m.totalEnergy() = " << m.totalEnergy() << std::endl;
+//    vFeatureMap croppedM;
+//    Rectangle ROI (PointXY(0,0),19,19);
+//    std::cout << "m.energyInROI(ROI) = " << m.energyInROI(ROI) << std::endl;
+//    m.crop(ROI,&croppedM);
+//    std::cout << "m = " << m << std::endl;
+//    vFeatureMap map(m);
+
+    m.convertToImage(imageGabor0);
+//    croppedM.convertToImage(imageGabor45);
+//    convertToImage(m, imageGabor0, salMapPadding);
+//    convertToImage(threshGabor45FeatureMap, imageGabor45, salMapPadding);
     convertToImage(threshGabor90FeatureMap, imageGabor90, salMapPadding);
     convertToImage(threshGabor135FeatureMap, imageGabor135, salMapPadding);
 
