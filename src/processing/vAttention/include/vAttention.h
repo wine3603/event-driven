@@ -26,74 +26,35 @@ private:
 
     bool strictness;
 
+
     // output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<ev::vBottle> outPort; // /vBottle:o
     // output port where the output saliency map image (left) is sent
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outSalMapLeftPort;
     // output port where the output saliency map image (right) is sent
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outActivationMapPort;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outGabor0Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outGabor45Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outGabor90Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outGabor135Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outNegGabor0Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outNegGabor45Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outNegGabor90Port;
-    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> > outNegGabor135Port;
+    std::vector <yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr > > *> outFeatMapPort;
 
-
-    int sensorWidth;
-    int sensorHeight;
-    int attPointRow;
-    int attPointCol;
-    int boxWidth;
-    int boxHeight;
-    int filterSize;
-    int salMapPadding;
-    int numIterations;
-    double tau;
     unsigned long int prevT;
 
-    double thrSal; // threshold to put a maximum on the saliency map (whatever is above thr will be set to the maximum value)
-    double normSal;
+    double tau;
+    int boxWidth;
+    int boxHeight;
 
     ev::vtsHelper unwrap;
-    yarp::sig::Matrix eventMap;
+    vFeatureMap eventMap;
 
-    yarp::sig::Matrix activationMap;
-    yarp::sig::Matrix salMapLeftEdges;
-    yarp::sig::Matrix salMapLeftSpread;
-    yarp::sig::Matrix salMapRight;
+    vFeatureMap activationMap;
+    vFeatureMap salMapLeft;
+    vFeatureMap salMapRight;
 
     //Filters
-    yarp::sig::Matrix negGabor0;
-    yarp::sig::Matrix negGabor45;
-    yarp::sig::Matrix negGabor90;
-    yarp::sig::Matrix negGabor135;
-    yarp::sig::Matrix gabor0;
-    yarp::sig::Matrix gabor45;
-    yarp::sig::Matrix gabor90;
-    yarp::sig::Matrix gabor135;
+    std::vector <yarp::sig::Matrix > orientedFilters;
 
     //Feature Maps
-    yarp::sig::Matrix gabor0FeatureMap;
-    yarp::sig::Matrix gabor45FeatureMap;
-    yarp::sig::Matrix gabor90FeatureMap;
-    yarp::sig::Matrix gabor135FeatureMap;
-    yarp::sig::Matrix negGabor0FeatureMap;
-    yarp::sig::Matrix negGabor45FeatureMap;
-    yarp::sig::Matrix negGabor90FeatureMap;
-    yarp::sig::Matrix negGabor135FeatureMap;
-
-    //Thresholded feature maps
-    yarp::sig::Matrix threshGabor0FeatureMap;
-    yarp::sig::Matrix threshGabor45FeatureMap;
-    yarp::sig::Matrix threshGabor90FeatureMap;
-    yarp::sig::Matrix threshGabor135FeatureMap;
-    yarp::sig::Matrix threshNegGabor0FeatureMap;
-    yarp::sig::Matrix threshNegGabor45FeatureMap;
-    yarp::sig::Matrix threshNegGabor90FeatureMap;
-    yarp::sig::Matrix threshNegGabor135FeatureMap;
+    std::vector <vFeatureMap > orientFeatMap;
+    //Thresholded Maps
+    std::vector <vFeatureMap > threshFeatMap;
 
 
     void decayMap (yarp::sig::Matrix& map, double dt);
@@ -141,9 +102,9 @@ private:
 
 public:
 
-    vAttentionManager(int sensorWidth, int sensorHeight, double tau, double thrSal,
-                          std::string &filtersPath);
+    vAttentionManager(){};
 
+    bool    initialize(yarp::os::ResourceFinder& rf);
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
     void    interrupt();

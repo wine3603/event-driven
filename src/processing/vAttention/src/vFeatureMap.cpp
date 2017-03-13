@@ -6,8 +6,7 @@
 #include <limits>
 /**vFeatureMap Class Implementation */
 
-void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, vFeatureMap *outputMap, double upBound,
-                                   double lowBound) {
+void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound, double lowBound, vFeatureMap *outputMap) {
     int filterRows = filter.rows();
     int filterCols = filter.cols();
 
@@ -171,6 +170,93 @@ void vFeatureMap::crop(Rectangle ROI, vFeatureMap *outputMap) {
     *croppedMap = vFeatureMap(submatrix);
 }
 
+void vFeatureMap::decay(double dt, double tau, vFeatureMap *outputMap) {
+    vFeatureMap* decayedMap;
+    if (!outputMap){
+        decayedMap = this;
+    } else {
+        *outputMap = *this;
+        decayedMap = outputMap;
+    }
+    *decayedMap *= exp(-dt/tau);
+}
+
+Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int increase) {
+
+
+    //Define initial ROI as a square around start of size increase
+    PointXY topLeft(start.x - increase, start.y - increase, 0, cols() - 1, 0, rows() - 1);
+    PointXY botRight(start.x + increase, start.y + increase, 0, cols() - 1, 0, rows() - 1);
+    Rectangle ROI (topLeft, botRight);
+
+    //Defining points above, below, to the left and right of ROI
+    PointXY top(topLeft.x, topLeft.y - increase , 0, cols() - 1, 0, rows() - 1);
+    PointXY bottom( botRight.x, botRight.y + increase, 0, cols() - 1, 0, rows() - 1);
+    PointXY left( topLeft.x - increase,topLeft.y, 0, cols() - 1, 0, rows() - 1);
+    PointXY right( botRight.x + increase, botRight.y, 0, cols() - 1, 0, rows() - 1);
+
+    //Computing the energy in the four directions
+    double energyTop = energyInROI( Rectangle( top, ROI.getTopRightCorner()));
+    double energyBottom = energyInROI( Rectangle(ROI.getBottomLeftCorner(), bottom));
+    double energyLeft = energyInROI( Rectangle(left , ROI.getBottomLeftCorner()));
+    double energyRight = energyInROI( Rectangle( ROI.getTopRightCorner(), right));
+
+    //Variables to compute the energy growth
+    double internalEnergy;
+    double previousInternalEnergy = energyInROI(ROI);
+    double dEnergy;
+
+    //Pointer to the maximum among the energy in the four directions
+    double *maxEnergy;
+
+    do {
+        //Computing maximum energy
+        maxEnergy = &energyTop;
+        if (energyBottom > *maxEnergy)
+            maxEnergy = &energyBottom;
+        if (energyLeft > *maxEnergy)
+            maxEnergy = &energyLeft;
+        if (energyRight > *maxEnergy)
+            maxEnergy = &energyRight;
+
+        //Increase the size of the bounding box in the direction with the maximum energy
+        if (maxEnergy == &energyTop){
+            topLeft.y -= increase;
+            clamp(topLeft.y, 0, rows()-1);
+            top = PointXY( topLeft.x,topLeft.y - increase, 0, cols() - 1, 0, rows() - 1);
+            energyTop = energyInROI( Rectangle(top , botRight));
+        }
+        if (maxEnergy == &energyBottom){
+            botRight.y += increase;
+            clamp(botRight.y, 0, rows()-1);
+            bottom = PointXY( botRight.x, botRight.y + increase, 0, cols() - 1, 0, rows() - 1);
+            energyBottom = energyInROI( Rectangle( topLeft, bottom));
+        }
+        if (maxEnergy == &energyLeft){
+            topLeft.x -= increase;
+            clamp(topLeft.x, 0, cols()-1);
+            left = PointXY ( topLeft.x - increase,topLeft.y, 0, cols() - 1, 0, rows() - 1);
+            energyInROI( Rectangle(left, botRight));
+        }
+        if (maxEnergy == &energyRight){
+            botRight.x += increase;
+            clamp(botRight.x, 0, cols()-1);
+            right = PointXY( botRight.x + increase, botRight.y, 0, cols() - 1, 0, rows() - 1);
+            energyInROI( Rectangle( topLeft, right));
+        }
+
+        //Update ROI and compute the energy growth rate
+        ROI = Rectangle(topLeft,botRight);
+        internalEnergy = energyInROI(ROI);
+        dEnergy = (internalEnergy - previousInternalEnergy) / previousInternalEnergy;
+        previousInternalEnergy = internalEnergy;
+
+    } while (dEnergy > threshold);
+
+    return ROI;
+    //TODO debug. There is one extra iteration towards the top
+}
+
 /**Rectangle Class implementation */
 
 Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero) {
@@ -193,6 +279,8 @@ Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopL
     this->isTopLeftZero = isTopLeftZero;
     this->topLeftCorner = PointXY(topX,topY);
     this->bottomRightCorner = PointXY(bottomX, bottomY);
+    this->bottomLeftCorner = PointXY (topX,bottomY);
+    this->topRightCorner = PointXY (bottomX,topY);
 }
 
 Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool isTopLeftZero) {
@@ -221,3 +309,9 @@ bool Rectangle::contains(PointXY point) {
     return isIn;
 }
 
+PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound) {
+        clamp(x, xLowBound, xUpBound);
+        clamp(y, yUpBound, yLowBound);
+        this->x = x;
+        this->y = y;
+}

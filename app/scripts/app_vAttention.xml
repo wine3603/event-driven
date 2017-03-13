@@ -3,7 +3,7 @@
 
     <module>
         <name> vAttention </name>
-        <parameters> --sensorWidth 304 --sensorHeight 240 --tau 120000 --thr 20 --filtersPath /home/miacono/workspace/event-driven/src/processing/vAttention/filters</parameters>
+        <parameters> --sensorWidth 304 --sensorHeight 240 --tau 3 --filterSize 15 </parameters>
         <node> localhost </node>
     </module>
 
@@ -21,51 +21,28 @@
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /gabor0 --x 00 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /featMap0 --x 00 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /gabor45 --x 350 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /featMap45 --x 350 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /gabor90 --x 700 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /featMap90 --x 700 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /gabor135 --x 1050 --y 00 --RefreshTime 16 </parameters>
+        <parameters>--name /featMap135 --x 1050 --y 00 --RefreshTime 16 </parameters>
         <node>localhost</node>
     </module>
 
-    <module>
-        <name>yarpview</name>
-        <parameters>--name /negGabor0 --x 00 --y 350 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
-
-    <module>
-        <name>yarpview</name>
-        <parameters>--name /negGabor45 --x 350 --y 350 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
-
-    <module>
-        <name>yarpview</name>
-        <parameters>--name /negGabor90 --x 700 --y 350 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
-
-    <module>
-        <name>yarpview</name>
-        <parameters>--name /negGabor135 --x 1050 --y 350 --RefreshTime 16 </parameters>
-        <node>localhost</node>
-    </module>
 
     <module>
         <name>yarpdataplayer</name>
@@ -79,7 +56,7 @@
     </connection>
 
     <connection>
-        <from>/vAttention/salMapLeftEdges:o</from>
+        <from>/vAttention/salMapLeft:o</from>
         <to>/viewLeft</to>
         <protocol>tcp</protocol>
     </connection>
@@ -91,50 +68,26 @@
     </connection>
 
     <connection>
-        <from>/vAttention/gabor0:o</from>
-        <to>/gabor0</to>
+        <from>/vAttention/featMap0:o</from>
+        <to>/featMap0</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/gabor45:o</from>
-        <to>/gabor45</to>
+        <from>/vAttention/featMap45:o</from>
+        <to>/featMap45</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/gabor90:o</from>
-        <to>/gabor90</to>
+        <from>/vAttention/featMap90:o</from>
+        <to>/featMap90</to>
         <protocol>tcp</protocol>
     </connection>
 
     <connection>
-        <from>/vAttention/gabor135:o</from>
-        <to>/gabor135</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/negGabor0:o</from>
-        <to>/negGabor0</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/negGabor45:o</from>
-        <to>/negGabor45</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/negGabor90:o</from>
-        <to>/negGabor90</to>
-        <protocol>tcp</protocol>
-    </connection>
-
-    <connection>
-        <from>/vAttention/negGabor135:o</from>
-        <to>/negGabor135</to>
+        <from>/vAttention/featMap135:o</from>
+        <to>/featMap135</to>
         <protocol>tcp</protocol>
     </connection>
 

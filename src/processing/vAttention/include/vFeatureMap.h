@@ -5,8 +5,8 @@
 #ifndef ICUB_EVENT_DRIVEN_VFEATUREMAP_H
 #define ICUB_EVENT_DRIVEN_VFEATUREMAP_H
 
-#include <yarp/os/all.h>
 #include <yarp/sig/all.h>
+#include <yarp/os/all.h>
 #include <yarp/math/Math.h>
 #include <iCub/eventdriven/all.h>
 #include <iCub/eventdriven/vtsHelper.h>
@@ -22,6 +22,7 @@ class PointXY{
 public:
     PointXY(int x, int y): x(x),
                            y(y) {};
+    PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound);
     PointXY(){};
 
     int x;
@@ -77,10 +78,14 @@ public:
     int getWidth(){ return abs(topLeftCorner.x - bottomRightCorner.x); };
     PointXY getTopLeftCorner() { return topLeftCorner;};
     PointXY getBottomRightCorner() { return bottomRightCorner;};
+    PointXY &getTopRightCorner(){ return topRightCorner; }
+    PointXY &getBottomLeftCorner() { return bottomLeftCorner; }
     bool isTopLeftOrigin(){return isTopLeftZero;};
 
 private:
     PointXY topLeftCorner;
+    PointXY topRightCorner;
+    PointXY bottomLeftCorner;
     PointXY bottomRightCorner;
     bool isTopLeftZero;
 
@@ -148,8 +153,7 @@ public:
      * @param upBound upper bound for single elements in map
      * @param lowBound lower bound for single elements in map
      */
-    void updateWithFilter(yarp::sig::Matrix filter, int row, int col,
-                          vFeatureMap *outputMap = YARP_NULLPTR, double upBound = 0, double lowBound = 0);
+    void updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound = 0, double lowBound = 0, vFeatureMap *outputMap = YARP_NULLPTR);
 
     /**
      * Converts the map in a visualisable image. Positive values become green and negative blue.
@@ -180,10 +184,19 @@ public:
     void max(int &rowMax, int &colMax);
 
     /**
+     * Exponentially decays the map. Decay fator = e^(-dt/tau).
+     * @param dt
+     * @param tau
+     * @param outputMap outputMap optional parameter to output the decayed map. If not set this map is decayed
+     */
+    void decay(double dt, double tau, vFeatureMap* outputMap = YARP_NULLPTR);
+
+    /**
      * Computes the sum of the energy of every element in the map
      * @return total energy
      */
     double totalEnergy();
+
     /**
      * Computes the sum of the energy of the elements of a certain ROI in the map
      * @param ROI
@@ -191,7 +204,20 @@ public:
      */
     double energyInROI(Rectangle ROI);
 
+    /**
+     * Heuristic to compute a bounding box around a certain point.
+     * The algorithm increases the size of the box in one of the four directions (up, down, left, right) which
+     * gives the higher contribute in terms of energy contained inside the box. The search stops when the energy growth rate
+     * drops below the threshold passed as argument.
+     * @param start Point at which the algorithm starts
+     * @param threshold minimum growth rate that stops the search.
+     * @param increase box size increases by this value in one direction at every step
+     * @return the computed bounding box
+     */
+    Rectangle computeBoundingBox(PointXY start, double threshold, int increase);
+
     int getRowPadding(){ return rPadding;};
+
     int getColPadding(){ return cPadding;};
 
 };
