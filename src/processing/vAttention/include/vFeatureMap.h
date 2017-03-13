@@ -15,6 +15,9 @@
 
 using namespace yarp::math;
 
+/**
+ * Class defining a 2D point
+ */
 class PointXY{
 public:
     PointXY(int x, int y): x(x),
@@ -31,24 +34,56 @@ std::ostream &operator<<(std::ostream & str, const PointXY &point) {
     return str;
 }
 
+/**
+ * Class for defining rectangular bounding boxes or ROI.
+ */
 class Rectangle{
 public:
+    /**
+     * Constructor. Takes as argument two PointXY defining two opposite corners
+     * @param corner1
+     * @param corner2
+     * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
+     */
     Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero = true);
+    /**
+     * Constructor. Takes the coordinate of top left corner and the desired rectangle width and height
+     * @param topLeftCorner
+     * @param width
+     * @param height
+     * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
+     */
     Rectangle(const PointXY &topLeftCorner, int width, int height, bool isTopLeftZero = true);
+    /**
+     * Constructor. Takes the coordinates of two opposite corners
+     * @param topX
+     * @param topY
+     * @param bottomX
+     * @param bottomY
+     * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
+     */
     Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero = true);
+    /**
+     * Default constructor
+     */
     Rectangle(){};
-
-    bool isTopLeftZero;
-
-    int getHeight();
-    int getWidth();
-    PointXY getTopLeftCorner();
-    PointXY getBottomRightCorner();
+    /**
+     * @param point
+     * @return true if point is contained in the rectangle
+     */
     bool contains(PointXY point);
+
+    int getHeight() {return abs(topLeftCorner.y - bottomRightCorner.y);};
+    int getWidth(){ return abs(topLeftCorner.x - bottomRightCorner.x); };
+    PointXY getTopLeftCorner() { return topLeftCorner;};
+    PointXY getBottomRightCorner() { return bottomRightCorner;};
+    bool isTopLeftOrigin(){return isTopLeftZero;};
 
 private:
     PointXY topLeftCorner;
     PointXY bottomRightCorner;
+    bool isTopLeftZero;
+
 };
 
 /**
@@ -130,33 +165,34 @@ public:
      * @param outputMap optional parameter to output the thresholded map. If not set this map is thresholded
      */
     void threshold(double threshold, bool binary = false, vFeatureMap *outputMap = YARP_NULLPTR);
+
+    /**
+     * Normalises the map so that its energy sums to 1.
+     * @param outputMap optional parameter to output the normalised map. If not set this map is normalised
+     */
     void normalise(vFeatureMap *outputMap = YARP_NULLPTR);
+
+    /**
+     * Finds the maximum in the map and outputs its coordinates
+     * @param rowMax output row of max value
+     * @param colMax output col of max value
+     */
     void max(int &rowMax, int &colMax);
+
+    /**
+     * Computes the sum of the energy of every element in the map
+     * @return total energy
+     */
     double totalEnergy();
+    /**
+     * Computes the sum of the energy of the elements of a certain ROI in the map
+     * @param ROI
+     * @return energy in ROI
+     */
     double energyInROI(Rectangle ROI);
+
     int getRowPadding(){ return rPadding;};
     int getColPadding(){ return cPadding;};
-
-/** iterator implementation
-    class iterator : std::iterator  <std::random_access_iterator_tag, //iterator category
-                                     double,                          //type of accessed elements
-                                     int,                             //pointer-to-pointer distance type
-                                     double*,                         //pointer type
-                                     double&                          //reference type
-                             >
-    {
-    public:
-        iterator(pointer ptr) : ptr_(ptr) { }
-        iterator operator++(int junk) { iterator i = *this; ptr_++; return i; }
-        iterator operator++() { ptr_++; return *this; }
-        reference operator*() { return *ptr_; }
-        pointer operator->() { return ptr_; }
-        bool operator==(const iterator& rhs) { return ptr_ == rhs.ptr_; }
-        bool operator!=(const iterator& rhs) { return ptr_ != rhs.ptr_; }
-    private:
-        pointer ptr_;
-    };
-*/
 
 };
 
@@ -171,7 +207,6 @@ std::ostream &operator<<(std::ostream& str, const vFeatureMap& map){
     }
     return str;
 };
-
 
 template <typename T>
 inline

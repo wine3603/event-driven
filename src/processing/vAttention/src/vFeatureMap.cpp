@@ -150,7 +150,7 @@ void vFeatureMap::crop(Rectangle ROI, vFeatureMap *outputMap) {
     topCol = topLeft.x;
     bottomCol = botRight.x;
 
-    if (!ROI.isTopLeftZero){
+    if (!ROI.isTopLeftOrigin()){
         topRow = (this->rows()-1) - topLeft.y;
         bottomRow = (this->rows()-1) - botRight.y;
     } else {
@@ -209,22 +209,6 @@ Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool i
 }
 
 Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY), PointXY(bottomX, bottomY), isTopLeftZero){}
-
-int Rectangle::getHeight() {
-    return abs(topLeftCorner.y - bottomRightCorner.y);
-}
-
-int Rectangle::getWidth(){
-    return abs(topLeftCorner.x - bottomRightCorner.x);
-}
-
-PointXY Rectangle::getTopLeftCorner() {
-    return topLeftCorner;
-}
-
-PointXY Rectangle::getBottomRightCorner() {
-    return bottomRightCorner;
-}
 
 bool Rectangle::contains(PointXY point) {
     bool isIn = true;
