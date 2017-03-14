@@ -72,7 +72,7 @@ public:
      * @param point
      * @return true if point is contained in the rectangle
      */
-    bool contains(PointXY point);
+    bool contains(PointXY point) const;
 
     int getHeight() {return abs(topLeftCorner.y - bottomRightCorner.y);};
     int getWidth(){ return abs(topLeftCorner.x - bottomRightCorner.x); };
@@ -114,7 +114,7 @@ public:
      */
     vFeatureMap(yarp::sig::Matrix &matrix) : yarp::sig::Matrix(matrix),
                                              rPadding(0),
-                                             cPadding(0){};
+                                             cPadding(0){}
 
     /**
      * Copy constructor with padding size specification
@@ -124,7 +124,7 @@ public:
      */
     vFeatureMap(yarp::sig::Matrix &matrix, int rPadding, int cPadding) : yarp::sig::Matrix(matrix),
                                                                          rPadding(rPadding),
-                                                                         cPadding(cPadding){};
+                                                                         cPadding(cPadding){}
 
     /**
      * Constructor
@@ -135,14 +135,15 @@ public:
      */
     vFeatureMap(int r, int c, int rPadding = 0, int cPadding = 0): yarp::sig::Matrix(r + 2 * rPadding, c + 2 * cPadding),
                                                                    rPadding(rPadding),
-                                                                   cPadding(cPadding) {};
+                                                                   cPadding(cPadding) {}
 
     /**
      * Crops the map
      * @param ROI rectangle specifying the region to crop
      * @param outputMap optional parameter to output the cropped map. If not set this map is cropped
      */
-    void crop(Rectangle ROI, vFeatureMap *outputMap = YARP_NULLPTR);
+    void crop(Rectangle ROI, vFeatureMap &outputMap) const;
+    void crop(Rectangle ROI) {crop(ROI, *this);}
 
     /**
      * Applies filter map in a specific location
@@ -153,35 +154,43 @@ public:
      * @param upBound upper bound for single elements in map
      * @param lowBound lower bound for single elements in map
      */
-    void updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound = 0, double lowBound = 0, vFeatureMap *outputMap = YARP_NULLPTR);
+    void updateWithFilter(yarp::sig::Matrix filter, int row, int col, vFeatureMap &outputMap, double upBound = 0, double lowBound = 0) const ;
+    void updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound = 0, double lowBound = 0) {
+        updateWithFilter(filter, row, col, *this, upBound, lowBound);}
+
+    void convolve(yarp::sig::Matrix filter, vFeatureMap& outputMap) const;
+    void convolve(yarp::sig::Matrix filter) {convolve(filter, *this);};
+
 
     /**
      * Converts the map in a visualisable image. Positive values become green and negative blue.
      * The brighter the color the higher the value. Values above 255 saturate at maximum brightness
      * @param image output image
      */
-    void convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image);
+    void convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image) const;
 
     /**
      * Thresholds the map up to a desired value.
-     * @param threshold values below this threshold are set to 0
+     * @param thresh values below this threshold are set to 0
      * @param binary if true values above the threshold are set to 1. false by default
      * @param outputMap optional parameter to output the thresholded map. If not set this map is thresholded
      */
-    void threshold(double threshold, bool binary = false, vFeatureMap *outputMap = YARP_NULLPTR);
+    void threshold(double thresh, vFeatureMap &outputMap, bool binary = false) const ;
+    void threshold(double thresh, bool binary = false) { threshold(thresh, *this, binary);}
 
     /**
      * Normalises the map so that its energy sums to 1.
      * @param outputMap optional parameter to output the normalised map. If not set this map is normalised
      */
-    void normalise(vFeatureMap *outputMap = YARP_NULLPTR);
+    void normalise(vFeatureMap &outputMap) const;
+    void normalise(){normalise(*this);}
 
     /**
      * Finds the maximum in the map and outputs its coordinates
      * @param rowMax output row of max value
      * @param colMax output col of max value
      */
-    void max(int &rowMax, int &colMax);
+    void max(int &rowMax, int &colMax) const;
 
     /**
      * Exponentially decays the map. Decay fator = e^(-dt/tau).
@@ -189,20 +198,21 @@ public:
      * @param tau
      * @param outputMap outputMap optional parameter to output the decayed map. If not set this map is decayed
      */
-    void decay(double dt, double tau, vFeatureMap* outputMap = YARP_NULLPTR);
+    void decay(double dt, double tau, vFeatureMap &outputMap) const;
+    void decay(double dt, double tau) {decay(dt, tau, *this);}
 
     /**
      * Computes the sum of the energy of every element in the map
      * @return total energy
      */
-    double totalEnergy();
+    double totalEnergy() const;
 
     /**
      * Computes the sum of the energy of the elements of a certain ROI in the map
      * @param ROI
      * @return energy in ROI
      */
-    double energyInROI(Rectangle ROI);
+    double energyInROI(Rectangle ROI) const;
 
     /**
      * Heuristic to compute a bounding box around a certain point.
@@ -214,7 +224,7 @@ public:
      * @param increase box size increases by this value in one direction at every step
      * @return the computed bounding box
      */
-    Rectangle computeBoundingBox(PointXY start, double threshold, int increase);
+    Rectangle computeBoundingBox(PointXY start, double threshold, int increase) const;
 
     int getRowPadding(){ return rPadding;};
 

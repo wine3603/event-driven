@@ -6,20 +6,12 @@
 #include <limits>
 /**vFeatureMap Class Implementation */
 
-void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound, double lowBound, vFeatureMap *outputMap) {
+void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, vFeatureMap &outputMap, double upBound, double lowBound) const {
     int filterRows = filter.rows();
     int filterCols = filter.cols();
 
     yAssert(filterRows <= 2 * rPadding);
     yAssert(filterCols <= 2 * cPadding);
-
-    vFeatureMap* updatedMap;
-    if (!outputMap){
-        updatedMap = this;
-    } else {
-        *outputMap = *this;
-        updatedMap = outputMap;
-    }
 
     int rMap, cMap;
     // ---- increase energy in the location of the event ---- //
@@ -27,17 +19,17 @@ void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, d
         for (int cFil = 0; cFil < filterCols; cFil++) {
             rMap = row + rFil;
             cMap = col + cFil;
-            (*updatedMap)(rMap, cMap) += filter(rFil, cFil);
+            outputMap(rMap, cMap) += filter(rFil, cFil);
 
             if (upBound != 0 && lowBound != 0) {
-                clamp((*updatedMap)(row + rFil, col + cFil), lowBound, upBound);
+                clamp(outputMap(row + rFil, col + cFil), lowBound, upBound);
             }
         }
     }
 
 }
 
-void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image) {
+void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image) const {
 
     int imageRows = rows() - 2 * rPadding;
     int imageCols = cols() - 2 * cPadding;
@@ -67,44 +59,37 @@ void vFeatureMap::convertToImage(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image)
     }
 }
 
-void vFeatureMap::threshold(double threshold, bool binary, vFeatureMap *outputMap) {
-    vFeatureMap* thresholdedMap;
+void vFeatureMap::threshold(double thresh, vFeatureMap &outputMap, bool binary) const {
 
-    if (!outputMap){
-        thresholdedMap = this;
-    } else {
-        *outputMap = *this;
-        thresholdedMap = outputMap;
+    yAssert(&outputMap);
+    if (&outputMap != this){
+        outputMap = *this;
     }
 
-    for (int i = 0; i < thresholdedMap->rows(); ++i) {
-        for (int j = 0; j < thresholdedMap->cols(); ++j) {
-            double &thVal = (*thresholdedMap)(i, j);
-            double val = (*thresholdedMap)(i,j);
-            if (val < threshold)
+    for (int i = 0; i < outputMap.rows(); ++i) {
+        for (int j = 0; j < outputMap.cols(); ++j) {
+            double &thVal = outputMap(i, j);
+            double val = (*this)(i,j);
+            if (val < thresh)
                 thVal = 0;
             else if (binary){
                 thVal = 1;
             } else {
-                thVal = (*thresholdedMap)(i,j);
+                thVal = val;
             }
         }
     }
 }
 
-void vFeatureMap::normalise(vFeatureMap *outputMap) {
-    vFeatureMap* normalisedMap;
-    if (!outputMap){
-        normalisedMap = this;
-    } else {
-        *outputMap = *this;
-        normalisedMap = outputMap;
+void vFeatureMap::normalise(vFeatureMap &outputMap) const {
+    yAssert(&outputMap);
+    if (&outputMap != this){
+        outputMap = *this;
     }
-
-    *normalisedMap /= normalisedMap->totalEnergy();
+    outputMap /= outputMap.totalEnergy();
 }
 
-double vFeatureMap::totalEnergy() {
+double vFeatureMap::totalEnergy() const{
     double totalEnergy;
     for (int r = 0; r < this->rows(); ++r) {
         for (int c = 0; c < this->cols(); ++c) {
@@ -114,7 +99,7 @@ double vFeatureMap::totalEnergy() {
     return totalEnergy;
 }
 
-void vFeatureMap::max(int &rowMax, int &colMax) {
+void vFeatureMap::max(int &rowMax, int &colMax) const{
     rowMax = 0;
     colMax = 0;
     double max = - std::numeric_limits<double >::max();
@@ -130,59 +115,49 @@ void vFeatureMap::max(int &rowMax, int &colMax) {
     }
 }
 
-double vFeatureMap::energyInROI(Rectangle ROI) {
+double vFeatureMap::energyInROI(Rectangle ROI) const{
 
     vFeatureMap croppedMap;
-    this->crop(ROI, &croppedMap);
+    crop(ROI, croppedMap);
     return croppedMap.totalEnergy();
 }
 
-void vFeatureMap::crop(Rectangle ROI, vFeatureMap *outputMap) {
+void vFeatureMap::crop(Rectangle ROI, vFeatureMap &outputMap) const{
+    yAssert(&outputMap);
     PointXY topLeft = ROI.getTopLeftCorner();
     PointXY botRight = ROI.getBottomRightCorner();
-    yAssert(topLeft.x >= 0 && topLeft.x < this->cols());
-    yAssert(topLeft.y >= 0 && topLeft.x < this->rows());
-    yAssert(botRight.x >= 0 && botRight.x < this->cols());
-    yAssert(botRight.y >= 0 && botRight.x < this->rows());
+
+    yAssert(topLeft.x >= 0 && topLeft.x < cols());
+    yAssert(topLeft.y >= 0 && topLeft.y < rows());
+    yAssert(botRight.x >= 0 && botRight.x < cols());
+    yAssert(botRight.y >= 0 && botRight.y < rows());
 
     int topRow, topCol, bottomRow, bottomCol;
     topCol = topLeft.x;
     bottomCol = botRight.x;
 
     if (!ROI.isTopLeftOrigin()){
-        topRow = (this->rows()-1) - topLeft.y;
-        bottomRow = (this->rows()-1) - botRight.y;
+        topRow = (rows()-1) - topLeft.y;
+        bottomRow = (rows()-1) - botRight.y;
     } else {
         topRow = topLeft.y;
         bottomRow = botRight.y;
     }
 
-    vFeatureMap* croppedMap;
-
-    if (!outputMap){
-        croppedMap = this;
-    } else {
-        *outputMap = *this;
-        croppedMap = outputMap;
-    }
-
     yarp::sig::Matrix submatrix = this->submatrix(topRow, bottomRow, topCol, bottomCol);
-    *croppedMap = vFeatureMap(submatrix);
+    outputMap = vFeatureMap(submatrix);
 }
 
-void vFeatureMap::decay(double dt, double tau, vFeatureMap *outputMap) {
-    vFeatureMap* decayedMap;
-    if (!outputMap){
-        decayedMap = this;
-    } else {
-        *outputMap = *this;
-        decayedMap = outputMap;
+void vFeatureMap::decay(double dt, double tau, vFeatureMap &outputMap) const {
+    yAssert(&outputMap);
+    if (&outputMap != this){
+        outputMap = *this;
     }
-    *decayedMap *= exp(-dt/tau);
+    outputMap *= exp(-dt/tau);
 }
 
-Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int increase) {
-
+Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int increase) const{
+    //TODO debug! Energy in ROI considers one additional pixel.
 
     //Define initial ROI as a square around start of size increase
     PointXY topLeft(start.x - increase, start.y - increase, 0, cols() - 1, 0, rows() - 1);
@@ -224,25 +199,25 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
             topLeft.y -= increase;
             clamp(topLeft.y, 0, rows()-1);
             top = PointXY( topLeft.x,topLeft.y - increase, 0, cols() - 1, 0, rows() - 1);
-            energyTop = energyInROI( Rectangle(top , botRight));
+            energyTop = energyInROI( Rectangle(top, ROI.getTopRightCorner()));
         }
         if (maxEnergy == &energyBottom){
             botRight.y += increase;
             clamp(botRight.y, 0, rows()-1);
             bottom = PointXY( botRight.x, botRight.y + increase, 0, cols() - 1, 0, rows() - 1);
-            energyBottom = energyInROI( Rectangle( topLeft, bottom));
+            energyBottom = energyInROI( Rectangle( ROI.getBottomLeftCorner(), bottom));
         }
         if (maxEnergy == &energyLeft){
             topLeft.x -= increase;
             clamp(topLeft.x, 0, cols()-1);
             left = PointXY ( topLeft.x - increase,topLeft.y, 0, cols() - 1, 0, rows() - 1);
-            energyInROI( Rectangle(left, botRight));
+            energyInROI( Rectangle(left, ROI.getBottomLeftCorner()));
         }
         if (maxEnergy == &energyRight){
             botRight.x += increase;
             clamp(botRight.x, 0, cols()-1);
             right = PointXY( botRight.x + increase, botRight.y, 0, cols() - 1, 0, rows() - 1);
-            energyInROI( Rectangle( topLeft, right));
+            energyInROI( Rectangle( ROI.getTopRightCorner(), right));
         }
 
         //Update ROI and compute the energy growth rate
@@ -255,6 +230,26 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
 
     return ROI;
     //TODO debug. There is one extra iteration towards the top
+}
+
+void vFeatureMap::convolve(yarp::sig::Matrix filter, vFeatureMap &outputMap) const {
+
+    yAssert(&outputMap);
+    if (&outputMap != this){
+        outputMap = *this;
+    }
+
+    for (int mapRow = rPadding; mapRow < rows() - rPadding - 1; ++mapRow) {
+        for (int mapCol = cPadding; mapCol < cols() - cPadding - 1; ++mapCol) {
+
+            for (int filterRow = 0; filterRow < filter.rows(); ++filterRow) {
+                for (int filterCol = 0; filterCol < filter.cols(); ++filterCol) {
+                    outputMap(mapRow,mapCol) += outputMap(mapRow + filterRow - rPadding, mapCol + filterCol - cPadding) * filter(filterRow, filterCol);
+                }
+            }
+
+        }
+    }
 }
 
 /**Rectangle Class implementation */
@@ -298,7 +293,7 @@ Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool i
 
 Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY), PointXY(bottomX, bottomY), isTopLeftZero){}
 
-bool Rectangle::contains(PointXY point) {
+bool Rectangle::contains(PointXY point) const{
     bool isIn = true;
     isIn &= (point.x >= topLeftCorner.x && point.x <= bottomRightCorner.x);
     if (isTopLeftZero){
@@ -309,9 +304,10 @@ bool Rectangle::contains(PointXY point) {
     return isIn;
 }
 
+/** Point Class implementation */
 PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound) {
-        clamp(x, xLowBound, xUpBound);
-        clamp(y, yUpBound, yLowBound);
-        this->x = x;
-        this->y = y;
+    clamp(x, xLowBound, xUpBound);
+    clamp(y, yLowBound, yUpBound);
+    this->x = x;
+    this->y = y;
 }
