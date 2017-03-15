@@ -240,13 +240,13 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
             salMapLeft(k,i)  = 255;
         }
     }
-    Rectangle ROI = salMapLeft.computeBoundingBox(PointXY(75,75),0.0,5);
+    Rectangle ROI = salMapLeft.computeBoundingBox(PointXY(75,75),0.01,5);
     salMapLeft.convertToImage(imageLeft);
 
-    drawBoundingBox(imageLeft, ROI.getTopLeftCorner().y - salMapLeft.getRowPadding(),
-                    ROI.getTopLeftCorner().x - salMapLeft.getColPadding(),
-                    ROI.getBottomRightCorner().y - salMapLeft.getRowPadding(),
-                    ROI.getBottomRightCorner().x - salMapLeft.getColPadding());
+    drawBoundingBox(imageLeft, ROI.getTopLeftCorner().getY() - salMapLeft.getRowPadding(),
+                    ROI.getTopLeftCorner().getX() - salMapLeft.getColPadding(),
+                    ROI.getBottomRightCorner().getY() - salMapLeft.getRowPadding(),
+                    ROI.getBottomRightCorner().getX() - salMapLeft.getColPadding());
     imageLeft(75 - salMapLeft.getColPadding(),75 - salMapLeft.getRowPadding()) = PixelBgr(255,0,0);
 
     outSalMapLeftPort.write();
@@ -296,10 +296,10 @@ void vAttentionManager::drawBoundingBox(ImageOf<PixelBgr> &image, int topRow, in
 };
 
 void vAttentionManager::drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, Rectangle ROI) {
-    int topRow = ROI.getTopLeftCorner().y;
-    int topCol = ROI.getTopLeftCorner().x;
-    int bottomRow = ROI.getBottomRightCorner().y;
-    int bottomCol = ROI.getBottomRightCorner().x;
+    int topRow = ROI.getTopLeftCorner().getY();
+    int topCol = ROI.getTopLeftCorner().getX();
+    int bottomRow = ROI.getBottomRightCorner().getY();
+    int bottomCol = ROI.getBottomRightCorner().getX();
     drawBoundingBox(image, topRow, topCol, bottomRow, bottomCol);
 }
 

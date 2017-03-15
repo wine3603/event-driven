@@ -3,7 +3,6 @@
 //
 
 #include "vFeatureMap.h"
-#include <limits>
 /**vFeatureMap Class Implementation */
 
 void vFeatureMap::updateWithFilter(yarp::sig::Matrix filter, int row, int col, vFeatureMap &outputMap, double upBound, double lowBound) const {
@@ -81,16 +80,22 @@ void vFeatureMap::threshold(double thresh, vFeatureMap &outputMap, bool binary) 
     }
 }
 
-void vFeatureMap::normalise(vFeatureMap &outputMap) const {
+bool vFeatureMap::normalise(vFeatureMap &outputMap) const {
     yAssert(&outputMap);
     if (&outputMap != this){
         outputMap = *this;
     }
-    outputMap /= outputMap.totalEnergy();
+    double totalEnergy = outputMap.totalEnergy();
+    if (totalEnergy != 0) {
+        outputMap /= totalEnergy;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 double vFeatureMap::totalEnergy() const{
-    double totalEnergy;
+    double totalEnergy = 0;
     for (int r = 0; r < this->rows(); ++r) {
         for (int c = 0; c < this->cols(); ++c) {
             totalEnergy += (*this)(r,c);
@@ -127,21 +132,21 @@ void vFeatureMap::crop(Rectangle ROI, vFeatureMap &outputMap) const{
     PointXY topLeft = ROI.getTopLeftCorner();
     PointXY botRight = ROI.getBottomRightCorner();
 
-    yAssert(topLeft.x >= 0 && topLeft.x < cols());
-    yAssert(topLeft.y >= 0 && topLeft.y < rows());
-    yAssert(botRight.x >= 0 && botRight.x < cols());
-    yAssert(botRight.y >= 0 && botRight.y < rows());
+    yAssert(topLeft.getX() >= 0 && topLeft.getX() < cols());
+    yAssert(topLeft.getY() >= 0 && topLeft.getY() < rows());
+    yAssert(botRight.getX() >= 0 && botRight.getX() < cols());
+    yAssert(botRight.getY() >= 0 && botRight.getY() < rows());
 
     int topRow, topCol, bottomRow, bottomCol;
-    topCol = topLeft.x;
-    bottomCol = botRight.x;
+    topCol = topLeft.getX();
+    bottomCol = botRight.getX();
 
     if (!ROI.isTopLeftOrigin()){
-        topRow = (rows()-1) - topLeft.y;
-        bottomRow = (rows()-1) - botRight.y;
+        topRow = (rows()-1) - topLeft.getY();
+        bottomRow = (rows()-1) - botRight.getY();
     } else {
-        topRow = topLeft.y;
-        bottomRow = botRight.y;
+        topRow = topLeft.getY();
+        bottomRow = botRight.getY();
     }
 
     yarp::sig::Matrix submatrix = this->submatrix(topRow, bottomRow, topCol, bottomCol);
@@ -157,24 +162,35 @@ void vFeatureMap::decay(double dt, double tau, vFeatureMap &outputMap) const {
 }
 
 Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int increase) const{
-    //TODO debug! Energy in ROI considers one additional pixel.
+
+    Rectangle mapBoundaries = getMapBoundaries();
 
     //Define initial ROI as a square around start of size increase
-    PointXY topLeft(start.x - increase, start.y - increase, 0, cols() - 1, 0, rows() - 1);
-    PointXY botRight(start.x + increase, start.y + increase, 0, cols() - 1, 0, rows() - 1);
+    PointXY topLeft(start.getX() - increase, start.getY() - increase, mapBoundaries);
+    PointXY botRight(start.getX() + increase, start.getY() + increase, mapBoundaries);
     Rectangle ROI (topLeft, botRight);
 
-    //Defining points above, below, to the left and right of ROI
-    PointXY top(topLeft.x, topLeft.y - increase , 0, cols() - 1, 0, rows() - 1);
-    PointXY bottom( botRight.x, botRight.y + increase, 0, cols() - 1, 0, rows() - 1);
-    PointXY left( topLeft.x - increase,topLeft.y, 0, cols() - 1, 0, rows() - 1);
-    PointXY right( botRight.x + increase, botRight.y, 0, cols() - 1, 0, rows() - 1);
+    //Defining points above, below, to the left and right of ROI constrained to be within the map boundaries
+    PointXY top1(topLeft.getX(), topLeft.getY() - increase , mapBoundaries);
+    PointXY top2(ROI.getTopRightCorner().getX(), ROI.getTopRightCorner().getY() - 1, mapBoundaries);
+    PointXY bottom1( botRight.getX(), botRight.getY() + increase, mapBoundaries);
+    PointXY bottom2(ROI.getBottomLeftCorner().getX(), ROI.getBottomLeftCorner().getY() + 1, mapBoundaries);
+    PointXY left1( topLeft.getX() - increase,topLeft.getY(), mapBoundaries);
+    PointXY left2(ROI.getBottomLeftCorner().getX() - 1, ROI.getBottomLeftCorner().getY(), mapBoundaries);
+    PointXY right1( botRight.getX() + increase, botRight.getY(), mapBoundaries);
+    PointXY right2(ROI.getTopRightCorner().getX() + 1, ROI.getTopRightCorner().getY(), mapBoundaries);
+
+    //Defining Rectangles above, below to the left and to the right of ROI using above defined points
+    Rectangle top (top1, top2);
+    Rectangle bottom (bottom1, bottom2);
+    Rectangle right (right1, right2);
+    Rectangle left (left1, left2);
 
     //Computing the energy in the four directions
-    double energyTop = energyInROI( Rectangle( top, ROI.getTopRightCorner()));
-    double energyBottom = energyInROI( Rectangle(ROI.getBottomLeftCorner(), bottom));
-    double energyLeft = energyInROI( Rectangle(left , ROI.getBottomLeftCorner()));
-    double energyRight = energyInROI( Rectangle( ROI.getTopRightCorner(), right));
+    double energyTop = energyInROI(top);
+    double energyBottom = energyInROI(bottom);
+    double energyLeft = energyInROI(left);
+    double energyRight = energyInROI(right);
 
     //Variables to compute the energy growth
     double internalEnergy;
@@ -194,42 +210,43 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
         if (energyRight > *maxEnergy)
             maxEnergy = &energyRight;
 
-        //Increase the size of the bounding box in the direction with the maximum energy
-        if (maxEnergy == &energyTop){
-            topLeft.y -= increase;
-            clamp(topLeft.y, 0, rows()-1);
-            top = PointXY( topLeft.x,topLeft.y - increase, 0, cols() - 1, 0, rows() - 1);
-            energyTop = energyInROI( Rectangle(top, ROI.getTopRightCorner()));
-        }
-        if (maxEnergy == &energyBottom){
-            botRight.y += increase;
-            clamp(botRight.y, 0, rows()-1);
-            bottom = PointXY( botRight.x, botRight.y + increase, 0, cols() - 1, 0, rows() - 1);
-            energyBottom = energyInROI( Rectangle( ROI.getBottomLeftCorner(), bottom));
-        }
-        if (maxEnergy == &energyLeft){
-            topLeft.x -= increase;
-            clamp(topLeft.x, 0, cols()-1);
-            left = PointXY ( topLeft.x - increase,topLeft.y, 0, cols() - 1, 0, rows() - 1);
-            energyInROI( Rectangle(left, ROI.getBottomLeftCorner()));
-        }
-        if (maxEnergy == &energyRight){
-            botRight.x += increase;
-            clamp(botRight.x, 0, cols()-1);
-            right = PointXY( botRight.x + increase, botRight.y, 0, cols() - 1, 0, rows() - 1);
-            energyInROI( Rectangle( ROI.getTopRightCorner(), right));
-        }
-
-        //Update ROI and compute the energy growth rate
-        ROI = Rectangle(topLeft,botRight);
-        internalEnergy = energyInROI(ROI);
+        //compute the energy growth rate
+        internalEnergy = previousInternalEnergy + *maxEnergy;
         dEnergy = (internalEnergy - previousInternalEnergy) / previousInternalEnergy;
         previousInternalEnergy = internalEnergy;
+        if (dEnergy <= threshold)
+            break;
+
+        //Increase the size of the bounding box in the direction with the maximum energy
+        if (maxEnergy == &energyTop){
+            topLeft.translate(0, -increase);
+            ROI = Rectangle(topLeft, botRight);
+            top.translate(0, -increase);
+            energyTop = energyInROI(top);
+        }
+        if (maxEnergy == &energyBottom){
+            botRight.translate(0, increase);
+            ROI = Rectangle(topLeft,botRight);
+            bottom.translate(0, increase);
+            energyBottom = energyInROI(bottom);
+        }
+        if (maxEnergy == &energyLeft){
+            topLeft.translate(-increase, 0);
+            ROI = Rectangle(topLeft,botRight);
+            left.translate(-increase, 0);
+            energyLeft = energyInROI(left);
+        }
+        if (maxEnergy == &energyRight){
+            botRight.translate(increase, 0);
+            ROI = Rectangle(topLeft,botRight);
+            right.translate(increase, 0);
+            energyRight = energyInROI(right);
+        }
+
 
     } while (dEnergy > threshold);
 
     return ROI;
-    //TODO debug. There is one extra iteration towards the top
 }
 
 void vFeatureMap::convolve(yarp::sig::Matrix filter, vFeatureMap &outputMap) const {
@@ -252,24 +269,35 @@ void vFeatureMap::convolve(yarp::sig::Matrix filter, vFeatureMap &outputMap) con
     }
 }
 
+std::ostream &operator<<(std::ostream &str, const vFeatureMap &map) {
+    for (int i = 0; i < map.rows(); ++i) {
+        str << "[ " ;
+        for (int j = 0; j < map.cols(); ++j) {
+            str << map(i,j) << " ";
+        }
+        str << "]" << std::endl;
+    }
+    return str;
+}
+
 /**Rectangle Class implementation */
 
 Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero) {
     bool valid = true;
-    valid &= (corner1.x >= 0 && corner1.y >= 0);
-    valid &= (corner2.x >= 0 && corner2.y >= 0);
+    valid &= (corner1.getX() >= 0 && corner1.getY() >= 0);
+    valid &= (corner2.getX() >= 0 && corner2.getY() >= 0);
     yAssert(valid);
 
-    int topX = std::min(corner1.x, corner2.x);
-    int bottomX = std::max(corner2.x, corner2.x);
+    int topX = std::min(corner1.getX(), corner2.getX());
+    int bottomX = std::max(corner1.getX(), corner2.getX());
 
     int topY, bottomY;
     if (isTopLeftZero){
-        topY = std::min(corner1.y, corner2.y);
-        bottomY = std::max(corner1.y, corner2.y);
+        topY = std::min(corner1.getY(), corner2.getY());
+        bottomY = std::max(corner1.getY(), corner2.getY());
     } else {
-        topY = std::max(corner1.y, corner2.y);
-        bottomY = std::min(corner1.y, corner2.y);
+        topY = std::max(corner1.getY(), corner2.getY());
+        bottomY = std::min(corner1.getY(), corner2.getY());
     }
     this->isTopLeftZero = isTopLeftZero;
     this->topLeftCorner = PointXY(topX,topY);
@@ -281,33 +309,92 @@ Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopL
 Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool isTopLeftZero) {
     yAssert(width > 0 && height >  0);
 
-    int bottomX = topLeftCorner.x + width;
+    int bottomX = topLeftCorner.getX() + width;
     int bottomY;
     if (isTopLeftZero){
-        bottomY = topLeftCorner.y + height;
+        bottomY = topLeftCorner.getY() + height;
     } else {
-        bottomY = topLeftCorner.y - height;
+        bottomY = topLeftCorner.getY() - height;
     }
     *this = Rectangle(topLeftCorner,PointXY(bottomX,bottomY),isTopLeftZero);
 }
 
-Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY), PointXY(bottomX, bottomY), isTopLeftZero){}
+Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY),
+                                                                                                   PointXY(bottomX, bottomY),
+                                                                                                   isTopLeftZero){}
 
-bool Rectangle::contains(PointXY point) const{
+bool Rectangle::contains(PointXY point) const {
     bool isIn = true;
-    isIn &= (point.x >= topLeftCorner.x && point.x <= bottomRightCorner.x);
+    isIn &= (point.getX() >= topLeftCorner.getX() && point.getX() <= bottomRightCorner.getX());
     if (isTopLeftZero){
-        isIn &= (point.y >= topLeftCorner.y && point.y <= bottomRightCorner.y);
+        isIn &= (point.getY() >= topLeftCorner.getY() && point.getY() <= bottomRightCorner.getY());
     } else {
-        isIn &= (point.y <= topLeftCorner.y && point.y >= bottomRightCorner.y);
+        isIn &= (point.getY() <= topLeftCorner.getY() && point.getY() >= bottomRightCorner.getY());
     }
     return isIn;
 }
 
+std::ostream &operator<<(std::ostream &str, const Rectangle &rectangle) {
+
+    str << "\n" << rectangle.getTopLeftCorner() << "-----------" <<
+        rectangle.getTopRightCorner() << "\n    |                    |\n    |                    |\n    |                    |\n    |                    |\n    |                    |\n" <<
+        rectangle.getBottomLeftCorner() << "-----------"  <<
+        rectangle.getBottomRightCorner() << "\n";
+    return str;
+}
+
+void Rectangle::translate(int dx, int dy) {
+    topLeftCorner.translate(dx, dy);
+    topRightCorner.translate(dx, dy);
+    bottomLeftCorner.translate(dx, dy);
+    bottomRightCorner.translate(dx, dy);
+}
+
 /** Point Class implementation */
-PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound) {
+PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound){
     clamp(x, xLowBound, xUpBound);
     clamp(y, yLowBound, yUpBound);
     this->x = x;
     this->y = y;
+    this->xLowBound = xLowBound;
+    this->xUpBound = xUpBound;
+    this->yLowBound = yLowBound;
+    this->yUpBound = yUpBound;
+    this->bounded = true;
 }
+
+PointXY::PointXY(int x, int y, Rectangle boundary) : PointXY(x,y, true) {
+    setBoundaries(boundary);
+}
+
+void PointXY::translate(int dx, int dy) {
+    x += dx;
+    y += dy;
+    if (bounded){
+        clamp(x,xLowBound,xUpBound);
+        clamp(y,yLowBound,yUpBound);
+    }
+}
+
+std::ostream &operator<<(std::ostream &str, const PointXY &point) {
+    str << "( " << std::to_string(point.getX()) << ", " << std::to_string(point.y) << " )";
+    return str;
+}
+
+void PointXY::setBoundaries(Rectangle boundary) {
+    if (boundary.isTopLeftOrigin()){
+        yLowBound = boundary.getTopLeftCorner().y;
+        yUpBound = boundary.getBottomLeftCorner().y;
+    } else {
+        yLowBound = boundary.getBottomLeftCorner().y;
+        yUpBound = boundary.getTopLeftCorner().y;
+    }
+    xLowBound = boundary.getTopLeftCorner().x;
+    xUpBound = boundary.getBottomRightCorner().x;
+    bounded = true;
+}
+
+Rectangle PointXY::getBoundaries() const {
+    return Rectangle(xLowBound,yLowBound,xUpBound,yUpBound);
+}
+

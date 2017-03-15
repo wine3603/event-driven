@@ -12,28 +12,52 @@
 #include <iCub/eventdriven/vtsHelper.h>
 #include <math.h>
 #include <ostream>
+#include <limits>
 
 using namespace yarp::math;
+
+class Rectangle;
+class PointXY;
+class vFeatureMap;
 
 /**
  * Class defining a 2D point
  */
 class PointXY{
 public:
-    PointXY(int x, int y): x(x),
-                           y(y) {};
+    PointXY(int x, int y, bool bounded = false): x(x),
+                                                 y(y),
+                                                 bounded(bounded){};
+
     PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound);
-    PointXY(){};
+
+    PointXY(int x, int y, Rectangle boundary);
+
+    PointXY(): x(0),
+               y(0),
+               bounded(false){};
+
+    void translate(int dx, int dy);
+
+    void setBoundaries(Rectangle boundary);
+    Rectangle getBoundaries() const;
+    bool isBounded() const {return bounded;};
+    int getX() const {return x;}
+    int getY() const {return y;}
+    friend std::ostream &operator<<(std::ostream & str, const PointXY &point);
+
+
+private:
 
     int x;
     int y;
-};
+    bool bounded;
+    int xLowBound;
+    int xUpBound;
+    int yLowBound;
+    int yUpBound;
 
-inline
-std::ostream &operator<<(std::ostream & str, const PointXY &point) {
-    str << "( " << std::to_string(point.x) << ", " << std::to_string(point.y) << " )";
-    return str;
-}
+};
 
 /**
  * Class for defining rectangular bounding boxes or ROI.
@@ -74,13 +98,17 @@ public:
      */
     bool contains(PointXY point) const;
 
-    int getHeight() {return abs(topLeftCorner.y - bottomRightCorner.y);};
-    int getWidth(){ return abs(topLeftCorner.x - bottomRightCorner.x); };
-    PointXY getTopLeftCorner() { return topLeftCorner;};
-    PointXY getBottomRightCorner() { return bottomRightCorner;};
-    PointXY &getTopRightCorner(){ return topRightCorner; }
-    PointXY &getBottomLeftCorner() { return bottomLeftCorner; }
-    bool isTopLeftOrigin(){return isTopLeftZero;};
+    void translate (int dx, int dy);
+
+    int getHeight() const {return abs(topLeftCorner.getY() - bottomRightCorner.getY());};
+    int getWidth() const { return abs(topLeftCorner.getX() - bottomRightCorner.getX()); };
+    PointXY getTopLeftCorner() const { return topLeftCorner;};
+    PointXY getBottomRightCorner() const { return bottomRightCorner;};
+    PointXY getTopRightCorner() const{ return topRightCorner; }
+    PointXY getBottomLeftCorner() const { return bottomLeftCorner; }
+    bool isTopLeftOrigin() const {return isTopLeftZero;};
+
+    friend std::ostream &operator<<(std::ostream & str, const Rectangle &rectangle);
 
 private:
     PointXY topLeftCorner;
@@ -90,6 +118,7 @@ private:
     bool isTopLeftZero;
 
 };
+
 
 /**
  * Class for handling feature maps.
@@ -158,6 +187,12 @@ public:
     void updateWithFilter(yarp::sig::Matrix filter, int row, int col, double upBound = 0, double lowBound = 0) {
         updateWithFilter(filter, row, col, *this, upBound, lowBound);}
 
+
+    /**
+     * Performs convolution on outputmap using the passed filter
+     * @param filter
+     * @param outputMap optional parameter to convolves the updated map. If not set this map is convolved
+     */
     void convolve(yarp::sig::Matrix filter, vFeatureMap& outputMap) const;
     void convolve(yarp::sig::Matrix filter) {convolve(filter, *this);};
 
@@ -182,7 +217,7 @@ public:
      * Normalises the map so that its energy sums to 1.
      * @param outputMap optional parameter to output the normalised map. If not set this map is normalised
      */
-    void normalise(vFeatureMap &outputMap) const;
+    bool normalise(vFeatureMap &outputMap) const;
     void normalise(){normalise(*this);}
 
     /**
@@ -226,23 +261,15 @@ public:
      */
     Rectangle computeBoundingBox(PointXY start, double threshold, int increase) const;
 
-    int getRowPadding(){ return rPadding;};
+    Rectangle getMapBoundaries() const { return Rectangle (0, 0, cols(), rows());}
 
-    int getColPadding(){ return cPadding;};
+    int getRowPadding(){ return rPadding;}
+    int getColPadding(){ return cPadding;}
+
+    friend std::ostream &operator<<(std::ostream& str, const vFeatureMap& map);
 
 };
 
-inline
-std::ostream &operator<<(std::ostream& str, const vFeatureMap& map){
-    for (int i = 0; i < map.rows(); ++i) {
-        str << "[ " ;
-        for (int j = 0; j < map.cols(); ++j) {
-            str << map(i,j) << " ";
-        }
-        str << "]" << std::endl;
-    }
-    return str;
-};
 
 template <typename T>
 inline
