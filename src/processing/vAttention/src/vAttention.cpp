@@ -225,7 +225,8 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     int r,c;
     computeAttentionPoint(salMapLeft,r,c);
     PointXY attPoint(c,r);
-//    Rectangle ROI = salMapLeft.computeBoundingBox(attPoint,0.1,5);
+
+    Rectangle ROI = salMapLeft.computeBoundingBox(attPoint,0.1,5);
     salMapLeft*= 200000;
 
 
@@ -234,20 +235,13 @@ void vAttentionManager::onRead(ev::vBottle &bot) {
     ImageOf<PixelBgr> &imageActivation = outActivationMapPort.prepare();
 
     activationMap.convertToImage(imageActivation);
-    salMapLeft.zero();
-    for (int k = 50; k < 100; ++k) {
-        for (int i = 50; i < 100; ++i) {
-            salMapLeft(k,i)  = 255;
-        }
-    }
-    Rectangle ROI = salMapLeft.computeBoundingBox(PointXY(75,75),0.01,5);
-    salMapLeft.convertToImage(imageLeft);
 
-    drawBoundingBox(imageLeft, ROI.getTopLeftCorner().getY() - salMapLeft.getRowPadding(),
-                    ROI.getTopLeftCorner().getX() - salMapLeft.getColPadding(),
-                    ROI.getBottomRightCorner().getY() - salMapLeft.getRowPadding(),
-                    ROI.getBottomRightCorner().getX() - salMapLeft.getColPadding());
-    imageLeft(75 - salMapLeft.getColPadding(),75 - salMapLeft.getRowPadding()) = PixelBgr(255,0,0);
+    salMapLeft.convertToImage(imageLeft);
+    ROI.translate(-salMapLeft.getColPadding(), -salMapLeft.getRowPadding());
+    attPoint.setBoundaries(Rectangle(PointXY(0,0),PointXY(imageLeft.width(),imageLeft.height())));
+    attPoint.translate(-salMapLeft.getColPadding(), - salMapLeft.getRowPadding());
+    imageLeft(attPoint.getX(),attPoint.getY()) = PixelBgr(255,0,0);
+    drawBoundingBox(imageLeft, ROI);
 
     outSalMapLeftPort.write();
     outActivationMapPort.write();
@@ -334,7 +328,7 @@ bool vAttentionManager::initialize(ResourceFinder &rf) {
 
     double sigmaGabor =(double) filterSize / 4.0;
     double fGabor = 2.0 /(double) filterSize;
-    double amplGabor = 0.4;
+    double amplGabor = -0.4;
     int step = 45;
     for (int theta = 0; theta < 180; theta += step) {
         vFeatureMap featureMap (mapHeight, mapWidth, salMapPadding, salMapPadding);

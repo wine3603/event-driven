@@ -131,7 +131,7 @@ void vFeatureMap::crop(Rectangle ROI, vFeatureMap &outputMap) const{
     yAssert(&outputMap);
     PointXY topLeft = ROI.getTopLeftCorner();
     PointXY botRight = ROI.getBottomRightCorner();
-
+bool a = (botRight.getX() >= 0 && botRight.getX() < cols());
     yAssert(topLeft.getX() >= 0 && topLeft.getX() < cols());
     yAssert(topLeft.getY() >= 0 && topLeft.getY() < rows());
     yAssert(botRight.getX() >= 0 && botRight.getX() < cols());
@@ -168,7 +168,7 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
     //Define initial ROI as a square around start of size increase
     PointXY topLeft(start.getX() - increase, start.getY() - increase, mapBoundaries);
     PointXY botRight(start.getX() + increase, start.getY() + increase, mapBoundaries);
-    Rectangle ROI (topLeft, botRight);
+    Rectangle ROI(topLeft, botRight, &mapBoundaries);
 
     //Defining points above, below, to the left and right of ROI constrained to be within the map boundaries
     PointXY top1(topLeft.getX(), topLeft.getY() - increase , mapBoundaries);
@@ -181,10 +181,10 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
     PointXY right2(ROI.getTopRightCorner().getX() + 1, ROI.getTopRightCorner().getY(), mapBoundaries);
 
     //Defining Rectangles above, below to the left and to the right of ROI using above defined points
-    Rectangle top (top1, top2);
-    Rectangle bottom (bottom1, bottom2);
-    Rectangle right (right1, right2);
-    Rectangle left (left1, left2);
+    Rectangle top (top1, top2, &mapBoundaries);
+    Rectangle bottom(bottom1, bottom2, &mapBoundaries);
+    Rectangle right(right1, right2, &mapBoundaries);
+    Rectangle left(left1, left2, &mapBoundaries);
 
     //Computing the energy in the four directions
     double energyTop = energyInROI(top);
@@ -220,25 +220,25 @@ Rectangle vFeatureMap::computeBoundingBox(PointXY start, double threshold, int i
         //Increase the size of the bounding box in the direction with the maximum energy
         if (maxEnergy == &energyTop){
             topLeft.translate(0, -increase);
-            ROI = Rectangle(topLeft, botRight);
+            ROI = Rectangle(topLeft, botRight, &mapBoundaries);
             top.translate(0, -increase);
             energyTop = energyInROI(top);
         }
         if (maxEnergy == &energyBottom){
             botRight.translate(0, increase);
-            ROI = Rectangle(topLeft,botRight);
+            ROI = Rectangle(topLeft, botRight, &mapBoundaries);
             bottom.translate(0, increase);
             energyBottom = energyInROI(bottom);
         }
         if (maxEnergy == &energyLeft){
             topLeft.translate(-increase, 0);
-            ROI = Rectangle(topLeft,botRight);
+            ROI = Rectangle(topLeft, botRight, &mapBoundaries);
             left.translate(-increase, 0);
             energyLeft = energyInROI(left);
         }
         if (maxEnergy == &energyRight){
             botRight.translate(increase, 0);
-            ROI = Rectangle(topLeft,botRight);
+            ROI = Rectangle(topLeft, botRight, &mapBoundaries);
             right.translate(increase, 0);
             energyRight = energyInROI(right);
         }
@@ -282,11 +282,7 @@ std::ostream &operator<<(std::ostream &str, const vFeatureMap &map) {
 
 /**Rectangle Class implementation */
 
-Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero) {
-    bool valid = true;
-    valid &= (corner1.getX() >= 0 && corner1.getY() >= 0);
-    valid &= (corner2.getX() >= 0 && corner2.getY() >= 0);
-    yAssert(valid);
+Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, Rectangle *boundary, bool isTopLeftZero) {
 
     int topX = std::min(corner1.getX(), corner2.getX());
     int bottomX = std::max(corner1.getX(), corner2.getX());
@@ -304,9 +300,11 @@ Rectangle::Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopL
     this->bottomRightCorner = PointXY(bottomX, bottomY);
     this->bottomLeftCorner = PointXY (topX,bottomY);
     this->topRightCorner = PointXY (bottomX,topY);
+    if (boundary)
+        setBoundaries(*boundary);
 }
 
-Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool isTopLeftZero) {
+Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, Rectangle *boundary, bool isTopLeftZero) {
     yAssert(width > 0 && height >  0);
 
     int bottomX = topLeftCorner.getX() + width;
@@ -316,12 +314,11 @@ Rectangle::Rectangle(const PointXY &topLeftCorner, int width, int height, bool i
     } else {
         bottomY = topLeftCorner.getY() - height;
     }
-    *this = Rectangle(topLeftCorner,PointXY(bottomX,bottomY),isTopLeftZero);
+    *this = Rectangle(topLeftCorner, PointXY(bottomX, bottomY), boundary, isTopLeftZero);
 }
 
-Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero) : Rectangle(PointXY(topX,topY),
-                                                                                                   PointXY(bottomX, bottomY),
-                                                                                                   isTopLeftZero){}
+Rectangle::Rectangle(int topX, int topY, int bottomX, int bottomY, Rectangle *boundary, bool isTopLeftZero) : Rectangle(
+        PointXY(topX, topY), PointXY(bottomX, bottomY), boundary, isTopLeftZero) {}
 
 bool Rectangle::contains(PointXY point) const {
     bool isIn = true;
@@ -350,6 +347,14 @@ void Rectangle::translate(int dx, int dy) {
     bottomRightCorner.translate(dx, dy);
 }
 
+void Rectangle::setBoundaries(Rectangle &boundary) {
+    topLeftCorner.setBoundaries(boundary);
+    topRightCorner.setBoundaries(boundary);
+    bottomRightCorner.setBoundaries(boundary);
+    bottomLeftCorner.setBoundaries(boundary);
+    bounded = true;
+}
+
 /** Point Class implementation */
 PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound){
     clamp(x, xLowBound, xUpBound);
@@ -363,7 +368,8 @@ PointXY::PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int y
     this->bounded = true;
 }
 
-PointXY::PointXY(int x, int y, Rectangle boundary) : PointXY(x,y, true) {
+PointXY::PointXY(int x, int y, Rectangle &boundary) {
+    *this = PointXY(x,y, true);
     setBoundaries(boundary);
 }
 
@@ -391,10 +397,12 @@ void PointXY::setBoundaries(Rectangle boundary) {
     }
     xLowBound = boundary.getTopLeftCorner().x;
     xUpBound = boundary.getBottomRightCorner().x;
+    clamp(x, xLowBound, xUpBound);
+    clamp(y, yLowBound, yUpBound);
     bounded = true;
 }
 
 Rectangle PointXY::getBoundaries() const {
-    return Rectangle(xLowBound,yLowBound,xUpBound,yUpBound);
+    return Rectangle(xLowBound, yLowBound, xUpBound, yUpBound);
 }
 

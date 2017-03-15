@@ -31,7 +31,7 @@ public:
 
     PointXY(int x, int y, int xLowBound, int xUpBound, int yLowBound, int yUpBound);
 
-    PointXY(int x, int y, Rectangle boundary);
+    PointXY(int x, int y, Rectangle &boundary);
 
     PointXY(): x(0),
                y(0),
@@ -70,7 +70,7 @@ public:
      * @param corner2
      * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
      */
-    Rectangle(const PointXY &corner1, const PointXY &corner2, bool isTopLeftZero = true);
+    Rectangle(const PointXY &corner1, const PointXY &corner2, Rectangle *boundary = YARP_NULLPTR, bool isTopLeftZero = true);
     /**
      * Constructor. Takes the coordinate of top left corner and the desired rectangle width and height
      * @param topLeftCorner
@@ -78,7 +78,7 @@ public:
      * @param height
      * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
      */
-    Rectangle(const PointXY &topLeftCorner, int width, int height, bool isTopLeftZero = true);
+    Rectangle(const PointXY &topLeftCorner, int width, int height, Rectangle *boundary = YARP_NULLPTR, bool isTopLeftZero = true);
     /**
      * Constructor. Takes the coordinates of two opposite corners
      * @param topX
@@ -87,7 +87,7 @@ public:
      * @param bottomY
      * @param isTopLeftZero If true the origin of the coordinate reference system is at the top left, otherwise at bottom left.
      */
-    Rectangle(int topX, int topY, int bottomX, int bottomY, bool isTopLeftZero = true);
+    Rectangle(int topX, int topY, int bottomX, int bottomY, Rectangle *boundary = YARP_NULLPTR, bool isTopLeftZero = true);
     /**
      * Default constructor
      */
@@ -107,10 +107,12 @@ public:
     PointXY getTopRightCorner() const{ return topRightCorner; }
     PointXY getBottomLeftCorner() const { return bottomLeftCorner; }
     bool isTopLeftOrigin() const {return isTopLeftZero;};
+    void setBoundaries(Rectangle &boundary);
 
     friend std::ostream &operator<<(std::ostream & str, const Rectangle &rectangle);
 
 private:
+    bool bounded;
     PointXY topLeftCorner;
     PointXY topRightCorner;
     PointXY bottomLeftCorner;
@@ -261,7 +263,7 @@ public:
      */
     Rectangle computeBoundingBox(PointXY start, double threshold, int increase) const;
 
-    Rectangle getMapBoundaries() const { return Rectangle (0, 0, cols(), rows());}
+    Rectangle getMapBoundaries() const { return Rectangle(0, 0, cols() - 1 , rows() - 1);}
 
     int getRowPadding(){ return rPadding;}
     int getColPadding(){ return cPadding;}
