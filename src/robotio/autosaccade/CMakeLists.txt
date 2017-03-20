@@ -5,6 +5,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 SET(PROJECTNAME vAutoSaccade)
 PROJECT(${PROJECTNAME})
 
+find_package(ICUB)
+
 file(GLOB source src/*.cpp)
 file(GLOB header include/*.h)
 

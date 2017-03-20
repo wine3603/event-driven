@@ -25,6 +25,9 @@
 #include <yarp/os/all.h>
 #include <iCub/eventdriven/all.h>
 #include <yarp/dev/all.h>
+#include <iCub/iKin/iKinFwd.h>
+#include <yarp/math/Math.h>
+using namespace yarp::math;
 
 class EventBottleManager : public yarp::os::BufferedPort<ev::vBottle>
 {
@@ -60,24 +63,32 @@ private:
     yarp::os::RpcServer     rpcPort;
 
     //the event bottle input and output handler
-    EventBottleManager      eventBottleManager;
+//    EventBottleManager      eventBottleManager;
 
+    yarp::os::Port eventCount;
+
+    int context0;
+    
     //timing parameters
     double checkPeriod;
     double minVpS;
-
-    //saccade parameters
-    double sMag;
-    double sVel;
+    double maxVps;
+    bool isSaccading;
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
-    yarp::dev::IPositionControl *pc;
-    yarp::dev::IEncoders *ec;
-    void performSaccade();
+    yarp::dev::IGazeControl *gazeControl;
+    //Variables for frames transformation
+    yarp::sig::Matrix rootToHead;
+    yarp::sig::Matrix headToRoot;
+    yarp::sig::Vector x,o;
 
+    std::vector<yarp::sig::Vector> trajectory;
     //timestamps for comparison
     double prevStamp;
+
+    void generateTrajectory();
+    void performSaccade();
 
 public:
 
