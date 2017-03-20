@@ -4,12 +4,6 @@
 
 cmake_minimum_required(VERSION 2.6)
 
-add_subdirectory(vFlow)
-add_subdirectory(vAttention)
-#add_subdirectory(vFeatureMap)
-#add_subdirectory(vSaliencyMap)
-#add_subdirectory(vAnalysis)
-add_subdirectory(vCluster)
 add_subdirectory(vPepper)
 
 if(ICUB_FOUND)

@@ -151,7 +151,6 @@ private:
  */
 class vFeatureMap : public yarp::sig::Matrix {
 private:
-    int
     //padding size for row and cols
     int rPadding;
     int cPadding;
