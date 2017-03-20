@@ -20,14 +20,13 @@
 
 #include <vFeatureMap.h>
 
-class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle>
-{
+class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle> {
 private:
-
-
-    using  imagePort = yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> >;
+    
+    
+    using imagePort = yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> >;
     using eventPort = yarp::os::BufferedPort<ev::vBottle>;
-
+    
     eventPort outPort;
     imagePort outSalMapLeftPort;
     imagePort outActivationMapPort;
@@ -35,76 +34,83 @@ private:
     imagePort outFeatMap45;
     imagePort outFeatMap90;
     imagePort outFeatMap135;
-
+    
     unsigned long int prevT;
-
+    
     int count; //For debug purposes
-
+    
     double tau;
     int boxWidth;
     int boxHeight;
-
+    
     ev::vtsHelper unwrap;
     vFeatureMap eventMap;
-
+    
     vFeatureMap activationMap;
     vFeatureMap salMapLeft;
     vFeatureMap salMapRight;
-
+    
     //Filters
-    std::vector <yarp::sig::Matrix > orientedFilters;
-
+    std::vector<yarp::sig::Matrix> orientedFilters;
+    
     //Feature Maps
-    std::vector <vFeatureMap > orientFeatMap;
+    std::vector<vFeatureMap> orientFeatMap;
     //Thresholded Maps
-    std::vector <vFeatureMap > threshFeatMap;
-
-    void computeAttentionPoint(const vFeatureMap &map, int &attPointRow, int &attPointCol);
-
-    void generateOrientedGaussianFilter(yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY,
-                                            double theta, int gaussianFilterSize, int xCenter, int yCenter);
-
-    void generateGaborFilter(yarp::sig::Matrix &filterMap, int gaborFilterSize, double A, double f,
-                                 double sigma, double theta);
-
-    void drawBoundingBox(yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol,
-                         int bottomRow, int bottomCol);
-
-    void drawBoundingBox(yarp::sig::ImageOf <yarp::sig::PixelBgr> &image, Rectangle ROI);
+    std::vector<vFeatureMap> threshFeatMap;
+    
+    void computeAttentionPoint( const vFeatureMap &map, int &attPointRow, int &attPointCol );
+    
+    void
+    generateOrientedGaussianFilter( yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY, double theta
+                                    , int gaussianFilterSize, int xCenter, int yCenter );
+    
+    void generateGaborFilter( yarp::sig::Matrix &filterMap, int gaborFilterSize, double A, double f, double sigma
+                              , double theta );
+    
+    void drawBoundingBox( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, int topRow, int topCol, int bottomRow
+                          , int bottomCol );
+    
+    void drawBoundingBox( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, Rectangle ROI );
 
 public:
-
-    vAttentionManager(){};
-
-    bool    initialize(yarp::os::ResourceFinder& rf);
-    bool    open(const std::string moduleName, bool strictness = false);
-    void    close();
-    void    interrupt();
-
+    
+    vAttentionManager() {};
+    
+    bool initialize( yarp::os::ResourceFinder &rf );
+    
+    bool open( const std::string moduleName, bool strictness = false );
+    
+    void close();
+    
+    void interrupt();
+    
     //this is the entry point to your main functionality
-    void    onRead(ev::vBottle &bot);
-
-
-
+    void onRead( ev::vBottle &bot );
+    
+    
 };
 
-class vAttentionModule : public yarp::os::RFModule
-{
-
+class vAttentionModule : public yarp::os::RFModule {
+    
     //the event bottle input and output handler
-    vAttentionManager      *attManager;
-    yarp::os::Port          handlerPort;                 // a port to handle messages
+    vAttentionManager *attManager;
+    yarp::os::Port handlerPort;                 // a port to handle messages
 
 public:
-
+    
     //the virtual functions that need to be overloaded
-    virtual bool configure(yarp::os::ResourceFinder &rf);
+    virtual bool configure( yarp::os::ResourceFinder &rf );
+    
     virtual bool interruptModule();
+    
     virtual bool close();
+    
     virtual double getPeriod();
+    
     virtual bool updateModule();
-    bool respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply);
-
+    
+    bool respond( const yarp::os::Bottle &command, yarp::os::Bottle &reply );
+    
 };
 
 
