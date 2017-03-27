@@ -215,8 +215,10 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     for ( unsigned int j = 0; j < orientFeatMap.size(); ++j ) {
         orientFeatMap[j].decay( dt, tau );
         orientFeatMap[j].threshold( th, threshFeatMap[j], binary );
-        threshFeatMap[j].convertToImage( images[j] );
+        threshFeatMap[j].normalise();
         salMapLeft += threshFeatMap[j];
+        threshFeatMap[j] *= 200000;
+        threshFeatMap[j].convertToImage( images[j] );
     }
     
     activationMap.decay( dt, tau );
@@ -226,7 +228,7 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     computeAttentionPoint( salMapLeft, r, c );
     PointXY attPoint( c, r );
     
-    Rectangle ROI = salMapLeft.computeBoundingBox( attPoint, 0.1, 5 );
+    Rectangle ROI = salMapLeft.computeBoundingBox( attPoint, 0.01, 5 );
     salMapLeft *= 200000;
     
     
@@ -343,7 +345,9 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
         vFeatureMap threshMap( mapHeight, mapWidth, salMapPadding, salMapPadding );
         Matrix filterMap;
         std::string portName = moduleName + "/featMap" + std::to_string( theta ) + ":o";
-        generateGaborFilter( filterMap, filterSize, amplGabor, fGabor, sigmaGabor, theta );
+//        generateGaborFilter( filterMap, filterSize, amplGabor, fGabor, sigmaGabor, theta );
+        generateOrientedGaussianFilter(filterMap, amplGabor, sigmaGabor, sigmaGabor, theta, filterSize, filterSize/2,
+                                       filterSize/2);
         orientFeatMap.push_back( featureMap );
         threshFeatMap.push_back( threshMap );
         orientedFilters.push_back( filterMap );
