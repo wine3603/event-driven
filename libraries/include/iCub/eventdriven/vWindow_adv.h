@@ -19,14 +19,14 @@
 /// \ingroup Library
 /// \brief A storage class which automatically discards events after a given timeperiod
 
-#ifndef __VWINDOW__
-#define __VWINDOW__
+#ifndef __VWINDOW_ADV__
+#define __VWINDOW_ADV__
 
 #include <yarp/os/all.h>
 #include <vector>
-#include <iCub/eventdriven/vCodec.h>
-#include <iCub/eventdriven/vQueue.h>
-#include <iCub/eventdriven/vtsHelper.h>
+#include "iCub/eventdriven/vCodec.h"
+#include "iCub/eventdriven/vtsHelper.h"
+#include "iCub/eventdriven/vWindow_basic.h"
 
 namespace ev {
 
@@ -68,8 +68,10 @@ public:
     /// \param event the event to add
     ///
     virtual vQueue addEvent(event<> v);
+    void fastAddEvent(event <> v, bool onlyAdd = false);
 
     virtual vQueue removeEvents(event<> toAdd) = 0;
+    virtual void fastRemoveEvents(event<> toAdd) = 0;
 
     ///
     /// \brief getMostRecent
@@ -78,6 +80,8 @@ public:
     event<> getMostRecent();
 
     int getEventCount() { return count; }
+
+    vQueue getEverything() { return q; }
 
     ///
     /// \brief getWindow
@@ -133,6 +137,7 @@ public:
                    int duration = vtsHelper::maxStamp() * 0.5) :
         vSurface2(width, height), duration(duration) {}
     virtual vQueue removeEvents(event<> toAdd);
+    virtual void fastRemoveEvents(event<> toAdd);
 
     void setTemporalSize(int duration) {this->duration = duration;}
 
@@ -150,6 +155,7 @@ public:
     fixedSurface(int qlength = 2000, int width = 128, int height = 128)  :
         vSurface2(width, height), qlength(qlength) {}
     virtual vQueue removeEvents(event<> toAdd);
+    virtual void fastRemoveEvents(event<> toAdd);
 
     void setFixedWindowSize(int length) {this->qlength = length;}
 };
@@ -164,25 +170,52 @@ public:
         vSurface2(width, height) {}
     virtual vQueue addEvent(event<> toAdd);
     virtual vQueue removeEvents(event<> toAdd);
+    virtual void fastRemoveEvents(event<> toAdd);
 };
 
 /******************************************************************************/
-class vTempWindow {
+class vEdge : public vSurface
+{
+private:
 
-protected:
+    //set the previous add event to be private so it cannot be used in vEdge
+    //there could be a better way to achieve this.
+    int thickness;
+    bool trackCount;
+    event<> addEvent(event<AddressEvent> v);
 
-    //! event storage
-    vQueue q;
-    //!precalculated thresholds
-    int tUpper;
-    int tLower;
+    bool addressremove(vQueue &removed, event<AddressEvent> v);
+    bool flowremove(vQueue &removed, event<FlowEvent> vf);
+    bool pepperCheck(int y, int x);
 
 public:
 
-    vTempWindow();
-    void addEvent(event<> v);
-    void addEvents(const vQueue &events);
-    vQueue getWindow();
+    vEdge(int width = 128, int height = 128) :
+        vSurface(width, height), thickness(2), trackCount(false) {}
+
+    vQueue addEventToEdge(event<AddressEvent> v);
+    void setThickness(int pixels) {thickness = pixels;}
+    void track(bool trackCount = true) {this->trackCount = trackCount;}
+
+    virtual const vQueue getSurf(int xl, int xh, int yl, int yh);
+    using vSurface::getSurf;
+
+};
+
+class vFuzzyEdge : public vEdge
+{
+
+private:
+
+    double delta;
+    std::vector < std::vector <double> > scores;
+
+public:
+
+    vFuzzyEdge(int width = 128, int height = 128, double delta = 0.4);
+    vQueue addEventToEdge(event<AddressEvent> event);
+    virtual const vQueue getSURF(int xl, int xh, int yl, int yh);
+
 };
 
 }

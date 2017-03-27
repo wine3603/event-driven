@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2015 iCub Facility - Istituto Italiano di Tecnologia
- * Author: arren.glover@iit.it
+ * Copyright (C) 2011 Department of Robotics Brain and Cognitive Sciences - Istituto Italiano di Tecnologia
+ * Author: Chiara Bartolozzi
+ * email:  chiara.bartolozzi@iit.it
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -14,32 +15,28 @@
  * Public License for more details
  */
 
-/*
- * @file main.cpp
- * @brief main code for the computation of the optical flow
- */
 
-#include <vFlow.h>
-#include <yarp/os/all.h>
-#include <yarp/sig/all.h>
-
-
-/******************************************************************************/
-//main
-/******************************************************************************/
+#include "vergenceController.h"
 
 int main(int argc, char * argv[])
 {
     /* initialize yarp network */
-    yarp::os::Network yarp;
+    yarp::os::Network::init();
+
+    /* create the module */
+    vVergenceModule vVergenceModuleInstance;
 
     /* prepare and configure the resource finder */
     yarp::os::ResourceFinder rf;
-    rf.setDefaultConfigFile("opticalflow.ini");
-    rf.setDefaultContext("eventdriven");
-    rf.configure(argc, argv);
+    //rf.setVerbose( true );
+    rf.setDefaultContext( "eventdriven" );
+    rf.setDefaultConfigFile( "vVergence.ini" );
+    rf.configure( argc, argv );
 
-    /* instantiate the module */
-    vFlowModule module;
-    return module.runModule(rf);
+    /* run the module: runModule() calls configure first and, if successful, it then runs */
+    vVergenceModuleInstance.runModule(rf);
+    yarp::os::Network::fini();
+
+    return 0;
 }
+//empty line to make gcc happy

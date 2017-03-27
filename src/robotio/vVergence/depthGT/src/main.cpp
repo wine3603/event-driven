@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2017 iCub Facility - Istituto Italiano di Tecnologia
- * Author: arren.glover@iit.it, chiara.bartolozzi@iit.it
+ * Copyright (C) 2010 eMorph Group iCub Facility
+ * Authors: Arren Glover
  * Permission is granted to copy, distribute, and/or modify this program
  * under the terms of the GNU General Public License, version 2 or any
  * later version published by the Free Software Foundation.
@@ -14,22 +14,32 @@
  * Public License for more details
  */
 
-#include "zynqGrabberModule.h"
+
+#include "depthGT.h"
+#include <yarp/os/all.h>
 
 
 int main(int argc, char * argv[])
 {
-    yarp::os::Network yarp;
 
+    yarp::os::Network::init();
+
+    depthgt module;
     yarp::os::ResourceFinder rf;
-    rf.setVerbose(true);
-    rf.setDefaultConfigFile("zynqGrabber.ini"); //overridden by --from parameter
-    rf.setDefaultContext("eventdriven");   //overridden by --context parameter
+
+    //set up the resource finder
+    rf.setDefaultConfigFile("depthgt.ini"); //overridden by --from parameter
+    rf.setDefaultContext("eMorph");   //overridden by --context parameter
     rf.configure(argc, argv);
 
-	zynqGrabberModule module;
-    return module.runModule(rf);
+    //run the module
+    module.runModule(rf);
 
+    yarp::os::Network::fini();
+    return 0;
 }
 
+
+
+//----- end-of-file --- ( next line intentionally left blank ) ------------------
 

@@ -23,6 +23,7 @@ private:
     //event reps
     ev::temporalSurface surfaceLeft;
     ev::vtsHelper unwrap;
+    preComputedBins pcb;
 
     //particle storage and variables
     std::priority_queue<vParticle> sortedlist;
@@ -39,6 +40,9 @@ private:
     double seedy;
     double seedr;
 
+    int rbound_min;
+    int rbound_max;
+
     //parameters
     ev::resolution res;
     bool strict;
@@ -46,6 +50,8 @@ private:
     int rate;
     double nRandomise;
     bool adaptive;
+    int camera;
+    bool useroi;
 
     double obsThresh;
     double obsInlier;
@@ -56,7 +62,7 @@ private:
 public:
 
     vParticleReader();
-    void initialise(unsigned int width , unsigned int height, unsigned int nParticles, unsigned int rate, double nRands, bool adaptive, double pVariance);
+    void initialise(unsigned int width , unsigned int height, unsigned int nParticles, unsigned int rate, double nRands, bool adaptive, double pVariance, int camera, bool useROI);
     void setObservationParameters(double minLikelihood, double inlierPar, double outlierPar) {
         obsThresh = minLikelihood; obsInlier = inlierPar; obsOutlier = outlierPar; }
 

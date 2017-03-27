@@ -20,12 +20,11 @@
 /// \brief yarp::os::Bottle wrapper for sending events through the yarp system with
 /// particular attention to using data dumper and data players
 
-#ifndef __vBottle__
-#define __vBottle__
+#ifndef __VBOTTLE__
+#define __VBOTTLE__
 
 #include <yarp/os/Bottle.h>
-#include <iCub/eventdriven/vCodec.h>
-#include <iCub/eventdriven/vQueue.h>
+#include "iCub/eventdriven/vCodec.h"
 
 namespace ev {
 
@@ -141,10 +140,11 @@ public:
             }
 
             //and decode each one also creating the memory with clone
-            int pos = 0;
-            while(pos < b->size()) {
-                if(e->decode(*b, pos)) {
-                    q.push_back(event<>(e->clone()));
+            //NOTE: push_back seems as fast as preallocation for a deque
+            int pos_b = 0;
+            while(pos_b < b->size()) {
+                if(e->decode(*b, pos_b)) {
+                    q.push_back(e->clone());
                 }
             }
         }
@@ -154,7 +154,7 @@ public:
     template<class T> vQueue getSorted()
     {
         vQueue q = get<T>();
-        q.sort();
+        qsort(q);
         return q;
     }
 
@@ -165,7 +165,7 @@ public:
 
     vQueue getAllSorted() {
         vQueue q = getAll();
-        q.sort(true);
+        qsort(q, true);
         return q;
     }
 
@@ -218,6 +218,8 @@ private:
     //Bottle& findGroup(const yarp::os::ConstString& key) const;
     //void findGroup();
     using yarp::os::Bottle::findGroup;
+    using yarp::os::Bottle::find;
+
     yarp::os::Bottle tail() const;
 
 

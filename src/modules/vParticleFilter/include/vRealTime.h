@@ -2,50 +2,7 @@
 #define __VREALTIMEPF__
 
 #include "vParticle.h"
-
-/*////////////////////////////////////////////////////////////////////////////*/
-//vTemporalHandler
-/*////////////////////////////////////////////////////////////////////////////*/
-class vSurfaceHandler : public yarp::os::BufferedPort<ev::vBottle>
-{
-private:
-
-    //parameters
-    ev::resolution res;
-    bool strict;
-
-    //data
-    ev::vQueue queriedQ;
-    ev::temporalSurface surfaceLeft;
-    ev::temporalSurface surfaceRight;
-    yarp::os::Stamp pstamp;
-    ev::vtsHelper unwrap;
-    unsigned long int tnow;
-    unsigned int condTime;
-    unsigned int tw;
-    bool eventsQueried;
-    yarp::os::Semaphore waitsignal;
-    yarp::os::Mutex mutexsignal;
-    double ptime;
-    double eventrate;
-    double bottletime;
-
-public:
-
-    vSurfaceHandler(unsigned int width = 128, unsigned int height = 128);
-
-    void resize(unsigned int width, unsigned int height);
-    ev::vQueue queryEvents(unsigned long int conditionTime, unsigned int temporalWindow);
-    ev::vQueue queryEventList(std::vector<vParticle> &ps);
-    void queryEvents(ev::vQueue &fillq, unsigned int temporalwindow);
-    double geteventrate() { return eventrate; }
-
-    bool    open(const std::string &name, bool strictness = false);
-    void    onRead(ev::vBottle &inBot);
-    void    close();
-    void    interrupt();
-
-};
+#include <iCub/eventdriven/vSurfaceHandlerTh.h>
 
 /*////////////////////////////////////////////////////////////////////////////*/
 // vParticleObserver
@@ -81,11 +38,15 @@ class particleProcessor : public yarp::os::Thread
 {
 private:
 
-    vSurfaceHandler eventhandler;
+    surfaceThread eventhandler2;
+    preComputedBins pcb;
     std::vector<vPartObsThread *> computeThreads;
     int nThreads;
     ev::resolution res;
     double ptime, ptime2;
+    double pytime;
+    int rbound_min;
+    int rbound_max;
 
     yarp::os::BufferedPort<ev::vBottle> vBottleOut;
     yarp::os::BufferedPort<yarp::sig::ImageOf <yarp::sig::PixelBgr> > debugOut;
@@ -103,6 +64,12 @@ private:
     int rate;
     std::string name;
     bool strict;
+    int camera;
+    bool useroi;
+
+    double seedx;
+    double seedy;
+    double seedr;
 
     int nparticles;
     double nRandomise;
@@ -117,10 +84,15 @@ private:
 
 public:
 
+    void setComputeOptions(int camera, int threads, bool useROI) {
+        this->camera = camera; nThreads = threads; useroi = useROI; }
     void setFilterParameters(int nParticles, double nRandomise, bool adaptive, double variance) {
-        nparticles = nParticles; this->nRandomise = 1.0 + nRandomise; this->adaptive = adaptive; this->pVariance = variance;}
+        nparticles = nParticles; this->nRandomise = 1.0 + nRandomise; this->adaptive = adaptive; this->pVariance = variance; }
     void setObservationParameters(double minLikelihood, double inlierPar, double outlierPar) {
         obsThresh = minLikelihood; obsInlier = inlierPar; obsOutlier = outlierPar; }
+    void setSeed(double x, double y, double r) {
+        seedx = x; seedy = y; seedr = r;
+    }
 
     particleProcessor(unsigned int height, unsigned int width, std::string name, bool strict);
     bool threadInit();

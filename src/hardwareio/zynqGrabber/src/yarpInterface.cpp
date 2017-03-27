@@ -169,10 +169,10 @@ bool device2yarp::initialise(std::string moduleName, bool strict, bool check,
         std::cout << "D2Y: setting output port to not-strict" << std::endl;
     }
 
-    if(!portEventCount.open("/" + moduleName + "/eventCount:o"))
+    if(!portEventCount.open(moduleName + "/eventCount:o"))
         return false;
 
-    return portvBottle.open("/" + moduleName + "/vBottle:o");
+    return portvBottle.open(moduleName + "/vBottle:o");
 
 }
 
@@ -377,14 +377,14 @@ void yarp2device::onRead(ev::vBottle &bot)
     int i = 0;
     for(ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
-        ev::event<ev::AddressEvent> aep = ev::getas<ev::AddressEvent>(*qi);
+        ev::event<ev::AddressEvent> aep = ev::as_event<ev::AddressEvent>(*qi);
         if(!aep) continue;
 
         int channel = aep->getChannel();
-        int polarity = aep->getPolarity();
-        int x = aep->getX();
-        int y = aep->getY();
-        int ts = aep->getStamp();
+        int polarity = aep->polarity;
+        int x = aep->x;
+        int y = aep->y;
+        int ts = aep->stamp;
 
         // address
         int word0 = ((channel&0x01)<<15)|((y&0x7f)<<8)|((x&0x7f)<<1)|(polarity&0x01);

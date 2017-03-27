@@ -227,15 +227,13 @@ bool EventBottleManager::open(const std::string &name) {
 void EventBottleManager::onRead(ev::vBottle &bot)
 {
     //create event queue
-    ev::vQueue q = bot.getSorted<ev::AddressEvent>();
-    //create queue iterator
-    ev::vQueue::iterator qi;
+    ev::vQueue q = bot.get<ev::AE>();
 
     // get the event queue in the vBottle bot
     //bot.getSorted<eventdriven::AddressEvent>(q);
     if(q.empty()) return;
 
-    latestStamp = unwrapper(q.back()->getStamp());
+    latestStamp = unwrapper(q.back()->stamp);
 //    std::cout << "latestStamp = " << latestStamp << std::endl;
 //    std::cout << "q.size() = " << q.size() << std::endl;
 
