@@ -63,6 +63,7 @@ void vFeatureMap::convertToImage( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image
 void vFeatureMap::threshold( double thresh, vFeatureMap &outputMap, bool binary ) const {
     
     yAssert( &outputMap );
+    //copy this map to outputMap
     if ( &outputMap != this ) {
         outputMap = *this;
     }
@@ -84,6 +85,7 @@ void vFeatureMap::threshold( double thresh, vFeatureMap &outputMap, bool binary 
 
 bool vFeatureMap::normalise( vFeatureMap &outputMap ) const {
     yAssert( &outputMap );
+    //copy this map to outputMap
     if ( &outputMap != this ) {
         outputMap = *this;
     }
@@ -157,6 +159,7 @@ void vFeatureMap::crop( Rectangle ROI, vFeatureMap &outputMap ) const {
 
 void vFeatureMap::decay( double dt, double tau, vFeatureMap &outputMap ) const {
     yAssert( &outputMap );
+    //copy this map to outputMap
     if ( &outputMap != this ) {
         outputMap = *this;
     }
@@ -258,6 +261,7 @@ Rectangle vFeatureMap::computeBoundingBox( PointXY start, double threshold, int 
 void vFeatureMap::convolve( yarp::sig::Matrix filter, vFeatureMap &outputMap ) const {
     
     yAssert( &outputMap );
+    //copy this map to outputMap
     if ( &outputMap != this ) {
         outputMap = *this;
     }
@@ -286,6 +290,17 @@ std::ostream &operator<<( std::ostream &str, const vFeatureMap &map ) {
         str << "]" << std::endl;
     }
     return str;
+}
+
+void vFeatureMap::multiplySubmatrix( Rectangle rec, double value ) {
+    PointXY tl = rec.isTopLeftOrigin()?rec.getTopLeftCorner():rec.getBottomLeftCorner();
+    PointXY br = rec.isTopLeftOrigin()?rec.getBottomRightCorner():rec.getTopRightCorner();
+    
+    for ( int r = tl.getY(); r < br.getY(); ++r ) {
+        for ( int c = tl.getX(); c < br.getX(); ++c ) {
+            (*this)(r,c) *= value;
+        }
+    }
 }
 
 /**Rectangle Class implementation */

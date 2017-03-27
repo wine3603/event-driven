@@ -58,6 +58,8 @@ private:
     //Thresholded Maps
     std::vector<vFeatureMap> threshFeatMap;
     
+    Rectangle ROI;
+    
     void computeAttentionPoint( const vFeatureMap &map, int &attPointRow, int &attPointCol );
     
     void

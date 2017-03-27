@@ -269,6 +269,7 @@ public:
     
     void decay( double dt, double tau ) { decay( dt, tau, *this ); }
     
+    void multiplySubmatrix( Rectangle rec, double value );
     /**
      * Computes the sum of the energy of every element in the map
      * @return total energy

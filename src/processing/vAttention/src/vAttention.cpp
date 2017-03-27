@@ -203,7 +203,7 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     
     double dt = (double) ( t - prevT ) * ( 80 * pow( 10, -9 ) );
     prevT = t;
-    double th = 200;
+    double th = 0.00005;
     bool binary = false;
     std::vector<ImageOf<PixelBgr> > images( 4 );
     
@@ -211,25 +211,29 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     images[1] = outFeatMap45.prepare();
     images[2] = outFeatMap90.prepare();
     images[3] = outFeatMap135.prepare();
-    salMapLeft.zero();
+    
     for ( unsigned int j = 0; j < orientFeatMap.size(); ++j ) {
         orientFeatMap[j].decay( dt, tau );
-        orientFeatMap[j].threshold( th, threshFeatMap[j], binary );
-        threshFeatMap[j].normalise();
-        salMapLeft += threshFeatMap[j];
-        threshFeatMap[j] *= 200000;
-        threshFeatMap[j].convertToImage( images[j] );
+        
+        orientFeatMap[j].normalise();
+//        orientFeatMap[j].threshold( 0.00001, threshFeatMap[j], binary );
+        salMapLeft += orientFeatMap[j];
+//        orientFeatMap[j] *= 200000;
+//        orientFeatMap[j].convertToImage( images[j] );
     }
     
-    activationMap.decay( dt, tau );
-
     salMapLeft.normalise();
+    salMapLeft.threshold(0.0001);
+    
     int r, c;
     computeAttentionPoint( salMapLeft, r, c );
     PointXY attPoint( c, r );
+    ROI = salMapLeft.computeBoundingBox( attPoint, 0.01, 5 );
+    salMapLeft.multiplySubmatrix( ROI, 0.98 );
+    activationMap.multiplySubmatrix( ROI, 0.98 );
     
-    Rectangle ROI = salMapLeft.computeBoundingBox( attPoint, 0.01, 5 );
-    salMapLeft *= 200000;
+    vFeatureMap visMap(salMapLeft);
+    visMap *= 200000;
     
     
     //  --- convert to images for display --- //
@@ -237,9 +241,8 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     ImageOf<PixelBgr> &imageActivation = outActivationMapPort.prepare();
     
     activationMap.convertToImage( imageActivation );
-//    eventMap *= 255;
-//    eventMap.convertToImage(imageActivation);
-    salMapLeft.convertToImage( imageLeft );
+    
+    visMap.convertToImage( imageLeft );
     ROI.translate( -salMapLeft.getColPadding(), -salMapLeft.getRowPadding() );
     attPoint.setBoundaries( Rectangle( PointXY( 0, 0 ), PointXY( imageLeft.width(), imageLeft.height() ) ) );
     attPoint.translate( -salMapLeft.getColPadding(), -salMapLeft.getRowPadding() );
@@ -257,9 +260,8 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
 void vAttentionManager::computeAttentionPoint( const vFeatureMap &map, int &attPointRow, int &attPointCol ) {
     
     map.max( attPointRow, attPointCol );
-    activationMap( attPointRow, attPointCol ) += 20;
+    activationMap( attPointRow, attPointCol ) += 50;
     activationMap.max( attPointRow, attPointCol );
-    
 }
 
 void vAttentionManager::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int topCol, int bottomRow, int bottomCol ) {
@@ -336,7 +338,7 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
     check &= outFeatMap135.open( moduleName + "/featMap135:o" );
     
     double sigmaGabor = (double) filterSize / 4.0;
-    double fGabor = 2.0 / (double) filterSize;
+    double fGabor = 1.0 / (double) filterSize;
     double amplGabor = 0.4;
     int step = 45;
     for ( int theta = 0; theta < 180; theta += step ) {
@@ -344,9 +346,9 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
         vFeatureMap threshMap( mapHeight, mapWidth, salMapPadding, salMapPadding );
         Matrix filterMap;
         std::string portName = moduleName + "/featMap" + std::to_string( theta ) + ":o";
-//        generateGaborFilter( filterMap, filterSize, amplGabor, fGabor, sigmaGabor, theta );
-        generateOrientedGaussianFilter(filterMap, amplGabor, sigmaGabor, sigmaGabor, theta, filterSize, filterSize/2,
-                                       filterSize/2);
+        generateGaborFilter( filterMap, filterSize, amplGabor, fGabor, sigmaGabor, theta );
+//        generateOrientedGaussianFilter(filterMap, amplGabor, sigmaGabor, sigmaGabor, theta, filterSize, filterSize/2,
+//                                       filterSize/2);
         orientFeatMap.push_back( featureMap );
         threshFeatMap.push_back( threshMap );
         orientedFilters.push_back( filterMap );
@@ -357,6 +359,7 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
     salMapRight = vFeatureMap( mapHeight, mapWidth, salMapPadding, salMapPadding );
     activationMap = vFeatureMap( mapHeight, mapWidth, salMapPadding, salMapPadding );
     
+    salMapLeft.zero();
     return check;
 }
 
