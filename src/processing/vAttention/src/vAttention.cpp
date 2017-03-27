@@ -164,18 +164,18 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     /* get the event queue in the vBottle bot */
     ev::vQueue q = bot.get<ev::AddressEvent>();
     
-    q.sort( true );
+    ev::qsort(q);
     
     int x, y, xScaled, yScaled;
     eventMap.zero();
     for ( ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++ ) {
-        ev::event<ev::AddressEvent> aep = ev::getas<ev::AddressEvent>( *qi );
+        auto aep = ev::is_event<ev::AE>(*qi);
         
         if ( !aep ) { continue; }
         //TODO handle left and right salMap
         
-        x = aep->getX();
-        y = aep->getY();
+        x = aep->x;
+        y = aep->y;
         if ( aep->getChannel() == 0 ) {
             xScaled = x / boxWidth;
             yScaled = y / boxHeight;
@@ -199,11 +199,11 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
         }
     }
     
-    unsigned long int t = unwrap( q.back().get()->getStamp() );
+    unsigned long int t = unwrap( q.back()->stamp );
     
     double dt = (double) ( t - prevT ) * ( 80 * pow( 10, -9 ) );
     prevT = t;
-    double th = 50;
+    double th = 200;
     bool binary = false;
     std::vector<ImageOf<PixelBgr> > images( 4 );
     
@@ -211,7 +211,7 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     images[1] = outFeatMap45.prepare();
     images[2] = outFeatMap90.prepare();
     images[3] = outFeatMap135.prepare();
-    
+    salMapLeft.zero();
     for ( unsigned int j = 0; j < orientFeatMap.size(); ++j ) {
         orientFeatMap[j].decay( dt, tau );
         orientFeatMap[j].threshold( th, threshFeatMap[j], binary );
@@ -222,7 +222,7 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     }
     
     activationMap.decay( dt, tau );
-    
+
     salMapLeft.normalise();
     int r, c;
     computeAttentionPoint( salMapLeft, r, c );
@@ -237,7 +237,8 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     ImageOf<PixelBgr> &imageActivation = outActivationMapPort.prepare();
     
     activationMap.convertToImage( imageActivation );
-    
+//    eventMap *= 255;
+//    eventMap.convertToImage(imageActivation);
     salMapLeft.convertToImage( imageLeft );
     ROI.translate( -salMapLeft.getColPadding(), -salMapLeft.getRowPadding() );
     attPoint.setBoundaries( Rectangle( PointXY( 0, 0 ), PointXY( imageLeft.width(), imageLeft.height() ) ) );
@@ -261,8 +262,7 @@ void vAttentionManager::computeAttentionPoint( const vFeatureMap &map, int &attP
     
 }
 
-void
-vAttentionManager::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int topCol, int bottomRow, int bottomCol ) {
+void vAttentionManager::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int topCol, int bottomRow, int bottomCol ) {
     
     if ( topRow >= 0 && topRow < image.height() ) {
         for ( int i = topCol; i <= bottomCol; ++i ) {
@@ -296,7 +296,6 @@ vAttentionManager::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int to
         }
     }
 
-//    return true;
 };
 
 void vAttentionManager::drawBoundingBox( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, Rectangle ROI ) {

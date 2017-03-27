@@ -21,5 +21,6 @@ if(NOT V_BUILD_ZYNQ)
 endif(NOT V_BUILD_ZYNQ)
 
 add_subdirectory(hardwareio)
+add_subdirectory(processing)
 
 file(GLOB xmldocumentation ${CMAKE_CURRENT_SOURCE_DIR}/hardwareio/*/*.xml)
