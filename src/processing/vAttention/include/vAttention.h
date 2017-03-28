@@ -60,7 +60,7 @@ private:
     
     Rectangle ROI;
     
-    void computeAttentionPoint( const vFeatureMap &map, int &attPointRow, int &attPointCol );
+    PointXY computeAttentionPoint( const vFeatureMap &map );
     
     void
     generateOrientedGaussianFilter( yarp::sig::Matrix &filterMap, double A, double sigmaX, double sigmaY, double theta

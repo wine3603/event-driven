@@ -124,6 +124,12 @@ void vFeatureMap::max( int &rowMax, int &colMax ) const {
     }
 }
 
+PointXY vFeatureMap::max() const {
+    int r,c;
+    max(r,c);
+    return PointXY(c,r);
+}
+
 double vFeatureMap::energyInROI( Rectangle ROI ) const {
     
     vFeatureMap croppedMap;
@@ -299,6 +305,18 @@ void vFeatureMap::multiplySubmatrix( Rectangle rec, double value ) {
     for ( int r = tl.getY(); r < br.getY(); ++r ) {
         for ( int c = tl.getX(); c < br.getX(); ++c ) {
             (*this)(r,c) *= value;
+        }
+    }
+}
+
+
+void vFeatureMap::setSubmatrix( Rectangle rec, double value ) {
+    PointXY tl = rec.isTopLeftOrigin()?rec.getTopLeftCorner():rec.getBottomLeftCorner();
+    PointXY br = rec.isTopLeftOrigin()?rec.getBottomRightCorner():rec.getTopRightCorner();
+    
+    for ( int r = tl.getY(); r < br.getY(); ++r ) {
+        for ( int c = tl.getX(); c < br.getX(); ++c ) {
+            (*this)(r,c) = value;
         }
     }
 }

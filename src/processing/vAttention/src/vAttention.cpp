@@ -223,17 +223,16 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     }
     
     salMapLeft.normalise();
-    salMapLeft.threshold(0.0001);
+    salMapLeft.threshold(0.00001);
     
-    int r, c;
-    computeAttentionPoint( salMapLeft, r, c );
-    PointXY attPoint( c, r );
-    ROI = salMapLeft.computeBoundingBox( attPoint, 0.01, 5 );
-    salMapLeft.multiplySubmatrix( ROI, 0.98 );
-    activationMap.multiplySubmatrix( ROI, 0.98 );
+    
+    PointXY attPoint = computeAttentionPoint( salMapLeft );
+    ROI = salMapLeft.computeBoundingBox( attPoint, 0.0001, 8 );
+//    salMapLeft.multiplySubmatrix( ROI, 0.9 );
+    activationMap.multiplySubmatrix( ROI, 0.99 );
     
     vFeatureMap visMap(salMapLeft);
-    visMap *= 200000;
+    visMap *= 600000;
     
     
     //  --- convert to images for display --- //
@@ -257,11 +256,13 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     outFeatMap135.write();
 }
 
-void vAttentionManager::computeAttentionPoint( const vFeatureMap &map, int &attPointRow, int &attPointCol ) {
+PointXY vAttentionManager::computeAttentionPoint( const vFeatureMap &map ) {
     
-    map.max( attPointRow, attPointCol );
-    activationMap( attPointRow, attPointCol ) += 50;
-    activationMap.max( attPointRow, attPointCol );
+    vFeatureMap copyMap(map);
+    copyMap.setSubmatrix(ROI, - std::numeric_limits<double>::max());
+    PointXY attPoint = copyMap.max();
+    activationMap( attPoint.getY(), attPoint.getX() ) += 50;
+    return activationMap.max();
 }
 
 void vAttentionManager::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int topCol, int bottomRow, int bottomCol ) {
@@ -314,9 +315,9 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
     /* set parameters */
     int sensorWidth = rf.check( "sensorWidth", Value( 304 ) ).asInt();
     int sensorHeight = rf.check( "sensorHeight", Value( 240 ) ).asInt();
-    tau = rf.check( "tau", Value( 3.0 ) ).asDouble();
-    boxWidth = rf.check( "boxWidth", Value( 2 ) ).asInt();
-    boxHeight = rf.check( "boxHeight", Value( 2 ) ).asInt();
+    tau = rf.check( "tau", Value( 5.0 ) ).asDouble();
+    boxWidth = rf.check( "boxWidth", Value( 1 ) ).asInt();
+    boxHeight = rf.check( "boxHeight", Value( 1 ) ).asInt();
     int filterSize = rf.check( "filterSize", Value( 15 ) ).asInt();
     bool strictness = rf.check( "strict", Value( false ) ).asBool();
     std::string moduleName = rf.check( "name", Value( "vAttention" ) ).asString();
@@ -339,7 +340,7 @@ bool vAttentionManager::initialize( ResourceFinder &rf ) {
     
     double sigmaGabor = (double) filterSize / 4.0;
     double fGabor = 1.0 / (double) filterSize;
-    double amplGabor = 0.4;
+    double amplGabor = 0.8;
     int step = 45;
     for ( int theta = 0; theta < 180; theta += step ) {
         vFeatureMap featureMap( mapHeight, mapWidth, salMapPadding, salMapPadding );

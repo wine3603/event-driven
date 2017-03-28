@@ -258,6 +258,7 @@ public:
      * @param colMax output col of max value
      */
     void max( int &rowMax, int &colMax ) const;
+    PointXY max() const;
     
     /**
      * Exponentially decays the map. Decay fator = e^(-dt/tau).
@@ -270,6 +271,9 @@ public:
     void decay( double dt, double tau ) { decay( dt, tau, *this ); }
     
     void multiplySubmatrix( Rectangle rec, double value );
+    
+    void setSubmatrix( Rectangle rec, double value );
+    
     /**
      * Computes the sum of the energy of every element in the map
      * @return total energy
@@ -306,7 +310,6 @@ public:
     int getColPadding() { return cPadding; }
     
     friend std::ostream &operator<<( std::ostream &str, const vFeatureMap &map );
-    
 };
 
 
