@@ -66,8 +66,6 @@ private:
 //    EventBottleManager      eventBottleManager;
 
     yarp::os::Port eventCount;
-
-    int context0;
     
     //timing parameters
     double checkPeriod;
@@ -77,17 +75,16 @@ private:
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
-    yarp::dev::IGazeControl *gazeControl;
-    //Variables for frames transformation
-    yarp::sig::Matrix rootToHead;
-    yarp::sig::Matrix headToRoot;
-    yarp::sig::Vector x,o;
-
-    std::vector<yarp::sig::Vector> trajectory;
+    double min, max,theta;
+    
+    yarp::dev::IControlLimits2   *ilim;
+    yarp::dev::IPositionControl2 *ipos;
+    yarp::dev::IControlMode2     *imod;
+    
+    
     //timestamps for comparison
     double prevStamp;
 
-    void generateTrajectory();
     void performSaccade();
 
 public:
