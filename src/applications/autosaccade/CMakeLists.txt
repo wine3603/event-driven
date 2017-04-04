@@ -6,8 +6,11 @@ project(${MODULENAME})
 file(GLOB source src/*.cpp)
 file(GLOB header include/*.h)
 
+find_package(ICUB)
+
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
+                    ${ICUB_INCLUDE_DIRS}
                     ${EVENTDRIVENLIBS_INCLUDE_DIRS})
 
 add_executable(${MODULENAME} ${source} ${header})
