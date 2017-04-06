@@ -18,13 +18,9 @@
 #include <math.h>
 #include <limits>
 
-bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
-{
-    
-    
+bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
     //set the name of the module
-    std::string moduleName =
-            rf.check("name", yarp::os::Value("autoSaccade")).asString();
+    std::string moduleName = rf.check("name", yarp::os::Value("autoSaccade")).asString();
     setName(moduleName.c_str());
     
     //open and attach the rpc port
@@ -32,20 +28,18 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
     
     if (!rpcPort.open(rpcPortName))
     {
-        std::cerr << getName() << " : Unable to open rpc port at " <<
-                  rpcPortName << std::endl;
+        std::cerr << getName() << " : Unable to open rpc port at " << rpcPortName << std::endl;
         return false;
     }
     
     //make the respond method of this RF module respond to the rpcPort
     attach(rpcPort);
     
-    std::string condev = rf.check("robot", yarp::os::Value("none")).asString();
+    //open driver for joint control
     yarp::os::Property options;
     options.put("device","remote_controlboard");
     options.put("remote","/icubSim/head");
     options.put("local","/head");
-    
     
     mdriver.open(options);
     if(!mdriver.isValid())
@@ -69,17 +63,19 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
         std::cerr << "Could not open driver" << std::endl;
     }
     
-    theta = 0;
+    //initialize variables 
     isSaccading = false;
+    lastSaccadeTime = 0;
     
-    //set other variables we need from the
-    checkPeriod = rf.check("checkPeriod",
-                           yarp::os::Value(0.005)).asDouble();
-    minVpS = rf.check("minVpS", yarp::os::Value(5000)).asDouble();
-    maxVps = rf.check("maxVpS", yarp::os::Value(55000)).asDouble();
-    prevStamp =  std::numeric_limits<double>::max(); //max value
+    //Read parameters
+    checkPeriod = rf.check("checkPeriod", yarp::os::Value(0.1)).asDouble();
+    minVpS = rf.check("minVpS", yarp::os::Value(20000)).asDouble();
+    saccadeTimeout = rf.check("timeout", yarp::os::Value(1.0)).asDouble();
+    prevStamp =  0; //max value
     
-    eventCount.open("/" + moduleName + "/eventCount:i");
+    //opening ports
+    eventBottleManager.open("/" + moduleName + "/vBottle:i");
+    vRate.open("/" + moduleName + "/vRate:o");
     
     return true ;
 }
@@ -87,7 +83,7 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf)
 bool saccadeModule::interruptModule() {
     std::cout << "Interrupting" << std::endl;
     rpcPort.interrupt();
-    eventCount.interrupt();
+    eventBottleManager.interrupt();
     std::cout << "Finished Interrupting" << std::endl;
     return true;
 }
@@ -96,7 +92,7 @@ bool saccadeModule::close() {
     
     std::cout << "Closing" << std::endl;
     rpcPort.close();
-    eventCount.close();
+    eventBottleManager.close();
     mdriver.close();
     delete ilim; delete ipos; delete imod;
     std::cout << "Finished Closing" << std::endl;
@@ -104,46 +100,54 @@ bool saccadeModule::close() {
 }
 
 void saccadeModule::performSaccade() {
-    
-    ipos->positionMove(3,cos(theta));
-    ipos->positionMove(4,sin(theta));
-    
-    theta += M_PI/36;
+    for ( double theta = 0; theta < 2*M_PI; theta+= M_PI/36 ) {
+        ipos->positionMove( 3, cos( theta ) );
+        ipos->positionMove( 4, sin( theta ) );
+        yarp::os::Time::delay(0.005);
+    }
 }
 
 bool saccadeModule::updateModule() {
     
+    eventBottleManager.start();
+    yarp::os::Time::delay(1.0);
+    eventBottleManager.stop();
+    
     //if there is no connection don't do anything yet
-    if(!eventCount.getInputCount()) return true;
+    if(!eventBottleManager.getInputCount()) return true;
     
-    yarp::os::Bottle vCountBottle;
-    
-    eventCount.read(vCountBottle);
-    //check the last time stamp and count
-    double latestStamp = yarp::os::Time::now();
-    int vCount = vCountBottle.get(0).asInt();
-    
+    //compute event rate
+    double latestStamp = eventBottleManager.getTime();
+    double vCount = eventBottleManager.popCount();
     double vPeriod = latestStamp - prevStamp;
-    
-    prevStamp = latestStamp;
-    
     //this should only occur on first bottle to initialise
     if(vPeriod < 0) return true;
+    vPeriod *= 80 *10e-9;
+    const double eventRate = vCount / vPeriod;
+    prevStamp = latestStamp;
     
-    
-    if(vPeriod == 0 || (vCount / vPeriod) < minVpS) {
-        isSaccading = true;
-    }
-    
-    if(vCount == 0 || vPeriod == 0 || (vCount / vPeriod) > maxVps) {
-        isSaccading = false;
-    }
-    
-    std::cout << vPeriod/1000000 << "s | " << vCount/vPeriod
-              << " v/s" << std::endl;
-    if(isSaccading){
+    //output the event rate for debug purposes
+    yarp::os::Bottle vRateBottle;
+    vRateBottle.addDouble( eventRate );
+    vRate.write(vRateBottle);
+    int xCM = 0, yCM = 0;
+    //if event rate is low then saccade, else gaze to center of mass of events
+    if(vPeriod == 0 || eventRate < minVpS) {
+        lastSaccadeTime = yarp::os::Time::now();
+        std::cout << "perform saccade " <<  latestStamp << std::endl;
         performSaccade();
-        std::cout << "perform saccade: ";
+        yarp::os::Time::delay(saccadeTimeout);
+    } else {
+        ev::vQueue q = eventBottleManager.getEvents();
+        for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
+            auto aep = ev::is_event<ev::AE>(*i);
+            xCM += aep.get()->x;
+            yCM += aep.get()->y;
+        }
+        xCM /= q.size();
+        yCM /= q.size();
+        
+        //TODO GAZE AT CM
     }
     return true;
 }
@@ -152,18 +156,19 @@ double saccadeModule::getPeriod() {
     return checkPeriod;
 }
 
-bool saccadeModule::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply){
+bool saccadeModule::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply) {
     //fill in all command/response plus module update methods here
     return true;
 }
+
+/****************EventBottleManager**********************/
 
 EventBottleManager::EventBottleManager() {
     
     //here we should initialise the module
     vCount = 0;
     latestStamp = 0;
-    
-    
+    isReading = false;
 }
 
 bool EventBottleManager::open(const std::string &name) {
@@ -171,28 +176,24 @@ bool EventBottleManager::open(const std::string &name) {
     
     this->useCallback();
     
-    std::string inPortName = "/" + name + "/vBottle:i";
-    yarp::os::BufferedPort<ev::vBottle>::open(inPortName);
-    
+    yarp::os::BufferedPort<ev::vBottle>::open(name);
     return true;
 }
 
-/**********************************************************/
-void EventBottleManager::onRead(ev::vBottle &bot)
-{
+void EventBottleManager::onRead(ev::vBottle &bot) {
+    if (!isReading)
+        return;
     //create event queue
-    ev::vQueue q = bot.get<ev::AE>();
+    vQueue = bot.get<ev::AE>();
     
     // get the event queue in the vBottle bot
-    //bot.getSorted<eventdriven::AddressEvent>(q);
-    if(q.empty()) return;
+    if(vQueue.empty()) return;
     
-    latestStamp = unwrapper(q.back()->stamp);
-//    std::cout << "latestStamp = " << latestStamp << std::endl;
-//    std::cout << "q.size() = " << q.size() << std::endl;
+    latestStamp = unwrapper(vQueue.back()->stamp);
+    
     
     mutex.wait();
-    vCount += q.size();
+    vCount += vQueue.size();
     mutex.post();
     
     
@@ -210,6 +211,20 @@ unsigned long int EventBottleManager::popCount() {
     mutex.post();
     return r;
     
+}
+
+bool EventBottleManager::start() {
+    isReading = true;
+    return true;
+}
+
+bool EventBottleManager::stop() {
+    isReading = false;
+    return true;
+}
+
+ev::vQueue EventBottleManager::getEvents() {
+    return vQueue;
 }
 
 //empty line to make gcc happy

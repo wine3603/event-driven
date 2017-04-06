@@ -40,7 +40,9 @@ private:
     yarp::os::Semaphore mutex;
     unsigned long int latestStamp;
     unsigned int vCount;
-
+    bool isReading;
+    ev::vQueue vQueue;
+    
 public:
 
     EventBottleManager();
@@ -53,6 +55,9 @@ public:
     //the getting functions of the parent class
     unsigned long int getTime();
     unsigned long int popCount();
+    ev::vQueue getEvents();
+    bool start();
+    bool stop();
 
 };
 
@@ -63,9 +68,9 @@ private:
     yarp::os::RpcServer     rpcPort;
 
     //the event bottle input and output handler
-//    EventBottleManager      eventBottleManager;
+    EventBottleManager      eventBottleManager;
 
-    yarp::os::Port eventCount;
+//    yarp::os::Port eventCount;
     
     //timing parameters
     double checkPeriod;
@@ -75,16 +80,18 @@ private:
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
-    double min, max,theta;
+    double min, max;
     
     yarp::dev::IControlLimits2   *ilim;
     yarp::dev::IPositionControl2 *ipos;
     yarp::dev::IControlMode2     *imod;
     
+    yarp::os::Port vRate;
     
     //timestamps for comparison
     double prevStamp;
-
+    double lastSaccadeTime;
+    double saccadeTimeout;
     void performSaccade();
 
 public:
