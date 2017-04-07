@@ -19,6 +19,7 @@
 #include <limits>
 
 bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
+    
     //set the name of the module
     std::string moduleName = rf.check("name", yarp::os::Value("autoSaccade")).asString();
     setName(moduleName.c_str());
@@ -31,15 +32,13 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
         std::cerr << getName() << " : Unable to open rpc port at " << rpcPortName << std::endl;
         return false;
     }
-    
-    //make the respond method of this RF module respond to the rpcPort
     attach(rpcPort);
     
     //open driver for joint control
     yarp::os::Property options;
     options.put("device","remote_controlboard");
     options.put("remote","/icubSim/head");
-    options.put("local","/head");
+    options.put("local", "/" + moduleName + "/head");
     
     mdriver.open(options);
     if(!mdriver.isValid())
@@ -49,23 +48,27 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
         mdriver.view(ipos);
         mdriver.view(imod);
     }
+    configDriver();
     
-    if (ilim && ipos && imod) {
-        ilim->getLimits( 3, &min, &max );
-        ilim->getLimits( 4, &min, &max );
-        ipos->setRefSpeed( 3, 300.0 );
-        ipos->setRefSpeed( 4, 300.0 );
-        ipos->setRefAcceleration( 3, 200.0 );
-        ipos->setRefAcceleration( 4, 200.0 );
-        imod->setControlMode( 3, VOCAB_CM_POSITION );
-        imod->setControlMode( 4, VOCAB_CM_POSITION );
-    } else {
-        std::cerr << "Could not open driver" << std::endl;
+    //open driver for gaze control
+    options.clear();
+    options.put("device", "gazecontrollerclient");
+    options.put("local", "/" + moduleName + "/gazeCtrl");
+    options.put("remote","/iKinGazeCtrl");
+    gazeDriver.open(options);
+    if(!gazeDriver.isValid())
+        std::cerr << "Did not connect to robot/simulator" << std::endl;
+    else {
+        gazeDriver.view(gazeControl);
     }
+    
+    if(!gazeControl)
+        std::cerr << "Did not connect to gaze controller" << std::endl;
+    
+    gazeControl->storeContext(&context0);
     
     //initialize variables 
     isSaccading = false;
-    lastSaccadeTime = 0;
     
     //Read parameters
     checkPeriod = rf.check("checkPeriod", yarp::os::Value(0.1)).asDouble();
@@ -78,6 +81,21 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
     vRate.open("/" + moduleName + "/vRate:o");
     
     return true ;
+}
+
+void saccadeModule::configDriver() {
+    if ( ilim && ipos && imod ) {
+        ilim->getLimits( 3, &min, &max );
+        ilim->getLimits( 4, &min, &max );
+        ipos->setRefSpeed( 3, 300.0 );
+        ipos->setRefSpeed( 4, 300.0 );
+        ipos->setRefAcceleration( 3, 200.0 );
+        ipos->setRefAcceleration( 4, 200.0 );
+        imod->setControlMode( 3, VOCAB_CM_POSITION );
+        imod->setControlMode( 4, VOCAB_CM_POSITION );
+    } else {
+        std::cerr << "Could not open driver" << std::endl;
+    }
 }
 
 bool saccadeModule::interruptModule() {
@@ -94,6 +112,7 @@ bool saccadeModule::close() {
     rpcPort.close();
     eventBottleManager.close();
     mdriver.close();
+    gazeDriver.close();
     delete ilim; delete ipos; delete imod;
     std::cout << "Finished Closing" << std::endl;
     return true;
@@ -130,26 +149,39 @@ bool saccadeModule::updateModule() {
     yarp::os::Bottle vRateBottle;
     vRateBottle.addDouble( eventRate );
     vRate.write(vRateBottle);
-    int xCM = 0, yCM = 0;
+    
     //if event rate is low then saccade, else gaze to center of mass of events
     if(vPeriod == 0 || eventRate < minVpS) {
-        lastSaccadeTime = yarp::os::Time::now();
         std::cout << "perform saccade " <<  latestStamp << std::endl;
+        gazeControl->stopControl();
+        configDriver();
         performSaccade();
         yarp::os::Time::delay(saccadeTimeout);
     } else {
-        ev::vQueue q = eventBottleManager.getEvents();
-        for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
-            auto aep = ev::is_event<ev::AE>(*i);
+        yarp::sig::Vector cm = computeCenterMass();
+        std::cout << "gazing" << std::endl;
+        gazeControl->restoreContext(context0);
+        gazeControl->lookAtMonoPixel(0,cm);
+        gazeControl->waitMotionDone();
+    }
+    
+    return true;
+}
+
+yarp::sig::Vector saccadeModule::computeCenterMass() const {
+    int xCM = 0, yCM = 0;
+    ev::vQueue q = eventBottleManager.getEvents();
+    for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
+            auto aep = ev::is_event<ev::AE>( *i );
             xCM += aep.get()->x;
             yCM += aep.get()->y;
         }
-        xCM /= q.size();
-        yCM /= q.size();
-        
-        //TODO GAZE AT CM
-    }
-    return true;
+    xCM /= q.size();
+    yCM /= q.size();
+    yarp::sig::Vector cm( 2 );
+    cm(0)= xCM;
+    cm(1)= yCM;
+    return cm;
 }
 
 double saccadeModule::getPeriod() {
@@ -223,7 +255,7 @@ bool EventBottleManager::stop() {
     return true;
 }
 
-ev::vQueue EventBottleManager::getEvents() {
+ev::vQueue EventBottleManager::getEvents() const{
     return vQueue;
 }
 

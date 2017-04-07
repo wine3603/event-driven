@@ -55,7 +55,8 @@ public:
     //the getting functions of the parent class
     unsigned long int getTime();
     unsigned long int popCount();
-    ev::vQueue getEvents();
+   
+    ev::vQueue getEvents() const ;
     bool start();
     bool stop();
 
@@ -80,6 +81,9 @@ private:
 
     //robot control settings
     yarp::dev::PolyDriver mdriver;
+    yarp::dev::PolyDriver gazeDriver;
+    yarp::dev::IGazeControl *gazeControl;
+    int context0;
     double min, max;
     
     yarp::dev::IControlLimits2   *ilim;
@@ -90,7 +94,6 @@ private:
     
     //timestamps for comparison
     double prevStamp;
-    double lastSaccadeTime;
     double saccadeTimeout;
     void performSaccade();
 
@@ -104,7 +107,10 @@ public:
                          yarp::os::Bottle &reply);
     virtual double getPeriod();
     virtual bool updateModule();
-
+    
+    void configDriver();
+    
+    yarp::sig::Vector computeCenterMass() const;
 };
 
 
