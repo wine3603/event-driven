@@ -56,7 +56,7 @@ public:
     unsigned long int getTime();
     unsigned long int popCount();
    
-    ev::vQueue getEvents() const ;
+    ev::vQueue getEvents() ;
     bool start();
     bool stop();
 
@@ -91,11 +91,15 @@ private:
     yarp::dev::IControlMode2     *imod;
     
     yarp::os::Port vRate;
+    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr>> imgL;
+    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr>> imgR;
+    
     
     //timestamps for comparison
     double prevStamp;
     double saccadeTimeout;
     void performSaccade();
+    void visualizeEvents( ev::vQueue q );
 
 public:
 
@@ -108,9 +112,11 @@ public:
     virtual double getPeriod();
     virtual bool updateModule();
     
-    void configDriver();
+    void configDriver( int joint );
     
-    yarp::sig::Vector computeCenterMass() const;
+    void computeCenterMass( yarp::sig::Vector &cmR, yarp::sig::Vector &cmL, ev::vQueue &q );
+    
+    void home();
 };
 
 

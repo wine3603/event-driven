@@ -17,7 +17,7 @@
 #include "autoSaccade.h"
 #include <math.h>
 #include <limits>
-
+#include <vFeatureMap.h>
 bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
     
     //set the name of the module
@@ -48,7 +48,10 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
         mdriver.view(ipos);
         mdriver.view(imod);
     }
-    configDriver();
+    
+    for ( int i = 0; i < 5; ++i ) {
+        configDriver(i );
+    }
     
     //open driver for gaze control
     options.clear();
@@ -72,27 +75,24 @@ bool saccadeModule::configure(yarp::os::ResourceFinder &rf) {
     
     //Read parameters
     checkPeriod = rf.check("checkPeriod", yarp::os::Value(0.1)).asDouble();
-    minVpS = rf.check("minVpS", yarp::os::Value(20000)).asDouble();
+    minVpS = rf.check("minVpS", yarp::os::Value(8000)).asDouble();
     saccadeTimeout = rf.check("timeout", yarp::os::Value(1.0)).asDouble();
     prevStamp =  0; //max value
     
     //opening ports
     eventBottleManager.open("/" + moduleName + "/vBottle:i");
     vRate.open("/" + moduleName + "/vRate:o");
-    
+    imgL.open("/" + moduleName + "/imgL:o");
+    imgR.open("/" + moduleName + "/imgR:o");
     return true ;
 }
 
-void saccadeModule::configDriver() {
+void saccadeModule::configDriver( int joint ) {
     if ( ilim && ipos && imod ) {
-        ilim->getLimits( 3, &min, &max );
-        ilim->getLimits( 4, &min, &max );
-        ipos->setRefSpeed( 3, 300.0 );
-        ipos->setRefSpeed( 4, 300.0 );
-        ipos->setRefAcceleration( 3, 200.0 );
-        ipos->setRefAcceleration( 4, 200.0 );
-        imod->setControlMode( 3, VOCAB_CM_POSITION );
-        imod->setControlMode( 4, VOCAB_CM_POSITION );
+        ilim->getLimits( joint, &min, &max );
+        ipos->setRefSpeed( joint, 300.0 );
+        ipos->setRefAcceleration( joint, 200.0 );
+        imod->setControlMode( joint, VOCAB_CM_POSITION );
     } else {
         std::cerr << "Could not open driver" << std::endl;
     }
@@ -150,38 +150,101 @@ bool saccadeModule::updateModule() {
     vRateBottle.addDouble( eventRate );
     vRate.write(vRateBottle);
     
+    ev::vQueue q = eventBottleManager.getEvents();
+    vFeatureMap lMap(240,304);
+    vFeatureMap rMap(240,304);
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &leftImage = imgL.prepare();
+    yarp::sig::ImageOf<yarp::sig::PixelBgr> &rightImage = imgR.prepare();
+    for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
+        auto aep = ev::is_event<ev::AE>( *i );
+        if (aep.get()->channel) {
+            rMap(aep.get()->y, aep.get()->x) += 80;
+        } else {
+            lMap (aep.get()->y, aep.get()->x)+=80;
+        }
+    }
+    lMap.convertToImage(leftImage);
+    rMap.convertToImage(rightImage);
+    
+    home();
+    
     //if event rate is low then saccade, else gaze to center of mass of events
     if(vPeriod == 0 || eventRate < minVpS) {
         std::cout << "perform saccade " <<  latestStamp << std::endl;
         gazeControl->stopControl();
-        configDriver();
+        configDriver( 3 );
+        configDriver( 4 );
         performSaccade();
         yarp::os::Time::delay(saccadeTimeout);
     } else {
-        yarp::sig::Vector cm = computeCenterMass();
-        std::cout << "gazing" << std::endl;
+        yarp::sig::Vector cmL,cmR;
+        computeCenterMass( cmR, cmL, q );
+        std::cout << "gazing at l:("  << cmL(0) << ", " << cmL(1) << ")" << std::endl;
+        std::cout << "          r:("  << cmR(0) << ", " << cmR(1) << ")" << std::endl;
+        leftImage(cmL(0), cmL(1)) = yarp::sig::PixelBgr(255,0,0);
+        rightImage(cmR(0), cmR(1)) = yarp::sig::PixelBgr(255,0,0);
         gazeControl->restoreContext(context0);
-        gazeControl->lookAtMonoPixel(0,cm);
+        gazeControl->lookAtStereoPixels(cmL, cmR);
         gazeControl->waitMotionDone();
     }
     
+    
+    imgL.write();
+    imgR.write();
     return true;
 }
 
-yarp::sig::Vector saccadeModule::computeCenterMass() const {
-    int xCM = 0, yCM = 0;
-    ev::vQueue q = eventBottleManager.getEvents();
-    for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
-            auto aep = ev::is_event<ev::AE>( *i );
-            xCM += aep.get()->x;
-            yCM += aep.get()->y;
+void saccadeModule::home() {
+    gazeControl->stopControl();
+    
+    bool motionDone;
+    
+    for ( int i = 0; i < 5; ++i ) {
+        configDriver( i );
+        ipos->positionMove( i, 0 );
+        while (!motionDone){
+            motionDone = true;
+            motionDone &= ipos->checkMotionDone( i, &motionDone );
+            yarp::os::Time::delay( 0.2 );
         }
-    xCM /= q.size();
-    yCM /= q.size();
-    yarp::sig::Vector cm( 2 );
-    cm(0)= xCM;
-    cm(1)= yCM;
-    return cm;
+    }
+}
+
+
+void saccadeModule::visualizeEvents( ev::vQueue q ) {
+
+}
+
+void saccadeModule::computeCenterMass( yarp::sig::Vector &cmR, yarp::sig::Vector &cmL, ev::vQueue &q ) {
+    int xl = 0, yl = 0;
+    int xr = 0, yr = 0;
+    int rSize = 0, lSize = 0;
+    cmR.resize(2);
+    cmL.resize(2);
+    for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
+        auto aep = ev::is_event<ev::AE>( *i );
+        if (aep.get()->channel) {
+            xr += aep.get()->x;
+            yr += aep.get()->y;
+            rSize++;
+        } else {
+            xl += aep.get()->x;
+            yl += aep.get()->y;
+            lSize++;
+        }
+    }
+    
+    if (lSize == 0 || rSize == 0) return;
+    xl /= lSize;
+    yl /= lSize;
+    xr /= rSize;
+    yr /= rSize;
+    
+    cmR(0) = xr;
+    cmR(1) = yr;
+    cmL(0) = xl;
+    cmL(1) = yl;
+    
 }
 
 double saccadeModule::getPeriod() {
@@ -192,6 +255,7 @@ bool saccadeModule::respond(const yarp::os::Bottle &command, yarp::os::Bottle &r
     //fill in all command/response plus module update methods here
     return true;
 }
+
 
 /****************EventBottleManager**********************/
 
@@ -215,20 +279,19 @@ bool EventBottleManager::open(const std::string &name) {
 void EventBottleManager::onRead(ev::vBottle &bot) {
     if (!isReading)
         return;
-    //create event queue
-    vQueue = bot.get<ev::AE>();
     
-    // get the event queue in the vBottle bot
-    if(vQueue.empty()) return;
-    
-    latestStamp = unwrapper(vQueue.back()->stamp);
-    
+    //get new events
+    ev::vQueue newQueue = bot.get<ev::AE>();
+    if(newQueue.empty()){
+        return;
+    }
     
     mutex.wait();
+    //append new events to queue
+    vQueue.insert(vQueue.end(), newQueue.begin(), newQueue.end());
+    latestStamp = unwrapper(newQueue.back()->stamp);
     vCount += vQueue.size();
     mutex.post();
-    
-    
 }
 
 unsigned long int EventBottleManager::getTime() {
@@ -255,8 +318,10 @@ bool EventBottleManager::stop() {
     return true;
 }
 
-ev::vQueue EventBottleManager::getEvents() const{
-    return vQueue;
+ev::vQueue EventBottleManager::getEvents() {
+    ev::vQueue outQueue = vQueue;
+    vQueue.clear();
+    return outQueue;
 }
 
 //empty line to make gcc happy
