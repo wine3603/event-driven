@@ -15,7 +15,6 @@
  */
 
 #include "autoSaccade.h"
-#include <iCub/eventdriven/vFeatureMap.h>
 
 using namespace yarp::os;
 using namespace yarp::sig;

@@ -27,6 +27,7 @@
 #include <yarp/dev/all.h>
 #include <iCub/iKin/iKinFwd.h>
 #include <yarp/math/Math.h>
+
 using namespace yarp::math;
 
 class EventBottleManager : public yarp::os::BufferedPort<ev::vBottle>
