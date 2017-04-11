@@ -18,89 +18,117 @@
 
 using namespace yarp::os;
 using namespace yarp::sig;
+using namespace yarp::math;
 using namespace std;
 
-bool saccadeModule::configure(ResourceFinder &rf) {
+/***********************SaccadeModule***********************/
+
+bool AutoSaccadeModule::configure(ResourceFinder &rf){
+    readParams( rf );
+    bool configDone = true;
+    configDone &= openJointControlDriver();
+    configDone &= openGazeDriver();
+    configDone &= openPorts();
     
-    //set the name of the module
-    string moduleName = rf.check("name", Value("autoSaccade")).asString();
-    setName(moduleName.c_str());
+    //initialize timestamp
+    prevStamp =  0;
     
-    //open and attach the rpc port
-    string rpcPortName  =  "/" + moduleName + "/rpc:i";
+    return configDone;
+}
+
+bool AutoSaccadeModule::openPorts() {
+    bool check = true;
+    check &= eventBottleManager.open( getName( "/vBottle:i" ) );
+    check &= vRatePort.open( getName( "/vRate:o" ) );
+    check &= leftImgPort.open( getName( "/imgL:o" ) );
+    check &= rightImagePort.open( getName( "/imgR:o" ) );
+    check &= rpcPort.open( getName( "/rpc" ) );
     
-    if (!rpcPort.open(rpcPortName))
-    {
-        cerr << getName() << " : Unable to open rpc port at " << rpcPortName << endl;
+    if (check) {
+        attach(rpcPort);
+        return true;
+    } else {
+        cerr << "Could not open some port" << endl;
         return false;
     }
-    attach(rpcPort);
+}
+
+void AutoSaccadeModule::readParams( const ResourceFinder &rf ) {//set the name of the module
+    string moduleName = rf.check("name", Value("autoSaccade")).asString();
+    //Append slash at beginning of moduleName to comply with port naming convention
+    if (moduleName[0] != '/'){
+        moduleName = '/' + moduleName;
+    }
+    setName( moduleName.c_str() );
+    //Read parameters
+    checkPeriod = rf.check( "checkPeriod", Value( 0.1 ) ).asDouble();
+    minVpS = rf.check( "minVpS", Value( 8000 ) ).asDouble();
+    timeout = rf.check( "timeout", Value( 1.0 ) ).asDouble();
+    refSpeed = rf.check( "refSpeed", Value( 300.0 ) ).asDouble();
+    refAcc = rf.check( "refAcc", Value( 200.0 ) ).asDouble();
+}
+
+bool AutoSaccadeModule::openGazeDriver() {//open driver for gaze control
+    Property options;
+    options.put("device", "gazecontrollerclient");
+    options.put("local", getName( "/gazeCtrl" ) );
+    options.put("remote","/iKinGazeCtrl");
+    gazeDriver.open( options );
+    if(!gazeDriver.isValid()) {
+        cerr << "Did not connect to robot/simulator" << endl;
+        return false;
+    }
+    else {
+        gazeDriver.view( gazeControl );
+    }
     
-    //open driver for joint control
+    if(!gazeControl ) {
+        cerr << "Did not connect to gaze controller" << endl;
+        return false;
+    }
+    gazeControl->storeContext( &context0 );
+    return true;
+}
+
+bool AutoSaccadeModule::openJointControlDriver() {//open driver for joint control
     Property options;
     options.put("device","remote_controlboard");
     options.put("remote","/icubSim/head");
-    options.put("local", "/" + moduleName + "/head");
+    options.put("local", getName( "/head" ) );
     
-    mdriver.open(options);
-    if(!mdriver.isValid())
+    mdriver.open( options );
+    if(!mdriver.isValid()) {
         cerr << "Did not connect to robot/simulator" << endl;
-    else {
-        mdriver.view(ilim);
-        mdriver.view(ipos);
-        mdriver.view(imod);
+        return false;
+    } else {
+        mdriver.view( ipos );
+        mdriver.view( imod );
+    }
+    if (!ipos || !imod){
+        cerr << "Could not open joint control driver" << endl;
+        return false;
     }
     
-    for ( int i = 0; i < 5; ++i ) {
-        configDriver(i );
+    bool check = true;
+    for ( int i = 0; i <= 5; ++i ) {
+        check &= configDriver( i, 30.0, 200.0 );
     }
-    
-    //open driver for gaze control
-    options.clear();
-    options.put("device", "gazecontrollerclient");
-    options.put("local", "/" + moduleName + "/gazeCtrl");
-    options.put("remote","/iKinGazeCtrl");
-    gazeDriver.open(options);
-    if(!gazeDriver.isValid())
-        cerr << "Did not connect to robot/simulator" << endl;
-    else {
-        gazeDriver.view(gazeControl);
-    }
-    
-    if(!gazeControl)
-        cerr << "Did not connect to gaze controller" << endl;
-    
-    gazeControl->storeContext(&context0);
-    
-    //initialize variables 
-    isSaccading = false;
-    
-    //Read parameters
-    checkPeriod = rf.check("checkPeriod", Value(0.1)).asDouble();
-    minVpS = rf.check("minVpS", Value(8000)).asDouble();
-    saccadeTimeout = rf.check("timeout", Value(1.0)).asDouble();
-    prevStamp =  0; //max value
-    
-    //opening ports
-    eventBottleManager.open("/" + moduleName + "/vBottle:i");
-    vRate.open("/" + moduleName + "/vRate:o");
-    imgL.open("/" + moduleName + "/imgL:o");
-    imgR.open("/" + moduleName + "/imgR:o");
-    return true ;
+    return check;
 }
 
-void saccadeModule::configDriver( int joint ) {
-    if ( ilim && ipos && imod ) {
-        ilim->getLimits( joint, &min, &max );
-        ipos->setRefSpeed( joint, 300.0 );
-        ipos->setRefAcceleration( joint, 200.0 );
+bool AutoSaccadeModule::configDriver( int joint, double refSp, double refAcc ) {
+    if ( ipos && imod ) {
+        ipos->setRefSpeed( joint, refSp );
+        ipos->setRefAcceleration( joint, refAcc );
         imod->setControlMode( joint, VOCAB_CM_POSITION );
     } else {
         cerr << "Could not open driver" << endl;
+        return false;
     }
+    return true;
 }
 
-bool saccadeModule::interruptModule() {
+bool AutoSaccadeModule::interruptModule() {
     cout << "Interrupting" << endl;
     rpcPort.interrupt();
     eventBottleManager.interrupt();
@@ -108,19 +136,19 @@ bool saccadeModule::interruptModule() {
     return true;
 }
 
-bool saccadeModule::close() {
+bool AutoSaccadeModule::close() {
     
     cout << "Closing" << endl;
     rpcPort.close();
     eventBottleManager.close();
     mdriver.close();
     gazeDriver.close();
-    delete ilim; delete ipos; delete imod;
+    delete ipos; delete imod;
     cout << "Finished Closing" << endl;
     return true;
 }
 
-void saccadeModule::performSaccade() {
+void AutoSaccadeModule::performSaccade() {
     for ( double theta = 0; theta < 2*M_PI; theta+= M_PI/36 ) {
         ipos->positionMove( 3, cos( theta ) );
         ipos->positionMove( 4, sin( theta ) );
@@ -128,91 +156,121 @@ void saccadeModule::performSaccade() {
     }
 }
 
-bool saccadeModule::updateModule() {
+double AutoSaccadeModule::computeEventRate() {
+    //compute event rate
+    double latestStamp = eventBottleManager.getTime();
+    double vPeriod = latestStamp - prevStamp;
     
+    if(vPeriod <= 0)
+        return 0;
+    
+    vPeriod *= 80 *10e-9;
+    double vCount = eventBottleManager.popCount();
+    const double eventRate = vCount / vPeriod;
+    prevStamp = latestStamp;
+    return eventRate;
+}
+
+bool AutoSaccadeModule::updateModule() {
+    
+    //collect events for some time
     eventBottleManager.start();
-    Time::delay(1.0);
+    Time::delay(timeout);
     eventBottleManager.stop();
     
     //if there is no connection don't do anything yet
     if(!eventBottleManager.getInputCount()) return true;
     
-    //compute event rate
-    double latestStamp = eventBottleManager.getTime();
-    double vCount = eventBottleManager.popCount();
-    double vPeriod = latestStamp - prevStamp;
-    //this should only occur on first bottle to initialise
-    if(vPeriod < 0) return true;
-    vPeriod *= 80 *10e-9;
-    const double eventRate = vCount / vPeriod;
-    prevStamp = latestStamp;
+    double eventRate = computeEventRate();
     
     //output the event rate for debug purposes
     Bottle vRateBottle;
     vRateBottle.addDouble( eventRate );
-    vRate.write(vRateBottle);
+    vRatePort.write(vRateBottle);
     
+    ImageOf<PixelBgr> &leftImage = leftImgPort.prepare();
+    ImageOf<PixelBgr> &rightImage = rightImagePort.prepare();
     ev::vQueue q = eventBottleManager.getEvents();
-    vFeatureMap lMap(240,304);
+    visualizeEvents( leftImage, rightImage, q );
+    
+    //Face straight (for simulation only)
+    home();
+    
+    //if event rate is low then saccade, else gaze to center of mass of events
+    if(eventRate < minVpS) {
+        cout << "perform saccade " << endl;
+        
+        //Stop gaze and reconfig driver to restore joint control mode
+        gazeControl->stopControl();
+        
+        configDriver( 3, refSpeed, refAcc );
+        configDriver( 4, refSpeed, refAcc );
+        
+        performSaccade();
+    } else {
+        Vector cmL,cmR;
+        
+        if (computeCenterMass( cmR, cmL, q )) {
+            cout << "gazing at l:(" << cmL( 0 ) << ", " << cmL( 1 ) << ")" << endl;
+            cout << "          r:(" << cmR( 0 ) << ", " << cmR( 1 ) << ")" << endl;
+    
+            //Making attention point red in image
+            leftImage( cmL( 0 ), cmL( 1 ) ) = PixelBgr( 255, 0, 0 );
+            rightImage( cmR( 0 ), cmR( 1 ) ) = PixelBgr( 255, 0, 0 );
+    
+            gazeControl->restoreContext( context0 );
+            gazeControl->lookAtStereoPixels( cmL, cmR );
+            gazeControl->waitMotionDone( 2.0 );
+        }
+    }
+    
+    leftImgPort.write();
+    rightImagePort.write();
+    return true;
+}
+
+void AutoSaccadeModule::visualizeEvents( ImageOf<PixelBgr> &leftImage, ImageOf<PixelBgr> &rightImage, ev::vQueue &q ) const {
+    vFeatureMap lMap( 240, 304 );
     vFeatureMap rMap(240,304);
-    ImageOf<PixelBgr> &leftImage = imgL.prepare();
-    ImageOf<PixelBgr> &rightImage = imgR.prepare();
+    
     for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
         auto aep = ev::is_event<ev::AE>( *i );
         if (aep.get()->channel) {
             rMap(aep.get()->y, aep.get()->x) += 80;
         } else {
-            lMap (aep.get()->y, aep.get()->x)+=80;
+            lMap (aep.get()->y, aep.get()->x) += 80;
         }
     }
     lMap.convertToImage(leftImage);
     rMap.convertToImage(rightImage);
-    
-    home();
-    
-    //if event rate is low then saccade, else gaze to center of mass of events
-    if(vPeriod == 0 || eventRate < minVpS) {
-        cout << "perform saccade " <<  latestStamp << endl;
-        gazeControl->stopControl();
-        configDriver( 3 );
-        configDriver( 4 );
-        performSaccade();
-        Time::delay(saccadeTimeout);
-    } else {
-        Vector cmL,cmR;
-        computeCenterMass( cmR, cmL, q );
-        cout << "gazing at l:("  << cmL(0) << ", " << cmL(1) << ")" << endl;
-        cout << "          r:("  << cmR(0) << ", " << cmR(1) << ")" << endl;
-        leftImage(cmL(0), cmL(1)) = PixelBgr(255,0,0);
-        rightImage(cmR(0), cmR(1)) = PixelBgr(255,0,0);
-        gazeControl->restoreContext(context0);
-        gazeControl->lookAtStereoPixels(cmL, cmR);
-        gazeControl->waitMotionDone();
-    }
-    
-    
-    imgL.write();
-    imgR.write();
-    return true;
 }
 
-void saccadeModule::home() {
+void AutoSaccadeModule::home() {
     gazeControl->stopControl();
+    double homePos[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     
-    bool motionDone;
-    
-    for ( int i = 0; i < 5; ++i ) {
-        configDriver( i );
-        ipos->positionMove( i, 0 );
-        while (!motionDone){
-            motionDone = true;
-            motionDone &= ipos->checkMotionDone( i, &motionDone );
-            Time::delay( 0.2 );
-        }
+    for ( int i = 0; i <= 5; ++i ) {
+        configDriver( i, 30.0, 200.0 );
     }
+    
+    ipos->positionMove(homePos);
+    
+    bool motionDone = false;
+    
+    while (!motionDone){
+        ipos->checkMotionDone(&motionDone);
+    }
+    
+    Time::delay(1.0);
 }
 
-void saccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue &q ) {
+bool AutoSaccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue &q ) {
+    
+    if (q.empty()) {
+        cerr << "Could not compute center of mass: empty event queue" << endl;
+        return false;
+    }
+    
     int xl = 0, yl = 0;
     int xr = 0, yr = 0;
     int rSize = 0, lSize = 0;
@@ -231,7 +289,9 @@ void saccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue &q )
         }
     }
     
-    if (lSize == 0 || rSize == 0) return;
+    if (lSize == 0 || rSize == 0)
+        return false;
+    
     xl /= lSize;
     yl /= lSize;
     xr /= rSize;
@@ -242,19 +302,19 @@ void saccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue &q )
     cmL(0) = xl;
     cmL(1) = yl;
     
+    return true;
 }
 
-double saccadeModule::getPeriod() {
+double AutoSaccadeModule::getPeriod() {
     return checkPeriod;
 }
 
-bool saccadeModule::respond(const Bottle &command, Bottle &reply) {
+bool AutoSaccadeModule::respond(const Bottle &command, Bottle &reply) {
     //fill in all command/response plus module update methods here
     return true;
 }
 
-
-/****************EventBottleManager**********************/
+/***********************EventBottleManager***********************/
 
 EventBottleManager::EventBottleManager() {
     
@@ -316,6 +376,8 @@ bool EventBottleManager::stop() {
 }
 
 ev::vQueue EventBottleManager::getEvents() {
+    if (!&vQueue)
+        return ev::vQueue();
     ev::vQueue outQueue = vQueue;
     vQueue.clear();
     return outQueue;
