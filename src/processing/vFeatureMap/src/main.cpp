@@ -16,7 +16,7 @@
  */
 
 
-#include "vFeatureMap.h"
+#include "iCub/eventdriven/vFeatureMap.h"
 
 int main(int argc, char * argv[])
 {

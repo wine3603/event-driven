@@ -2,7 +2,7 @@
 // Created by miacono on 28/02/17.
 //
 
-#include "vFeatureMap.h"
+#include "iCub/eventdriven/vFeatureMap.h"
 
 /**vFeatureMap Class Implementation */
 

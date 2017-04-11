@@ -10,29 +10,31 @@ set(PROJECTNAME ${EVENTDRIVEN_LIBRARIES})
 project(${PROJECTNAME})
 
 file(GLOB folder_source
-  src/codecs/codec_*.cpp
-  src/vWindow_adv.cpp
-  src/vWindow_basic.cpp
-)
+        src/codecs/codec_*.cpp
+        src/vWindow_adv.cpp
+        src/vWindow_basic.cpp
+        src/vFeatureMap.cpp
+        )
 
 file(GLOB folder_header
-  include/iCub/eventdriven/vtsHelper.h
-  include/iCub/eventdriven/vCodec.h
-  include/iCub/eventdriven/vBottle.h
-  include/iCub/eventdriven/vWindow_adv.h
-  include/iCub/eventdriven/vWindow_basic.h
-  include/iCub/eventdriven/vFilters.h
-  include/iCub/eventdriven/vSurfaceHandlerTh.h
-  include/iCub/eventdriven/all.h
-)
+        include/iCub/eventdriven/vtsHelper.h
+        include/iCub/eventdriven/vCodec.h
+        include/iCub/eventdriven/vBottle.h
+        include/iCub/eventdriven/vWindow_adv.h
+        include/iCub/eventdriven/vWindow_basic.h
+        include/iCub/eventdriven/vFilters.h
+        include/iCub/eventdriven/vSurfaceHandlerTh.h
+        include/iCub/eventdriven/all.h
+        include/iCub/eventdriven/vFeatureMap.h
+        )
 
 # Declare groups of source and header files -- makes things pretty in MSVC.
 source_group("Source Files" FILES ${folder_source})
 source_group("Header Files" FILES ${folder_header})
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-    ${YARP_INCLUDE_DIRS}
+        ${PROJECT_SOURCE_DIR}/include
+        ${YARP_INCLUDE_DIRS}
 )
 
 # Create everything needed to build our library
@@ -55,10 +57,10 @@ target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES})
 
 if(ICUBcontrib_FOUND)
     icubcontrib_export_library(${PROJECTNAME}
-        INTERNAL_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include
-        EXTERNAL_INCLUDE_DIRS ${YARP_INCLUDE_DIRS}
-        DESTINATION include/iCub/eventdriven
-        FILES  ${folder_header}
-    )
+            INTERNAL_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include
+            EXTERNAL_INCLUDE_DIRS ${YARP_INCLUDE_DIRS}
+            DESTINATION include/iCub/eventdriven
+            FILES  ${folder_header}
+            )
     icubcontrib_finalize_export(${PROJECTNAME})
 endif(ICUBcontrib_FOUND)

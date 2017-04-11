@@ -3,18 +3,15 @@ cmake_minimum_required(VERSION 2.6)
 set(MODULENAME autosaccade)
 project(${MODULENAME})
 
-file(GLOB source src/*.cpp
-        ../../processing/vAttention/src/vFeatureMap.cpp)
-file(GLOB header include/*.h
-        ../../processing/vAttention/include/vFeatureMap.h)
+file(GLOB source src/*.cpp)
+file(GLOB header include/*.h)
 
 find_package(ICUB)
 
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
                     ${ICUB_INCLUDE_DIRS}
-                    ${EVENTDRIVENLIBS_INCLUDE_DIRS}
-                        ../../processing/vAttention/include)
+                    ${EVENTDRIVENLIBS_INCLUDE_DIRS})
 
 add_executable(${MODULENAME} ${source} ${header})
 

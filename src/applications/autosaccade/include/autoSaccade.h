@@ -99,7 +99,6 @@ private:
     double prevStamp;
     double saccadeTimeout;
     void performSaccade();
-    void visualizeEvents( ev::vQueue q );
 
 public:
 
