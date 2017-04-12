@@ -55,9 +55,13 @@ bool AutoSaccadeModule::openPorts() {
 
 void AutoSaccadeModule::readParams( const ResourceFinder &rf ) {//set the name of the module
     string moduleName = rf.check("name", Value("autoSaccade")).asString();
+    robotName = rf.check("robotName", Value("autoSaccade")).asString();
     //Append slash at beginning of moduleName to comply with port naming convention
     if (moduleName[0] != '/'){
         moduleName = '/' + moduleName;
+    }
+    if (robotName[0] != '/'){
+        robotName = '/' + robotName;
     }
     setName( moduleName.c_str() );
     //Read parameters
@@ -93,7 +97,7 @@ bool AutoSaccadeModule::openGazeDriver() {//open driver for gaze control
 bool AutoSaccadeModule::openJointControlDriver() {//open driver for joint control
     Property options;
     options.put("device","remote_controlboard");
-    options.put("remote","/icubSim/head");
+    options.put("remote",robotName + "/head");
     options.put("local", getName( "/head" ) );
     
     mdriver.open( options );
@@ -154,6 +158,11 @@ void AutoSaccadeModule::performSaccade() {
         ipos->positionMove( 4, sin( theta ) );
         Time::delay(0.005);
     }
+    //bool motionDone;
+    //int joints[2] = {3,4};
+   // while (!motionDone){
+    //    ipos ->checkMotionDone(2,joints, &motionDone);
+    //}
 }
 
 double AutoSaccadeModule::computeEventRate() {
@@ -194,7 +203,7 @@ bool AutoSaccadeModule::updateModule() {
     visualizeEvents( leftImage, rightImage, q );
     
     //Face straight (for simulation only)
-    home();
+    //home();
     
     //if event rate is low then saccade, else gaze to center of mass of events
     if(eventRate < minVpS) {
@@ -217,15 +226,20 @@ bool AutoSaccadeModule::updateModule() {
             //Making attention point red in image
             leftImage( cmL( 0 ), cmL( 1 ) ) = PixelBgr( 255, 0, 0 );
             rightImage( cmR( 0 ), cmR( 1 ) ) = PixelBgr( 255, 0, 0 );
-    
+
+            cmL(0) = 303 - cmL(0);
+            cmL(1) = 239 - cmL(1);
+
             gazeControl->restoreContext( context0 );
-            gazeControl->lookAtStereoPixels( cmL, cmR );
+            gazeControl->lookAtMonoPixelSync(0, cmL);
+            //gazeControl->lookAtStereoPixels( cmL, cmR );
             gazeControl->waitMotionDone( 2.0 );
         }
     }
-    
+
     leftImgPort.write();
     rightImagePort.write();
+    Time::delay(0.5);
     return true;
 }
 

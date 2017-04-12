@@ -81,6 +81,7 @@ private:
     yarp::dev::IGazeControl *gazeControl;
     int context0;
     double min, max;
+    std::string robotName;
     
     yarp::dev::IPositionControl2 *ipos;
     yarp::dev::IControlMode2     *imod;
