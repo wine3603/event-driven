@@ -73,29 +73,36 @@ private:
  
     //timing parameters
     double checkPeriod;
+    
+    //Minimum event rate to trigger saccade
     double minVpS;
     
     //robot control settings
     yarp::dev::PolyDriver mdriver;
     yarp::dev::PolyDriver gazeDriver;
     yarp::dev::IGazeControl *gazeControl;
-    int context0;
-    double min, max;
-    std::string robotName;
-    
     yarp::dev::IPositionControl2 *ipos;
     yarp::dev::IControlMode2     *imod;
+    int context0;
+    std::string robotName;
     
+    //Camera parameters
+    int camWidth, camHeight;
+    
+    
+    //saccading parameters
     double refSpeed;
     double refAcc;
+    
+    //duration of event collection
+    double timeout;
     
     yarp::os::Port vRatePort;
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr>> leftImgPort;
     yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr>> rightImagePort;
     
-    //timestamps for comparison
+    //timestamp for comparison
     double prevStamp;
-    double timeout;
     
     void performSaccade();
     bool configDriver( int joint, double refSp, double refAcc );

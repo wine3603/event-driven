@@ -55,7 +55,7 @@ bool AutoSaccadeModule::openPorts() {
 
 void AutoSaccadeModule::readParams( const ResourceFinder &rf ) {//set the name of the module
     string moduleName = rf.check("name", Value("autoSaccade")).asString();
-    robotName = rf.check("robotName", Value("autoSaccade")).asString();
+    robotName = rf.check("robotName", Value("icubSim")).asString();
     //Append slash at beginning of moduleName to comply with port naming convention
     if (moduleName[0] != '/'){
         moduleName = '/' + moduleName;
@@ -66,10 +66,13 @@ void AutoSaccadeModule::readParams( const ResourceFinder &rf ) {//set the name o
     setName( moduleName.c_str() );
     //Read parameters
     checkPeriod = rf.check( "checkPeriod", Value( 0.1 ) ).asDouble();
-    minVpS = rf.check( "minVpS", Value( 8000 ) ).asDouble();
+    minVpS = rf.check( "minVpS", Value( 75000 ) ).asDouble();
     timeout = rf.check( "timeout", Value( 1.0 ) ).asDouble();
     refSpeed = rf.check( "refSpeed", Value( 300.0 ) ).asDouble();
     refAcc = rf.check( "refAcc", Value( 200.0 ) ).asDouble();
+    camWidth = rf.check( "camWidth", Value( 304 ) ).asInt();
+    camHeight = rf.check( "camHeight", Value( 240 ) ).asInt();
+    
 }
 
 bool AutoSaccadeModule::openGazeDriver() {//open driver for gaze control
@@ -158,11 +161,11 @@ void AutoSaccadeModule::performSaccade() {
         ipos->positionMove( 4, sin( theta ) );
         Time::delay(0.005);
     }
-    //bool motionDone;
-    //int joints[2] = {3,4};
-   // while (!motionDone){
-    //    ipos ->checkMotionDone(2,joints, &motionDone);
-    //}
+    bool motionDone;
+    int joints[2] = {3,4};
+    while (!motionDone){
+        ipos ->checkMotionDone(2,joints, &motionDone);
+    }
 }
 
 double AutoSaccadeModule::computeEventRate() {
@@ -224,11 +227,15 @@ bool AutoSaccadeModule::updateModule() {
             cout << "          r:(" << cmR( 0 ) << ", " << cmR( 1 ) << ")" << endl;
     
             //Making attention point red in image
-            leftImage( cmL( 0 ), cmL( 1 ) ) = PixelBgr( 255, 0, 0 );
-            rightImage( cmR( 0 ), cmR( 1 ) ) = PixelBgr( 255, 0, 0 );
+            leftImage((int) cmL( 0 ),(int) cmL( 1 ) ) = PixelBgr( 255, 0, 0 );
+            rightImage( (int) cmR( 0 ),(int) cmR( 1 ) ) = PixelBgr( 255, 0, 0 );
 
-            cmL(0) = 303 - cmL(0);
-            cmL(1) = 239 - cmL(1);
+            //Images are flipped wrt camera orientation
+            cmL(0) = camWidth - 1 - cmL(0);
+            cmL(1) = camHeight - 1 - cmL(1);
+            
+            cmR(0) = camWidth - 1 - cmR(0);
+            cmR(1) = camHeight - 1 - cmR(1);
 
             gazeControl->restoreContext( context0 );
             gazeControl->lookAtMonoPixelSync(0, cmL);
@@ -239,7 +246,6 @@ bool AutoSaccadeModule::updateModule() {
 
     leftImgPort.write();
     rightImagePort.write();
-    Time::delay(0.5);
     return true;
 }
 
