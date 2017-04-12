@@ -2,7 +2,7 @@
     <name> app_autoSaccade </name>
 
     <module>
-        <name> autoSaccade </name>
+        <name> autosaccade </name>
         <parameters>--minVpS 75000 --robotName icubSim --timeout 1 --camWidth 304 --camHeight 240   </parameters>
         <node> localhost </node>
     </module>

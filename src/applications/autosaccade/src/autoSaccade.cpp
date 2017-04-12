@@ -206,7 +206,8 @@ bool AutoSaccadeModule::updateModule() {
     visualizeEvents( leftImage, rightImage, q );
     
     //Face straight (for simulation only)
-    //home();
+    if (robotName == "/icubSim")
+        home();
     
     //if event rate is low then saccade, else gaze to center of mass of events
     if(eventRate < minVpS) {
