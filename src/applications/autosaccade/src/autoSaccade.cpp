@@ -203,7 +203,7 @@ bool AutoSaccadeModule::updateModule() {
     ImageOf<PixelBgr> &leftImage = leftImgPort.prepare();
     ImageOf<PixelBgr> &rightImage = rightImagePort.prepare();
     ev::vQueue q = eventBottleManager.getEvents();
-    visualizeEvents( leftImage, rightImage, q );
+    //visualizeEvents( leftImage, rightImage, q );
     
     //Face straight (for simulation only)
     if (robotName == "/icubSim")
@@ -250,6 +250,7 @@ bool AutoSaccadeModule::updateModule() {
     return true;
 }
 
+/*
 void AutoSaccadeModule::visualizeEvents( ImageOf<PixelBgr> &leftImage, ImageOf<PixelBgr> &rightImage, ev::vQueue &q ) const {
     vFeatureMap lMap( 240, 304 );
     vFeatureMap rMap(240,304);
@@ -265,7 +266,7 @@ void AutoSaccadeModule::visualizeEvents( ImageOf<PixelBgr> &leftImage, ImageOf<P
     lMap.convertToImage(leftImage);
     rMap.convertToImage(rightImage);
 }
-
+*/
 void AutoSaccadeModule::home() {
     gazeControl->stopControl();
     double homePos[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};

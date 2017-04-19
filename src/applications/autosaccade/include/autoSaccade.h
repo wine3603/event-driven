@@ -113,9 +113,9 @@ private:
     bool openGazeDriver();
     bool openPorts();
     void readParams( const yarp::os::ResourceFinder &rf );
-    void visualizeEvents( yarp::sig::ImageOf<yarp::sig::PixelBgr> &leftImage,
+   /* void visualizeEvents( yarp::sig::ImageOf<yarp::sig::PixelBgr> &leftImage,
             yarp::sig::ImageOf<yarp::sig::PixelBgr> &rightImage,
-            ev::vQueue &q ) const;
+            ev::vQueue &q ) const;*/
 public:
     
     //the virtual functions that need to be overloaded
