@@ -19,13 +19,12 @@
 /// \ingroup RobotIO
 /// \brief automatically elicit iCub eye movement when event rate is low
 
-#ifndef __ICUB_EVENTCLUSTERING_MOD_H__
-#define __ICUB_EVENTCLUSTERING_MOD_H__
+#ifndef __V_AUTOSACCADE__
+#define __V_AUTOSACCADE__
 
 #include <yarp/os/all.h>
 #include <iCub/eventdriven/all.h>
 #include <yarp/dev/all.h>
-#include <iCub/iKin/iKinFwd.h>
 #include <yarp/math/Math.h>
 
 
