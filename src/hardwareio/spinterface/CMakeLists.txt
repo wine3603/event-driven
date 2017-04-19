@@ -6,14 +6,17 @@ project(${MODULENAME})
 file(GLOB source src/*.cpp)
 file(GLOB header include/*.h)
 
+set(SPINNIO_DIR /usr/local CACHE PATH "Install path of SpinnIO library")
+
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
                     ${EVENTDRIVENLIBS_INCLUDE_DIRS}
-                    /home/aglover/workspace/projects/SpinnIO/library_src/include)
+                    ${SPINNIO_DIR}/include)
 
 add_executable(${MODULENAME} ${source} ${header})
 
-target_link_libraries(${MODULENAME} ${YARP_LIBRARIES} ${EVENTDRIVEN_LIBRARIES} /home/aglover/workspace/projects/SpinnIO/build/lib/libSpinnIO.a sqlite3 pthread)
+target_link_libraries(${MODULENAME} ${YARP_LIBRARIES} ${EVENTDRIVEN_LIBRARIES}
+        ${SPINNIO_DIR}/lib/libSpinnIO.a sqlite3 pthread)
 
 install(TARGETS ${MODULENAME} DESTINATION bin)
 
