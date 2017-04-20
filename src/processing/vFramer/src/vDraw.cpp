@@ -403,7 +403,14 @@ void interestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
 
         auto v = as_event<ev::LabelledAE>(*qi);
         if(!v) continue;
-        cv::Point centr(v->x, v->y);
+        int px = v->x;
+        int py = v->y;
+        if(flip) {
+            px = Xlimit - 1 - px;
+            py = Ylimit - 1 - py;
+        }
+
+        cv::Point centr(px, py);
         cv::circle(image, centr, r, c);
     }
 

@@ -84,8 +84,8 @@ vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowR
     this->height = height;
     this->width = width;
 
-    this->sobelsize = sobelsize;
-    this->sobelrad = (sobelsize - 1)/2;
+//    this->sobelsize = sobelsize;
+//    this->sobelrad = (sobelsize - 1)/2;
     this->windowRad = windowRad;
 
     //ensure that sobel size is an odd number
@@ -95,21 +95,21 @@ vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowR
         sobelsize--;
         std::cout << "sobelsize = " << sobelsize << " will be used" << std::endl;
     }
+
     this->nEvents = nEvents;
     this->thresh = thresh;
 
-    this->gaussiansize = 2*windowRad + 2 - sobelsize;
-    //for speed we predefine the memory for some matricies
-    sobel.setSobelFilters(sobelsize);
-//    sobel.printFilters();
+    int gaussiansize = 2*windowRad + 2 - sobelsize;
+    convolution.setSobelFilters(sobelsize);
+    convolution.setGaussianFilter(sigma, gaussiansize);
 
 //    sobelx = yarp::sig::Matrix(sobelsize, sobelsize);
 //    sobely = yarp::sig::Matrix(sobelsize, sobelsize);
-    gaussian = yarp::sig::Matrix(gaussiansize, gaussiansize);
+//    gaussian = yarp::sig::Matrix(gaussiansize, gaussiansize);
 
     //create sobel filters
 //    setSobelFilters(sobelx, sobely);
-    setGaussianFilter(sigma, gaussian);
+//    setGaussianFilter(sigma, gaussian);
 
     std::cout << "Using a " << sobelsize << "x" << sobelsize << " filter ";
     std::cout << "and a " << 2*windowRad + 1 << "x" << 2*windowRad + 1 << " spatial window" << std::endl;
@@ -224,18 +224,15 @@ void vCornerManager::onRead(ev::vBottle &bot)
 
 bool vCornerManager::detectcorner(ev::vSurface2 *surf)
 {
-    double dx = 0.0, dy = 0.0, dxy = 0.0, score = 0.0;
 
     //get the most recent event
     auto vc = is_event<AE>(surf->getMostRecent());
-    int currx = vc->x;
-    int curry = vc->y;
-
-    //length of the result of the convolution
-    int l = windowRad - sobelrad;
 
     //get the queue of events
     const vQueue subsurf = surf->getSurf(vc->x, vc->y, windowRad);
+
+    //set the final response to be centred on the curren event
+    convolution.setResponseCenter(vc->x, vc->y);
 
     //update filter response
     for(unsigned int i = 0; i < subsurf.size(); i++)
@@ -243,45 +240,20 @@ bool vCornerManager::detectcorner(ev::vSurface2 *surf)
         //events are in the surface
         auto vi = is_event<AE>(subsurf[i]);
 
-//        std::cout << i << " " << "(" << x << "," << y << ")" << " (" << cx << "," << cy << ")" <<  std::endl;
+//        std::cout << "Applying sobel filter..." << std::endl;
+        convolution.applysobel(vi);
 
-        for(int cx = currx-l; cx <= currx+l; cx++)
-        {
-            for(int cy = curry-l; cy <= curry+l; cy++)
-            {
-                if(abs(vi->x - cx) <= sobelrad && abs(vi->y - cy) <= sobelrad)
-                {
-                    //(cx,cy) is the pixel where we apply the sobel filter
-                    sobel.setCenter(cx, cy);
-                    sobel.process(vi, currx, curry);
-//                    sobel.updateresponse(*vi, *vc);
-                } else {
-                    //break;
-                }
-            }
-        }
     }
 
-    //get the final response
-    for(int m = 0; m < 2*l+1; m++)
-    {
-        for(int n = 0; n < 2*l+1; n++)
-        {
-            double sx = sobel.getResponseX(m, n);
-            double sy = sobel.getResponseY(m, n);
-            double g = gaussian(m, n);
-//            std::cout << m << " " << n << " " << sx << " " << sy << std::endl;
-            dx += g * pow(sx, 2);
-            dy += g * pow(sy, 2);
-            dxy += g * sx * sy;
-        }
-    }
+//    std::cout << "Applying gaussian filter...";
+    convolution.applygaussian();
+
+//    std::cout << "Getting score...";
+    double score = convolution.getScore();
 
     //reset responses
-    sobel.resetResponses();
+    convolution.reset();
 
-    //compute score
-    score = (dx*dy - dxy*dxy) - 0.04*((dx + dy) * (dx + dy));
 
     if(debugPort.getOutputCount()) {
         yarp::os::Bottle &scorebottleout = debugPort.prepare();
@@ -347,29 +319,29 @@ bool vCornerManager::detectcorner(ev::vSurface2 *surf)
 
 //}
 /**********************************************************/
-double vCornerManager::convSobel(const ev::vQueue &w, yarp::sig::Matrix &sobel, int a, int b)
-{
-    double val = 0.0;
+//double vCornerManager::convSobel(const ev::vQueue &w, yarp::sig::Matrix &sobel, int a, int b)
+//{
+//    double val = 0.0;
 
-    //compute the convolution between the filter and the window
-    for(unsigned int k = 0; k < w.size(); k++) {
+//    //compute the convolution between the filter and the window
+//    for(unsigned int k = 0; k < w.size(); k++) {
 
-        auto vi = is_event<AE>(w[k]);
-        int deltax = vi->x - a + (sobelsize-1)/2;
-        int deltay = vi->y - b + (sobelsize-1)/2;
-//        std::cout << vi->x << " " << vi->y << " " << a << " " << b << " " << deltax << " " << deltay << " " << std::endl;
-        val += sobel(deltax, deltay);
-    }
-
-//    for(int i = 0; i < sobelsize; i++) {
-//        for(int j = 0; j < sobelsize; j++){
-//            norm += fabs(sobel[i][j]);
-//        }
+//        auto vi = is_event<AE>(w[k]);
+//        int deltax = vi->x - a + (sobelsize-1)/2;
+//        int deltay = vi->y - b + (sobelsize-1)/2;
+////        std::cout << vi->x << " " << vi->y << " " << a << " " << b << " " << deltax << " " << deltay << " " << std::endl;
+//        val += sobel(deltax, deltay);
 //    }
 
-    return val;
+////    for(int i = 0; i < sobelsize; i++) {
+////        for(int j = 0; j < sobelsize; j++){
+////            norm += fabs(sobel[i][j]);
+////        }
+////    }
 
-}
+//    return val;
+
+//}
 
 /**********************************************************/
 //void vCornerManager::setSobelFilters(yarp::sig::Matrix &sobelx, yarp::sig::Matrix &sobely)
@@ -427,30 +399,30 @@ double vCornerManager::convSobel(const ev::vQueue &w, yarp::sig::Matrix &sobel, 
 //}
 
 /**********************************************************/
-void vCornerManager::setGaussianFilter(double sigma, yarp::sig::Matrix &gaussian)
-{
-    double hsum = 0.0;
-    const double A = 1.0/(2.0*M_PI*sigma*sigma);
-    const int w = (gaussiansize-1)/2;
-    for(int x = -w; x <= w; x++)
-    {
-        for(int y = -w; y <= w; y++)
-        {
-            const double hxy = A*exp(-(x*x + y*y)/(2*sigma*sigma));
-            gaussian(w + x, w + y) = hxy;
-            hsum += hxy;
-        }
-    }
+//void vCornerManager::setGaussianFilter(double sigma, yarp::sig::Matrix &gaussian)
+//{
+//    double hsum = 0.0;
+//    const double A = 1.0/(2.0*M_PI*sigma*sigma);
+//    const int w = (gaussiansize-1)/2;
+//    for(int x = -w; x <= w; x++)
+//    {
+//        for(int y = -w; y <= w; y++)
+//        {
+//            const double hxy = A*exp(-(x*x + y*y)/(2*sigma*sigma));
+//            gaussian(w + x, w + y) = hxy;
+//            hsum += hxy;
+//        }
+//    }
 
-    for(int x = -w; x <= w; x++)
-    {
-        for(int y = -w; y <= w; y++)
-        {
-            gaussian(w + x, w + y) = gaussian(w + x, w + y)/hsum;
-//            std::cout << gaussian(w + x, w + y) << " ";
-        }
-//        std::cout << std::endl;
-    }
+//    for(int x = -w; x <= w; x++)
+//    {
+//        for(int y = -w; y <= w; y++)
+//        {
+//            gaussian(w + x, w + y) = gaussian(w + x, w + y)/hsum;
+////            std::cout << gaussian(w + x, w + y) << " ";
+//        }
+////        std::cout << std::endl;
+//    }
 
-}
+//}
 //empty line to make gcc happy

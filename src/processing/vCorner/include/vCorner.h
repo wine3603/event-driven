@@ -28,7 +28,7 @@
 #include <yarp/math/Math.h>
 #include <iCub/eventdriven/all.h>
 #include <iCub/eventdriven/vtsHelper.h>
-#include <sobelfilters.h>
+#include <filters.h>
 #include <fstream>
 #include <math.h>
 
@@ -45,19 +45,19 @@ private:
     //parameters
     int height;
     int width;
-    int sobelsize;
-    int sobelrad;
+//    int sobelsize;
+//    int sobelrad;
     int windowRad;
-    double sigma;
+//    double sigma;
     int nEvents;
     double thresh;
 
-    int gaussiansize;
+//    int gaussiansize;
 
 //    yarp::sig::Matrix sobelx;
 //    yarp::sig::Matrix sobely;
-    sobelfilter sobel;
-    yarp::sig::Matrix gaussian;
+    filters convolution;
+//    yarp::sig::Matrix gaussian;
 
     //data structures
     ev::vSurface2 *surfaceOnL;

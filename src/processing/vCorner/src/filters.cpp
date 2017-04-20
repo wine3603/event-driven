@@ -15,84 +15,106 @@
  * Public License for more details
  */
 
-#include "sobelfilters.h"
+#include "filters.h"
 
 using namespace ev;
 
-sobelfilter::sobelfilter()
+filters::filters()
 {
+
     cx = 0;
     cy = 0;
     sobelsize = 5;
     sobelrad = (sobelsize - 1)/2;
+
+    sigma = 0.0;
+
+    rx = 0;
+    ry = 0;
     l = 7;
     lrad = (l - 1)/2;
+
+    dx = 0.0;
+    dy = 0.0;
+    dxy = 0.0;
     sobelx.resize(sobelsize, sobelsize);
     sobely.resize(sobelsize, sobelsize);
+    gaussian.resize(l, l);
     responsex.resize(l, l);
     responsey.resize(l, l);
 
 }
 
-void sobelfilter::setCenter(int cx, int cy)
+void filters::setFilterCenter(int cx, int cy)
 {
     this->cx = cx;
     this->cy = cy;
 }
 
-double sobelfilter::getResponseX(int i, int j) {
-
-    return responsex(i, j);
+void filters::setResponseCenter(int rx, int ry)
+{
+    this->rx = rx;
+    this->ry = ry;
 }
 
-double sobelfilter::getResponseY(int i, int j) {
-
-    return responsey(i, j);
-}
-
-void sobelfilter::resetResponses() {
+void filters::reset() {
 
     responsex.zero();
     responsey.zero();
+    dx = 0.0;
+    dy = 0.0;
+    dxy = 0.0;
 }
 
-//std::pair<double, double> sobelfilter::process(ev::event<AE> evt)
-//{
-//    //auto ae = is_event<AE>(evt.clone());
-//    int dx = evt->x - cx + sobelrad;
-//    int dy = evt->y - cy + sobelrad;
-//    return std::make_pair (sobelx(dx, dy), sobely(dx, dy));
-////    return gain;
-//}
-
-//void sobelfilter::updateresponse(vEvent &curr_evt, vEvent &cent_evt)
-//{
-//    auto cente = is_event<AE>(cent_evt.clone());
-//    auto curre = is_event<AE>(curr_evt.clone());
-//    int centerx = cx - cente->x + lrad;
-//    int centery = cy - cente->y + lrad;
-
-//    this->responsex(centerx, centery) += process(*curre).first;
-//    this->responsey(centerx, centery) += process(*curre).second;
-
-//}
-
-void sobelfilter::process(ev::event<AE> evt, int currx, int curry)
+void filters::applysobel(ev::event<AE> evt)
 {
-    int dx = evt->x - cx;
-    int dy = evt->y - cy;
-    int centerx = cx - currx + lrad;
-    int centery = cy - curry + lrad;
 
-    double gainx = sobelx(dx + sobelrad, dy + sobelrad);
-    double gainy = sobely(dx + sobelrad, dy + sobelrad);
+    //apply sobel filters
+    for(int cx = rx-lrad; cx <= rx+lrad; cx++)
+    {
+        for(int cy = ry-lrad; cy <= ry+lrad; cy++)
+        {
+            if(abs(evt->x - cx) <= sobelrad && abs(evt->y - cy) <= sobelrad)
+            {
+                //(cx,cy) is the pixel where we apply the sobel filter
+                this->setFilterCenter(cx, cy);
 
-    this->responsex(centerx, centery) += gainx;
-    this->responsey(centerx, centery) += gainy;
+                int diffx = evt->x - cx;
+                int diffy = evt->y - cy;
+
+                double gainx = sobelx(diffx + sobelrad, diffy + sobelrad);
+                double gainy = sobely(diffx + sobelrad, diffy + sobelrad);
+                this->responsex(cx - rx + lrad, cy - ry + lrad) += gainx;
+                this->responsey(cx - rx + lrad, cy - ry + lrad) += gainy;
+
+            }
+        }
+    }
 
 }
 
-void sobelfilter::setSobelFilters(int sobelsize)
+void filters::applygaussian()
+{
+    for(int m = 0; m < l; m++)
+    {
+        for(int n = 0; n < l; n++)
+        {
+            double sx = this->responsex(m, n);
+            double sy = this->responsey(m, n);
+            double g = gaussian(m, n);
+            dx += g * pow(sx, 2);
+            dy += g * pow(sy, 2);
+            dxy += g * sx * sy;
+        }
+    }
+}
+
+double filters::getScore()
+{
+    return (dx*dy - dxy*dxy) - 0.04*((dx + dy) * (dx + dy));
+}
+
+void filters::setSobelFilters(int sobelsize)
 {
     yarp::sig::Vector Sx(sobelsize);
     yarp::sig::Vector Dx(sobelsize);
@@ -125,14 +147,14 @@ void sobelfilter::setSobelFilters(int sobelsize)
     }
 }
 
-int sobelfilter::factorial(int a)
+int filters::factorial(int a)
 {
     if(a <= 1)
         return 1;
     return a*factorial(a - 1);
 }
 
-int sobelfilter::Pasc(int k, int n)
+int filters::Pasc(int k, int n)
 {
     int P;
     if ((k >= 0) && (k <= n))
@@ -142,26 +164,30 @@ int sobelfilter::Pasc(int k, int n)
     return P;
 }
 
-void sobelfilter::printFilters()
+void filters::setGaussianFilter(double sigma, int gaussiansize)
 {
-    for(int i = 0; i < sobelsize; i++)
+    double hsum = 0.0;
+    const double A = 1.0/(2.0*M_PI*sigma*sigma);
+    const int w = (gaussiansize-1)/2;
+    for(int x = -w; x <= w; x++)
     {
-        for(int j = 0; j < sobelsize; j++)
+        for(int y = -w; y <= w; y++)
         {
-            std::cout << sobelx(i, j) << " ";
+            const double hxy = A*exp(-(x*x + y*y)/(2*sigma*sigma));
+            this->gaussian(w + x, w + y) = hxy;
+            hsum += hxy;
         }
-    std::cout << std::endl;
     }
 
-    std::cout << std::endl;
-    for(int i = 0; i < sobelsize; i++)
+    for(int x = -w; x <= w; x++)
     {
-        for(int j = 0; j < sobelsize; j++)
+        for(int y = -w; y <= w; y++)
         {
-            std::cout << sobely(i, j) << " ";
+            gaussian(w + x, w + y) = gaussian(w + x, w + y)/hsum;
         }
-    std::cout << std::endl;
     }
+
 }
+
 
 //empty line to make gcc happy
