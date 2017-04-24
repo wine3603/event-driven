@@ -37,9 +37,9 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     int width = rf.check("width", yarp::os::Value(128)).asInt();
     int sobelsize = rf.check("filterSize", yarp::os::Value(5)).asInt();
     int windowRad = rf.check("spatial", yarp::os::Value(5)).asInt();
-    int sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
+    double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
     int nEvents = rf.check("nEvents", yarp::os::Value(5000)).asInt();
-    double thresh = rf.check("thresh", yarp::os::Value(8)).asDouble();
+    double thresh = rf.check("thresh", yarp::os::Value(8.0)).asDouble();
 
     /* create the thread and pass pointers to the module parameters */
     cornermanager = new vCornerManager(height, width, sobelsize, windowRad, sigma, nEvents, thresh);

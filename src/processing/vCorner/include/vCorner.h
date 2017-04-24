@@ -76,7 +76,7 @@ private:
 //    void setSobelFilters(yarp::sig::Matrix &sobelx, yarp::sig::Matrix &sobely);
 //    int factorial(int a);
 //    int Pasc(int k, int n);
-    void setGaussianFilter(double sigma, yarp::sig::Matrix &gaussian);
+//    void setGaussianFilter(double sigma, yarp::sig::Matrix &gaussian);
 
 public:
 
