@@ -81,6 +81,9 @@ double vCornerModule::getPeriod()
 /******************************************************************************/
 vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowRad, double sigma, int nEvents, double thresh)
 {
+//    this->timeprev = yarp::os::Time::now();
+//    this->timeavg = 0.0;
+
     this->height = height;
     this->width = width;
 
@@ -204,6 +207,13 @@ void vCornerManager::onRead(ev::vBottle &bot)
         //detect corner
         bool isc = detectcorner(cSurf);
 
+//        double timenow = yarp::os::Time::now();
+//        double tdiff = timenow - timeprev;
+//        double ratio = 0.999;
+//        timeavg = ratio*timeavg + (1-ratio)*tdiff;
+//        timeprev = timenow;
+//        std::cout << timeavg *1000 << std::endl;
+
         //add corner event to the output bottle
         if(isc) {
             auto ce = make_event<LabelledAE>(aep);
@@ -231,6 +241,8 @@ bool vCornerManager::detectcorner(ev::vSurface2 *surf)
     //get the queue of events
     const vQueue subsurf = surf->getSurf(vc->x, vc->y, windowRad);
 
+//    std::cout << subsurf.size() << std::endl;
+
     //set the final response to be centred on the curren event
     convolution.setResponseCenter(vc->x, vc->y);
 
@@ -251,6 +263,7 @@ bool vCornerManager::detectcorner(ev::vSurface2 *surf)
 //    std::cout << "Getting score...";
     double score = convolution.getScore();
 
+//    double score = 9.0;
     //reset responses
     convolution.reset();
 

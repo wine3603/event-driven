@@ -42,6 +42,9 @@ private:
     yarp::os::BufferedPort<ev::vBottle> outPort;
     yarp::os::BufferedPort<yarp::os::Bottle> debugPort;
 
+//    double timeprev;
+//    double timeavg;
+
     //parameters
     int height;
     int width;

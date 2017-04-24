@@ -69,25 +69,48 @@ void filters::reset() {
 void filters::applysobel(ev::event<AE> evt)
 {
 
+//    //apply sobel filters
+//    for(int cx = rx-lrad; cx <= rx+lrad; cx++)
+//    {
+//        for(int cy = ry-lrad; cy <= ry+lrad; cy++)
+//        {
+//            if(abs(evt->x - cx) <= sobelrad && abs(evt->y - cy) <= sobelrad)
+//            {
+//                //(cx,cy) is the pixel where we apply the sobel filter
+//                this->setFilterCenter(cx, cy);
+
+//                int diffx = evt->x - cx;
+//                int diffy = evt->y - cy;
+
+//                double gainx = sobelx(diffx + sobelrad, diffy + sobelrad);
+//                double gainy = sobely(diffx + sobelrad, diffy + sobelrad);
+//                this->responsex(cx - rx + lrad, cy - ry + lrad) += gainx;
+//                this->responsey(cx - rx + lrad, cy - ry + lrad) += gainy;
+
+//            }
+//        }
+//    }
+
     //apply sobel filters
-    for(int cx = rx-lrad; cx <= rx+lrad; cx++)
+    int lx = std::max(evt->x-sobelrad, rx-lrad);
+    int ux = std::min(evt->x+sobelrad, rx+lrad);
+    int ly = std::max(evt->y-sobelrad, ry-lrad);
+    int uy = std::min(evt->y+sobelrad, ry+lrad);
+    for(int cx = lx; cx <= ux; cx++)
     {
-        for(int cy = ry-lrad; cy <= ry+lrad; cy++)
+        for(int cy = ly; cy <= uy; cy++)
         {
-            if(abs(evt->x - cx) <= sobelrad && abs(evt->y - cy) <= sobelrad)
-            {
-                //(cx,cy) is the pixel where we apply the sobel filter
-                this->setFilterCenter(cx, cy);
+            //(cx,cy) is the pixel where we apply the sobel filter
+            this->setFilterCenter(cx, cy);
 
-                int diffx = evt->x - cx;
-                int diffy = evt->y - cy;
+            int diffx = evt->x - cx;
+            int diffy = evt->y - cy;
 
-                double gainx = sobelx(diffx + sobelrad, diffy + sobelrad);
-                double gainy = sobely(diffx + sobelrad, diffy + sobelrad);
-                this->responsex(cx - rx + lrad, cy - ry + lrad) += gainx;
-                this->responsey(cx - rx + lrad, cy - ry + lrad) += gainy;
+            double gainx = sobelx(diffx + sobelrad, diffy + sobelrad);
+            double gainy = sobely(diffx + sobelrad, diffy + sobelrad);
+            this->responsex(cx - rx + lrad, cy - ry + lrad) += gainx;
+            this->responsey(cx - rx + lrad, cy - ry + lrad) += gainy;
 
-            }
         }
     }
 
