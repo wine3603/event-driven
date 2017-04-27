@@ -58,12 +58,13 @@ ev::event<> cluster::getLastEvent()
 void cluster::fitLine()
 {
     yarp::sig::Vector meanvec(3);
-    yarp::sig::Matrix covariance(2, 2);
 
+    //matrices to store data
     unsigned n = cluster_.size();
     yarp::sig::Matrix data(n, 3);
     yarp::sig::Matrix centreddata(n, 3);
 
+    //matrices to store the result of SVD decomposition
     yarp::sig::Matrix U;
     yarp::sig::Vector S;
     yarp::sig::Matrix V;
@@ -95,20 +96,16 @@ void cluster::fitLine()
         centreddata[i][0] = data[i][0] - meanvec[0];
         centreddata[i][1] = data[i][1] - meanvec[1];
         centreddata[i][2] = data[i][2] - meanvec[2];
-
-//        std::cout << centreddata[i][0] << " " << centreddata[i][1] << " " << centreddata[i][2] << std::endl;
     }
 
     yarp::math::SVDJacobi(centreddata, U, S, V);
 
+    //line parameters (a/c, b/c) will provide the velocity
     yarp::sig::Vector v;
     v = V.getCol(0);
-    std::cout << -v[0]/v[2] * 1000000 << " " << -v[1]/v[2] * 1000000 << std::endl;
-    vel.first = -v[0] /v[2]; //U(0, 2); // / U(2, 2);
-    vel.second = -v[1] /v[2]; //U(1, 2); // / U(2, 2);
-
-    //return parameters of the line a/c, b/c
-//    return vel;
+//    std::cout << -v[0]/v[2] * 1000000 << " " << -v[1]/v[2] * 1000000 << std::endl;
+    vel.first = -v[0]/v[2];
+    vel.second = -v[1]/v[2];
 
 }
 
