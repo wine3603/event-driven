@@ -342,6 +342,15 @@ void flowDraw::draw(cv::Mat &image, const vQueue &eSet, int vTime)
         float vx = ofp->vx;
         float vy = ofp->vy;
 
+        if(flip) {
+            x = Xlimit - 1 - x;
+            y = Ylimit - 1 - y;
+            double temp;
+            temp = vx;
+            vx = vy;
+            vy = temp;
+        }
+
         //Starting point of the line
         p_start.x = x;
         p_start.y = y;
