@@ -27,77 +27,64 @@ class localQueue {
 
 private:
 
+    //parameters
+    unsigned int eventsInPatch;
+    unsigned int patchEdgeLength;
+
+    //local storage
     vQueue q;
-    unsigned int qlength;
     yarp::sig::Matrix spatial;
-    int slength;
-    int srad;
+
+    //internal variables
+    int xoffset;
+    int yoffset;
 
 public:
 
-    localQueue()
+    localQueue() {}
+
+    void initialise(unsigned int eventsInPatch, int patchEdgeLength, int xCentre, int yCentre)
     {
+        int srad = (patchEdgeLength - 1)/2;
+        this->eventsInPatch = eventsInPatch;
+        this->patchEdgeLength = patchEdgeLength;
+        this->xoffset = xCentre - srad;
+        this->yoffset = yCentre - srad;
+        spatial.resize(patchEdgeLength, patchEdgeLength);
 
     }
 
-    ~localQueue()
+    void addEvent(event<AE> v)
     {
-
-    }
-
-    void initLocalQueue(unsigned int qlen, int slen)
-    {
-        this->qlength = qlen;
-        this->slength = slen;
-        spatial.resize(slength, slength);
-        srad = (slen - 1)/2;
-    }
-
-    void addEvent(event<> v)
-    {
-
-        //add event to the queue
         q.push_back(v);
-
-        //if queue has more than qlength events
-        //remove events
-        if(q.size() > qlength)
-        {
-            q.pop_front();
-        }
     }
 
-    vQueue getLocalPatch()
+    vQueue getSurface()
     {
-        event<AddressEvent> v;
+
         vQueue qcopy;
+        spatial.zero();
+        int needed = 0;
 
-        event<AddressEvent> vfirst = as_event<AddressEvent>(*q.rbegin());
+        vQueue::reverse_iterator qi = q.rbegin();
+        while(qi != q.rend() && qcopy.size() < eventsInPatch) {
 
-        //go through the queue
-        for(vQueue::reverse_iterator qi = q.rbegin(); qi != q.rend(); qi++) {
-            v = as_event<AddressEvent>(*qi);
+            auto v = is_event<AE>(*qi);
+            double &surfaceelement = spatial(v->x - xoffset, v->y - yoffset);
 
-            int dx = vfirst->x - v->x;
-            int dy = vfirst->y - v->y;
-
-//            std::cout << vfirst->x << " " << vfirst->y << " " << v->x << " " << v->y << " " <<
-//                         dx + srad << " " << dy + srad << " " << spatial(dx + srad, dy + srad) << std::endl;
-
-            //if window is empty at this location
-            if(spatial(dx + srad, dy + srad) == 0) {
-                spatial(dx + srad, dy + srad) = 1;
-
-                //add event
+            if(surfaceelement == 0) {
+                surfaceelement = 1;
                 qcopy.push_back(v);
-
             }
+
+            qi++;
+            needed++;
         }
 
-//        print(spatial);
-
-        //reset window
-        spatial.zero();
+        //here needed is the number of events that we need to keep a surface of
+        //qlength
+        while(q.size() > needed)
+            q.pop_front();
 
         return qcopy;
 
@@ -119,11 +106,6 @@ public:
             std::cout << std::endl;
         }
         std::cout << std::endl << std::endl;
-    }
-
-    int getSize()
-    {
-        return q.size();
     }
 
 };

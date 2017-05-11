@@ -29,7 +29,7 @@ class queueSet {
 
 private:
 
-    std::vector<localQueue> queues;
+    std::vector< std::vector <localQueue> > queues;
     int width;
     int height;
     unsigned int qlen;
@@ -37,16 +37,7 @@ private:
 
 public:
 
-    queueSet()
-    {
-
-    }
-
-    ~queueSet()
-    {
-
-    }
-
+    queueSet() {}
     void initialise(int width, int height, unsigned int qlen, int windowRad)
     {
         this->width = width;
@@ -55,38 +46,34 @@ public:
         this->windowRad = windowRad;
 
         //create a queue for each pixel
-        int nqueues = width*height;
-        for(int i = 0; i < nqueues; i++) {
-            localQueue newQueue;
-            newQueue.initLocalQueue(qlen, 2*windowRad+1);
-            queues.push_back(newQueue);
-        }
-
-    }
-
-    void add(ev::event<AE> v)
-    {
-        int x = v->x;
-        int y = v->y;
-
-        //add the event to the correct queue and its neighborings
-        int curri;
-        for(int dx = -windowRad; dx <= windowRad; dx++)
-        {
-            for(int dy = -windowRad; dy <= windowRad; dy++)
-            {
-                if(x + dx < 0 || x + dx >= width || y + dy < 0 || y + dy >= height)
-                    continue;
-
-                curri = (y + dy)*width + (x + dx);
-                queues[curri].addEvent(v);
+        queues.resize(height);
+        for(int y = 0; y < height; y++) {
+            queues[y].resize(width);
+            for(int x = 0; x < width; x++) {
+                queues[y][x].initialise(qlen, windowRad * 2 + 1, x, y);
             }
         }
     }
 
-    localQueue getQueue(ev::event<AE> v)
+    void add(ev::event<AE> v)
     {
-        return queues[v->y*width + v->x];
+
+        //add the event to the correct queue and its neighborings
+        for(int dx = -windowRad; dx <= windowRad; dx++) {
+            for(int dy = -windowRad; dy <= windowRad; dy++) {
+                int ix = v->x + dx;
+                int iy = v->y + dy;
+                if(ix < 0 || ix >= width || iy < 0 || iy >= height)
+                    continue;
+
+                queues[iy][ix].addEvent(v);
+            }
+        }
+    }
+
+    vQueue getQueue(ev::event<AE> v)
+    {
+        return queues[v->y][v->x].getSurface();
     }
 
  };

@@ -196,32 +196,22 @@ void vCornerManager::onRead(ev::vBottle &bot)
     {
         auto aep = is_event<AE>(*qi);
 
-        localQueue cQueue;
+        queueSet * currentqSet;
         if(aep->getChannel()) {
             if(aep->polarity)
-            {
-                queuesOffR.add(aep);
-                cQueue = queuesOffR.getQueue(aep);
-            }
+                currentqSet = &queuesOffR;
             else
-            {
-                queuesOnR.add(aep);
-                cQueue = queuesOnR.getQueue(aep);
-            }
-        }
-        else {
+                currentqSet = &queuesOnR;
+        } else {
             if(aep->polarity)
-            {
-                queuesOffL.add(aep);
-                cQueue = queuesOffL.getQueue(aep);
-            }
+                currentqSet = &queuesOffL;
             else
-            {
-                queuesOnL.add(aep);
-                cQueue = queuesOnL.getQueue(aep);
-            }
+                currentqSet = &queuesOnL;
         }
-        bool isc = detectcorner(cQueue);
+
+        currentqSet->add(aep);
+
+        bool isc = detectcorner(currentqSet->getQueue(aep), aep->x, aep->y);
 
 //        //add the event to the appropriate surface
 //        ev::vSurface2 * cSurf;
@@ -266,17 +256,11 @@ void vCornerManager::onRead(ev::vBottle &bot)
 }
 
 /**********************************************************/
-bool vCornerManager::detectcorner(localQueue queue)
+bool vCornerManager::detectcorner(vQueue patch, int x, int y)
 {
 
-    //get the most recent event
-    auto vc = is_event<AE>(queue.getMostRecent());
-
-    //get local patch
-    vQueue patch = queue.getLocalPatch();
-
     //set the final response to be centred on the current event
-    convolution.setResponseCenter(vc->x, vc->y);
+    convolution.setResponseCenter(x, y);
 
     //update filter response
     for(unsigned int i = 0; i < patch.size(); i++)

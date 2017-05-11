@@ -85,7 +85,7 @@ private:
     ev::vtsHelper unwrapper;
 
     bool detectcorner(ev::vSurface2 *surf);
-    bool detectcorner(localQueue queue);
+    bool detectcorner(vQueue queue, int x, int y);
     double convSobel(const ev::vQueue &window, yarp::sig::Matrix &sobel, int a, int b);
 //    void setSobelFilters(yarp::sig::Matrix &sobelx, yarp::sig::Matrix &sobely);
 //    int factorial(int a);
