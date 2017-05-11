@@ -29,6 +29,8 @@
 #include <iCub/eventdriven/all.h>
 #include <iCub/eventdriven/vtsHelper.h>
 #include <filters.h>
+#include <localQueue.h>
+//#include <queueSet.h>
 #include <fstream>
 #include <math.h>
 
@@ -48,6 +50,7 @@ private:
     //parameters
     int height;
     int width;
+    int qlen;
 //    int sobelsize;
 //    int sobelrad;
     int windowRad;
@@ -63,15 +66,26 @@ private:
 //    yarp::sig::Matrix gaussian;
 
     //data structures
-    ev::vSurface2 *surfaceOnL;
-    ev::vSurface2 *surfaceOfL;
-    ev::vSurface2 *surfaceOnR;
-    ev::vSurface2 *surfaceOfR;
+//    ev::vSurface2 *surfaceOnL;
+//    ev::vSurface2 *surfaceOfL;
+//    ev::vSurface2 *surfaceOnR;
+//    ev::vSurface2 *surfaceOfR;
+
+    std::vector<localQueue> queuesOnL;
+    std::vector<localQueue> queuesOffL;
+    std::vector<localQueue> queuesOnR;
+    std::vector<localQueue> queuesOffR;
+
+//    queueSet queuesOnL;
+//    queueSet queuesOffL;
+//    queueSet queuesOnR;
+//    queueSet queuesOffR;
 
     //for helping with timestamp wrap around
     ev::vtsHelper unwrapper;
 
     bool detectcorner(ev::vSurface2 *surf);
+    bool detectcorner(localQueue queue);
     double convSobel(const ev::vQueue &window, yarp::sig::Matrix &sobel, int a, int b);
 //    void setSobelFilters(yarp::sig::Matrix &sobelx, yarp::sig::Matrix &sobely);
 //    int factorial(int a);
@@ -80,7 +94,7 @@ private:
 
 public:
 
-    vCornerManager(int height, int width, int filterSize, int windowRad, double sigma, int nEvents, double thresh);
+    vCornerManager(int height, int width, int filterSize, int windowRad, double sigma, int qlen, double thresh);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
