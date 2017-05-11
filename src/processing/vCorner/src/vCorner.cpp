@@ -36,7 +36,7 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     int height = rf.check("height", yarp::os::Value(128)).asInt();
     int width = rf.check("width", yarp::os::Value(128)).asInt();
     int sobelsize = rf.check("filterSize", yarp::os::Value(5)).asInt();
-    int qlen = rf.check("qsize", yarp::os::Value(36)).asInt();
+    unsigned int qlen = rf.check("qsize", yarp::os::Value(36)).asInt();
     int windowRad = rf.check("spatial", yarp::os::Value(5)).asInt();
     double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
 //    int nEvents = rf.check("nEvents", yarp::os::Value(5000)).asInt();
@@ -126,19 +126,10 @@ vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowR
 //    surfaceOnL = new ev::fixedSurface(nEvents, width, height);
 
     std::cout << "Creating local queues... " << std::endl;
-    int nqueues = width*height;
-    queuesOffR.resize(nqueues);
-    queuesOnR.resize(nqueues);
-    queuesOffL.resize(nqueues);
-    queuesOnL.resize(nqueues);
-
-    //create a local queue for each pixel
-    for(int i = 0; i < nqueues; i++) {
-        queuesOffR[i].initialise(width, height, qlen, 2*windowRad+1);
-        queuesOnR[i].initialise(width, height, qlen, 2*windowRad+1);
-        queuesOffL[i].initialise(width, height, qlen, 2*windowRad+1);
-        queuesOnL[i].initialise(width, height, qlen, 2*windowRad+1);
-    }
+    queuesOffR.initialise(width, height, qlen, windowRad);
+    queuesOnR.initialise(width, height, qlen, windowRad);
+    queuesOffL.initialise(width, height, qlen, windowRad);
+    queuesOnL.initialise(width, height, qlen, windowRad);
 
 }
 /**********************************************************/
@@ -205,52 +196,30 @@ void vCornerManager::onRead(ev::vBottle &bot)
     {
         auto aep = is_event<AE>(*qi);
 
-        int x = aep->x;
-        int y = aep->y;
-
         localQueue cQueue;
-
-        int curri;
-        for(int dx = -windowRad; dx <= windowRad; dx++)
-        {
-            for(int dy = -windowRad; dy <= windowRad; dy++)
-            {
-                if(x + dx < 0 || x + dx >= width || y + dy < 0 || y + dy >= height)
-                    continue;
-
-                curri = (y + dy)*width + (x + dx);
-//                std::cout << aep->x << " " << aep->y << " " << dx <<
-//                             " " << dy << " " << curri << std::endl;
-                if(aep->getChannel()) {
-                    if(aep->polarity)
-                        queuesOffR[curri].addEvent(aep);
-                    else
-                        queuesOnR[curri].addEvent(aep);
-                }
-                else {
-                    if(aep->polarity)
-                        queuesOffL[curri].addEvent(aep);
-                    else
-                        queuesOnL[curri].addEvent(aep);
-                }
-
-            }
-        }
-
-        int index = y*width + x;
-
-        //detect corner
         if(aep->getChannel()) {
             if(aep->polarity)
-                cQueue = queuesOffR[index];
+            {
+                queuesOffR.add(aep);
+                cQueue = queuesOffR.getQueue(aep);
+            }
             else
-                cQueue = queuesOnR[index];
+            {
+                queuesOnR.add(aep);
+                cQueue = queuesOnR.getQueue(aep);
+            }
         }
         else {
             if(aep->polarity)
-                cQueue = queuesOffL[index];
+            {
+                queuesOffL.add(aep);
+                cQueue = queuesOffL.getQueue(aep);
+            }
             else
-                cQueue = queuesOnL[index];
+            {
+                queuesOnL.add(aep);
+                cQueue = queuesOnL.getQueue(aep);
+            }
         }
         bool isc = detectcorner(cQueue);
 
@@ -377,7 +346,6 @@ bool vCornerManager::detectcorner(ev::vSurface2 *surf)
 //    std::cout << "Getting score...";
     double score = convolution.getScore();
 
-//    double score = 9.0;
     //reset responses
     convolution.reset();
 

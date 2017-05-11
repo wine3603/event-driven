@@ -27,10 +27,8 @@ class localQueue {
 
 private:
 
-    int width;
-    int height;
     vQueue q;
-    int qlength;
+    unsigned int qlength;
     yarp::sig::Matrix spatial;
     int slength;
     int srad;
@@ -47,10 +45,8 @@ public:
 
     }
 
-    void initialise(int width, int height, int qlen, int slen)
+    void initLocalQueue(unsigned int qlen, int slen)
     {
-        this->width = width;
-        this->height = height;
         this->qlength = qlen;
         this->slength = slen;
         spatial.resize(slength, slength);
@@ -59,12 +55,6 @@ public:
 
     void addEvent(event<> v)
     {
-        auto c = as_event<AE>(v);
-        if(c->y >= height || c->x >= width)
-        {
-            std::cout << c->x << " " << c->y << std::endl;
-            return;
-        }
 
         //add event to the queue
         q.push_back(v);

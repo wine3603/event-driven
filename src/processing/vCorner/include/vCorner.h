@@ -30,7 +30,7 @@
 #include <iCub/eventdriven/vtsHelper.h>
 #include <filters.h>
 #include <localQueue.h>
-//#include <queueSet.h>
+#include <queueSet.h>
 #include <fstream>
 #include <math.h>
 
@@ -50,7 +50,7 @@ private:
     //parameters
     int height;
     int width;
-    int qlen;
+    unsigned int qlen;
 //    int sobelsize;
 //    int sobelrad;
     int windowRad;
@@ -71,15 +71,15 @@ private:
 //    ev::vSurface2 *surfaceOnR;
 //    ev::vSurface2 *surfaceOfR;
 
-    std::vector<localQueue> queuesOnL;
-    std::vector<localQueue> queuesOffL;
-    std::vector<localQueue> queuesOnR;
-    std::vector<localQueue> queuesOffR;
+//    std::vector<localQueue> queuesOnL;
+//    std::vector<localQueue> queuesOffL;
+//    std::vector<localQueue> queuesOnR;
+//    std::vector<localQueue> queuesOffR;
 
-//    queueSet queuesOnL;
-//    queueSet queuesOffL;
-//    queueSet queuesOnR;
-//    queueSet queuesOffR;
+    queueSet queuesOnL;
+    queueSet queuesOffL;
+    queueSet queuesOnR;
+    queueSet queuesOffR;
 
     //for helping with timestamp wrap around
     ev::vtsHelper unwrapper;
