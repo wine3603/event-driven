@@ -38,6 +38,7 @@ private:
 public:
 
     queueSet() {}
+
     void initialise(int width, int height, unsigned int qlen, int windowRad)
     {
         this->width = width;
@@ -55,18 +56,19 @@ public:
         }
     }
 
-    void add(ev::event<AE> v)
+
+    void add(ev::event<AE> &v)
     {
 
-        //add the event to the correct queue and its neighborings
-        for(int dx = -windowRad; dx <= windowRad; dx++) {
-            for(int dy = -windowRad; dy <= windowRad; dy++) {
-                int ix = v->x + dx;
-                int iy = v->y + dy;
-                if(ix < 0 || ix >= width || iy < 0 || iy >= height)
-                    continue;
+        int xl = std::max(v->x - windowRad, 0);
+        int xh = std::min(v->x + windowRad, width - 1);
+        int yl = std::max(v->y - windowRad, 0);
+        int yh = std::min(v->y + windowRad, height - 1);
 
-                queues[iy][ix].addEvent(v);
+        //add the event to the correct queue and its neighborings
+        for(int x = xl; x <= xh; x++) {
+            for(int y = yl; y <= yh; y++){
+                queues[y][x].addEvent(v);
             }
         }
     }

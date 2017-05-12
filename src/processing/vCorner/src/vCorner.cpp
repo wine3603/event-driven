@@ -131,6 +131,8 @@ vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowR
     queuesOffL.initialise(width, height, qlen, windowRad);
     queuesOnL.initialise(width, height, qlen, windowRad);
 
+    spfilter.initialise(width, height, 100000, 1);
+
 }
 /**********************************************************/
 bool vCornerManager::open(const std::string moduleName, bool strictness)
@@ -160,9 +162,10 @@ bool vCornerManager::open(const std::string moduleName, bool strictness)
 void vCornerManager::close()
 {
     //close ports
+    debugPort.close();
     outPort.close();
     yarp::os::BufferedPort<ev::vBottle>::close();
-    debugPort.close();
+
 
 //    delete surfaceOnL;
 //    delete surfaceOfL;
@@ -175,9 +178,10 @@ void vCornerManager::close()
 void vCornerManager::interrupt()
 {
     //pass on the interrupt call to everything needed
+    debugPort.interrupt();
     outPort.interrupt();
     yarp::os::BufferedPort<ev::vBottle>::interrupt();
-    debugPort.interrupt();
+
 }
 
 /**********************************************************/
@@ -191,10 +195,14 @@ void vCornerManager::onRead(ev::vBottle &bot)
 
     /*get the event queue in the vBottle bot*/
     ev::vQueue q = bot.get<AE>();
+    int i = 0;
 
     for(ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         auto aep = is_event<AE>(*qi);
+
+        if(!spfilter.check(aep->x, aep->y, aep->polarity, aep->channel, aep->stamp))
+            continue;
 
         queueSet * currentqSet;
         if(aep->getChannel()) {
@@ -203,6 +211,7 @@ void vCornerManager::onRead(ev::vBottle &bot)
             else
                 currentqSet = &queuesOnR;
         } else {
+
             if(aep->polarity)
                 currentqSet = &queuesOffL;
             else
@@ -211,7 +220,11 @@ void vCornerManager::onRead(ev::vBottle &bot)
 
         currentqSet->add(aep);
 
-        bool isc = detectcorner(currentqSet->getQueue(aep), aep->x, aep->y);
+        bool isc = true;
+        i++;
+        //if(i > 10) isc = false;
+
+        //bool isc = detectcorner(currentqSet->getQueue(aep), aep->x, aep->y);
 
 //        //add the event to the appropriate surface
 //        ev::vSurface2 * cSurf;
@@ -245,13 +258,12 @@ void vCornerManager::onRead(ev::vBottle &bot)
             ce->ID = 1;
             outBottle.addEvent(ce);
         }
-        else
-            outBottle.addEvent(aep);
+//        else
+//            outBottle.addEvent(aep);
 
     }
 
-    if (strictness) outPort.writeStrict();
-    else outPort.write();
+    outPort.write(strictness);
 
 }
 

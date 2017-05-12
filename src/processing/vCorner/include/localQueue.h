@@ -54,7 +54,7 @@ public:
 
     }
 
-    void addEvent(event<AE> v)
+    void addEvent(event<AE> &v)
     {
         q.push_back(v);
     }

@@ -44,6 +44,7 @@ private:
     yarp::os::BufferedPort<ev::vBottle> outPort;
     yarp::os::BufferedPort<yarp::os::Bottle> debugPort;
 
+    ev::vNoiseFilter spfilter;
 //    double timeprev;
 //    double timeavg;
 
