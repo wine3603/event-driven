@@ -210,16 +210,19 @@ double AutoSaccadeModule::computeEventRate() {
 }
 
 bool AutoSaccadeModule::updateModule() {
+
+
     
     //collect events for some time
     eventBottleManager.start();
     Time::delay(timeout);
     eventBottleManager.stop();
-    
+
     //if there is no connection don't do anything yet
     if(!eventBottleManager.getInputCount()) return true;
     
-    double eventRate = computeEventRate();
+    double eventRate = eventBottleManager.getEventRate();
+    std::cout << "Event Rate: " << eventRate << std::endl;
     
     //output the event rate for debug purposes
     Bottle vRateBottle;
@@ -228,7 +231,7 @@ bool AutoSaccadeModule::updateModule() {
     
     //ImageOf<PixelBgr> &leftImage = leftImgPort.prepare();
     //ImageOf<PixelBgr> &rightImage = rightImagePort.prepare();
-    ev::vQueue q = eventBottleManager.getEvents();
+
     //visualizeEvents( leftImage, rightImage, q );
     
     //Face straight (for simulation only)
@@ -247,6 +250,9 @@ bool AutoSaccadeModule::updateModule() {
         
         performSaccade();
     } else {
+
+        ev::vQueue q = eventBottleManager.getEvents();
+
         Vector cmL,cmR;
         
         if (computeCenterMass( cmR, cmL, q )) {
@@ -267,7 +273,7 @@ bool AutoSaccadeModule::updateModule() {
             gazeControl->restoreContext( context0 );
             gazeControl->lookAtMonoPixelSync(0, cmL);
             //gazeControl->lookAtStereoPixels( cmL, cmR );
-            gazeControl->waitMotionDone( 0.1,5.0 );
+            gazeControl->waitMotionDone( 0.1, 4.0 );
             cout << "Finished gazing" << endl;
         }
     }
@@ -327,13 +333,13 @@ bool AutoSaccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue 
     cmL.resize(2);
     for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
         auto aep = ev::is_event<ev::AE>( *i );
-        if (aep.get()->channel) {
-            xr += aep.get()->x;
-            yr += aep.get()->y;
+        if (aep->channel) {
+            xr += aep->x;
+            yr += aep->y;
             rSize++;
         } else {
-            xl += aep.get()->x;
-            yl += aep.get()->y;
+            xl += aep->x;
+            yl += aep->y;
             lSize++;
         }
     }
@@ -396,7 +402,7 @@ void EventBottleManager::onRead(ev::vBottle &bot) {
     //append new events to queue
     vQueue.insert(vQueue.end(), newQueue.begin(), newQueue.end());
     latestStamp = unwrapper(newQueue.back()->stamp);
-    vCount += vQueue.size();
+    vCount += newQueue.size();
     mutex.post();
 }
 
@@ -415,21 +421,30 @@ unsigned long int EventBottleManager::popCount() {
 }
 
 bool EventBottleManager::start() {
+    mutex.wait();
+    vQueue.clear();
     isReading = true;
+    yRate = yarp::os::Time::now();
+    mutex.post();
     return true;
 }
 
 bool EventBottleManager::stop() {
+    mutex.wait();
     isReading = false;
+    yRate = yarp::os::Time::now() - yRate;
+    yRate = vCount / yRate;
+    vCount = 0;
+    mutex.post();
     return true;
 }
 
 ev::vQueue EventBottleManager::getEvents() {
-    if (!&vQueue)
-        return ev::vQueue();
-    ev::vQueue outQueue = vQueue;
-    vQueue.clear();
-    return outQueue;
+    //if (!&vQueue)
+    //    return ev::vQueue();
+    //ev::vQueue outQueue = vQueue;
+    //vQueue.clear();
+    return vQueue;
 }
 
 //empty line to make gcc happy
