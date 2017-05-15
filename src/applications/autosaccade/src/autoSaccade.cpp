@@ -29,20 +29,20 @@ int main(int argc, char * argv[])
         std::cout << "Could not connect to YARP" << std::endl;
         return false;
     }
-    
+
     /* create the module */
     AutoSaccadeModule saccadeModuleInstance;
-    
+
     /* prepare and configure the resource finder */
     yarp::os::ResourceFinder rf;
     rf.setVerbose( true );
     rf.setDefaultContext( "eventdriven" );
     rf.setDefaultConfigFile( "autosaccade.ini" );
     rf.configure( argc, argv );
-    
+
     /* run the module: runModule() calls configure first and, if successful, it then runs */
     return saccadeModuleInstance.runModule(rf);
-    
+
 }
 
 /***********************SaccadeModule***********************/
@@ -191,7 +191,7 @@ void AutoSaccadeModule::performSaccade() {
         ipos ->checkMotionDone(2,joints, &motionDone);
     }
     Time::delay(0.2);
-    
+
 }
 
 double AutoSaccadeModule::computeEventRate() {
@@ -219,7 +219,8 @@ bool AutoSaccadeModule::updateModule() {
     //if there is no connection don't do anything yet
     if(!eventBottleManager.getInputCount()) return true;
     
-    double eventRate = computeEventRate();
+    double eventRate = eventBottleManager.getEventRate();
+    std::cout << "Event Rate: " << eventRate << std::endl;
     
     //output the event rate for debug purposes
     Bottle vRateBottle;
@@ -247,6 +248,9 @@ bool AutoSaccadeModule::updateModule() {
         
         performSaccade();
     } else {
+
+        ev::vQueue q = eventBottleManager.getEvents();
+
         Vector cmL,cmR;
         gazeControl->restoreContext( context0 );
         
@@ -275,7 +279,7 @@ bool AutoSaccadeModule::updateModule() {
             
         }
     }
-    
+
     //leftImgPort.write();
     //rightImagePort.write();
     return true;
@@ -331,13 +335,13 @@ bool AutoSaccadeModule::computeCenterMass( Vector &cmR, Vector &cmL, ev::vQueue 
     cmL.resize(2);
     for ( ev::vQueue::iterator i = q.begin(); i != q.end(); ++i ) {
         auto aep = ev::is_event<ev::AE>( *i );
-        if (aep.get()->channel) {
-            xr += aep.get()->x;
-            yr += aep.get()->y;
+        if (aep->channel) {
+            xr += aep->x;
+            yr += aep->y;
             rSize++;
         } else {
-            xl += aep.get()->x;
-            yl += aep.get()->y;
+            xl += aep->x;
+            yl += aep->y;
             lSize++;
         }
     }
@@ -418,7 +422,7 @@ void EventBottleManager::onRead(ev::vBottle &bot) {
     //append new events to queue
     vQueue.insert(vQueue.end(), newQueue.begin(), newQueue.end());
     latestStamp = unwrapper(newQueue.back()->stamp);
-    vCount += vQueue.size();
+    vCount += newQueue.size();
     mutex.post();
 }
 
@@ -437,21 +441,30 @@ unsigned long int EventBottleManager::popCount() {
 }
 
 bool EventBottleManager::start() {
+    mutex.wait();
+    vQueue.clear();
     isReading = true;
+    yRate = yarp::os::Time::now();
+    mutex.post();
     return true;
 }
 
 bool EventBottleManager::stop() {
+    mutex.wait();
     isReading = false;
+    yRate = yarp::os::Time::now() - yRate;
+    yRate = vCount / yRate;
+    vCount = 0;
+    mutex.post();
     return true;
 }
 
 ev::vQueue EventBottleManager::getEvents() {
-    if (!&vQueue)
-        return ev::vQueue();
-    ev::vQueue outQueue = vQueue;
-    vQueue.clear();
-    return outQueue;
+    //if (!&vQueue)
+    //    return ev::vQueue();
+    //ev::vQueue outQueue = vQueue;
+    //vQueue.clear();
+    return vQueue;
 }
 
 //empty line to make gcc happy

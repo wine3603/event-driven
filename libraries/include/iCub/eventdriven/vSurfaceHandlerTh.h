@@ -5,6 +5,8 @@
 #include <iCub/eventdriven/vBottle.h>
 #include <iCub/eventdriven/vCodec.h>
 #include <iCub/eventdriven/vWindow_basic.h>
+#include <iCub/eventdriven/vWindow_adv.h>
+#include <iCub/eventdriven/vFilters.h>
 #include <deque>
 #include <string>
 #include <map>
@@ -134,13 +136,13 @@ public:
             }
             if(isStopping()) break;
 
-            ctime = q->back()->stamp;
-
             for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
 
                 m.lock();
 
                 vcount++;
+
+                ctime = (*qi)->stamp;
 
                 if((*qi)->getChannel() == 0)
                     surfaceLeft.fastAddEvent(*qi);
@@ -195,6 +197,174 @@ public:
 
 };
 
+class hSurfThread : public yarp::os::Thread
+{
+private:
+
+    int maxcpudelay; //maximum delay between v time and cpu time (in v time)
+
+    queueAllocator allocatorCallback;
+    historicalSurface surfaceleft;
+    historicalSurface surfaceright;
+    ev::vNoiseFilter filter;
+
+    yarp::os::Mutex m;
+
+    //current stamp to propagate
+    yarp::os::Stamp ystamp;
+    unsigned int vstamp;
+
+    //synchronising value (add to it when stamps come in, subtract from it
+    // when querying events).
+    double cputime;
+    int cpudelay;
+
+public:
+
+    hSurfThread()
+    {
+        cpudelay = 0;
+        vstamp = 0;
+        cputime = yarp::os::Time::now();
+        maxcpudelay = 0.5 / vtsHelper::tsscaler;
+    }
+
+    void configure(int height, int width, double maxcpudelay)
+    {
+        //this->maxcpudelay = maxcpudelay / vtsHelper::tsscaler;
+        this->maxcpudelay = vtsHelper::max_stamp * 0.25;
+        surfaceleft.initialise(height, width);
+        surfaceright.initialise(height, width);
+        filter.initialise(width, height, 100000, 1);
+    }
+
+    bool open(std::string portname)
+    {
+        if(!allocatorCallback.open(portname))
+            return false;
+
+        start();
+        return true;
+    }
+
+    void onStop()
+    {
+        allocatorCallback.close();
+        allocatorCallback.releaseDataLock();
+    }
+
+
+    void run()
+    {
+        while(true) {
+
+            ev::vQueue *q = 0;
+            while(!q && !isStopping()) {
+                q = allocatorCallback.getNextQ(ystamp);
+            }
+            if(isStopping()) break;
+
+            for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
+
+                auto ae = is_event<AE>(*qi);
+                if(!filter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp)) {
+                    continue;
+                }
+
+                m.lock();
+
+                int dt = (*qi)->stamp - vstamp;
+                if(dt < 0) dt += vtsHelper::max_stamp;
+                cpudelay += dt;
+                vstamp = (*qi)->stamp;
+
+                if((*qi)->getChannel() == 0)
+                    surfaceleft.addEvent(*qi);
+                else if((*qi)->getChannel() == 1)
+                    surfaceright.addEvent(*qi);
+
+                m.unlock();
+
+            }
+
+            allocatorCallback.scrapQ();
+
+        }
+
+    }
+
+    vQueue queryROI(int channel, unsigned int querySize, int x, int y, int r)
+    {
+
+
+        vQueue q;
+
+        m.lock();
+        double cpunow = yarp::os::Time::now();
+
+        cpudelay -= (cpunow - cputime) * vtsHelper::vtsscaler * 1.02;
+        cputime = cpunow;
+
+        if(cpudelay < 0) cpudelay = 0;
+        if(cpudelay > maxcpudelay) cpudelay = maxcpudelay;
+
+
+        if(channel == 0)
+            q = surfaceleft.getSurface(cpudelay, querySize, r, x, y);
+        else
+            q = surfaceright.getSurface(cpudelay, querySize, r, x, y);
+        m.unlock();
+
+        return q;
+    }
+
+    vQueue queryWindow(int channel, unsigned int querySize)
+    {
+        double cpunow = yarp::os::Time::now();
+
+        vQueue q;
+
+        m.lock();
+
+        cpudelay -= (cpunow - cputime) * vtsHelper::vtsscaler * 1.02;
+        cputime = cpunow;
+
+        if(cpudelay < 0) cpudelay = 0;
+        if(cpudelay > maxcpudelay) cpudelay = maxcpudelay;
+
+
+        if(channel == 0)
+            q = surfaceleft.getSurface(cpudelay, querySize);
+        else
+            q = surfaceright.getSurface(cpudelay, querySize);
+        m.unlock();
+
+        return q;
+    }
+
+    double queryDelay()
+    {
+        return cpudelay * vtsHelper::tsscaler;
+    }
+
+    yarp::os::Stamp queryYstamp()
+    {
+        return ystamp;
+    }
+
+    int queryVstamp()
+    {
+        m.lock();
+        int modvstamp = vstamp - cpudelay;
+        m.unlock();
+
+        if(modvstamp < 0) modvstamp += vtsHelper::max_stamp;
+        return modvstamp;
+
+    }
+
+};
+
 class tWinThread : public yarp::os::Thread
 {
 private:
@@ -239,11 +409,11 @@ public:
             }
             if(isStopping()) break;
 
-            ctime = q->back()->stamp;
-
             for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
 
                 m.lock();
+
+                ctime = (*qi)->stamp;
 
                 if((*qi)->getChannel() == 0)
                     windowleft.addEvent(*qi);
