@@ -20,8 +20,8 @@
 /// \ingroup Modules
 /// \brief detects corner events using the Harris method
 
-#ifndef __VCORNER__
-#define __VCORNER__
+#ifndef __VCORNERCALLBACK__
+#define __VCORNERCALLBACK__
 
 #include <yarp/os/all.h>
 #include <yarp/sig/all.h>
@@ -33,8 +33,9 @@
 #include <queueSet.h>
 #include <fstream>
 #include <math.h>
+#include <vCornerCallback.h>
 
-class vCornerManager : public yarp::os::BufferedPort<ev::vBottle>
+class vCornerCallback : public yarp::os::BufferedPort<ev::vBottle>
 {
 private:
 
@@ -58,6 +59,7 @@ private:
 //    double sigma;
     int nEvents;
     double thresh;
+    bool repFlag;
 
 //    int gaussiansize;
 
@@ -67,15 +69,10 @@ private:
 //    yarp::sig::Matrix gaussian;
 
     //data structures
-//    ev::vSurface2 *surfaceOnL;
-//    ev::vSurface2 *surfaceOfL;
-//    ev::vSurface2 *surfaceOnR;
-//    ev::vSurface2 *surfaceOfR;
-
-//    std::vector<localQueue> queuesOnL;
-//    std::vector<localQueue> queuesOffL;
-//    std::vector<localQueue> queuesOnR;
-//    std::vector<localQueue> queuesOffR;
+    ev::vSurface2 *surfaceOnL;
+    ev::vSurface2 *surfaceOfL;
+    ev::vSurface2 *surfaceOnR;
+    ev::vSurface2 *surfaceOfR;
 
     queueSet queuesOnL;
     queueSet queuesOffL;
@@ -95,7 +92,7 @@ private:
 
 public:
 
-    vCornerManager(int height, int width, int filterSize, int windowRad, double sigma, int qlen, double thresh);
+    vCornerCallback(int height, int width, int filterSize, int windowRad, double sigma, int qlen, double thresh, bool repFlag);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
@@ -105,25 +102,6 @@ public:
     void    onRead(ev::vBottle &bot);
 
 };
-
-class vCornerModule : public yarp::os::RFModule
-{
-
-    //the event bottle input and output handler
-    vCornerManager      *cornermanager;
-
-
-public:
-
-    //the virtual functions that need to be overloaded
-    virtual bool configure(yarp::os::ResourceFinder &rf);
-    virtual bool interruptModule();
-    virtual bool close();
-    virtual double getPeriod();
-    virtual bool updateModule();
-
-};
-
 
 #endif
 //empty line to make gcc happy

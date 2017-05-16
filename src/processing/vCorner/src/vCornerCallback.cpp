@@ -15,78 +15,21 @@
  * Public License for more details
  */
 
-#include "vCorner.h"
+#include "vCornerCallback.h"
 
-#include <iomanip>
+//#include <iomanip>
 
 using namespace ev;
 
-/**********************************************************/
-bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
-{
-    //set the name of the module
-    std::string moduleName =
-            rf.check("name", yarp::os::Value("vCorner")).asString();
-    yarp::os::RFModule::setName(moduleName.c_str());
-
-    bool strict = rf.check("strict") &&
-            rf.check("strict", yarp::os::Value(true)).asBool();
-
-    /* set parameters */
-    int height = rf.check("height", yarp::os::Value(128)).asInt();
-    int width = rf.check("width", yarp::os::Value(128)).asInt();
-    int sobelsize = rf.check("filterSize", yarp::os::Value(5)).asInt();
-    unsigned int qlen = rf.check("qsize", yarp::os::Value(36)).asInt();
-    int windowRad = rf.check("spatial", yarp::os::Value(5)).asInt();
-    double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
-//    int nEvents = rf.check("nEvents", yarp::os::Value(5000)).asInt();
-    double thresh = rf.check("thresh", yarp::os::Value(8.0)).asDouble();
-
-    /* create the thread and pass pointers to the module parameters */
-    cornermanager = new vCornerManager(height, width, sobelsize, windowRad, sigma, qlen, thresh);
-    return cornermanager->open(moduleName, strict);
-
-}
-
-/**********************************************************/
-bool vCornerModule::interruptModule()
-{
-    cornermanager->interrupt();
-    yarp::os::RFModule::interruptModule();
-    return true;
-}
-
-/**********************************************************/
-bool vCornerModule::close()
-{
-    cornermanager->close();
-    delete cornermanager;
-    yarp::os::RFModule::close();
-    return true;
-}
-
-/**********************************************************/
-bool vCornerModule::updateModule()
-{
-    return true;
-}
-
-/**********************************************************/
-double vCornerModule::getPeriod()
-{
-    return 1;
-}
-
-/******************************************************************************/
-//vCornerManager
-/******************************************************************************/
-vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowRad, double sigma, int qlen, double thresh)
+vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windowRad, double sigma, int qlen, double thresh, bool repFlag)
 {
 //    this->timeprev = yarp::os::Time::now();
 //    this->timeavg = 0.0;
 
     this->height = height;
     this->width = width;
+
+    this->repFlag = repFlag;
 
 //    this->sobelsize = sobelsize;
 //    this->sobelrad = (sobelsize - 1)/2;
@@ -119,23 +62,27 @@ vCornerManager::vCornerManager(int height, int width, int sobelsize, int windowR
     std::cout << "Using a " << sobelsize << "x" << sobelsize << " filter ";
     std::cout << "and a " << 2*windowRad + 1 << "x" << 2*windowRad + 1 << " spatial window" << std::endl;
 
-//    //create surface representations
-//    surfaceOfR = new ev::fixedSurface(nEvents, width, height);
-//    surfaceOnR = new ev::fixedSurface(nEvents, width, height);
-//    surfaceOfL = new ev::fixedSurface(nEvents, width, height);
-//    surfaceOnL = new ev::fixedSurface(nEvents, width, height);
-
-    std::cout << "Creating local queues... " << std::endl;
-    queuesOffR.initialise(width, height, qlen, windowRad);
-    queuesOnR.initialise(width, height, qlen, windowRad);
-    queuesOffL.initialise(width, height, qlen, windowRad);
-    queuesOnL.initialise(width, height, qlen, windowRad);
+    //create surface representations
+    if(repFlag) {
+        std::cout << "Creating surfaces..." << std::endl;
+        surfaceOfR = new ev::fixedSurface(nEvents, width, height);
+        surfaceOnR = new ev::fixedSurface(nEvents, width, height);
+        surfaceOfL = new ev::fixedSurface(nEvents, width, height);
+        surfaceOnL = new ev::fixedSurface(nEvents, width, height);
+    }
+    else {
+        std::cout << "Creating local queues... " << std::endl;
+        queuesOffR.initialise(width, height, qlen, windowRad);
+        queuesOnR.initialise(width, height, qlen, windowRad);
+        queuesOffL.initialise(width, height, qlen, windowRad);
+        queuesOnL.initialise(width, height, qlen, windowRad);
+    }
 
     spfilter.initialise(width, height, 100000, 1);
 
 }
 /**********************************************************/
-bool vCornerManager::open(const std::string moduleName, bool strictness)
+bool vCornerCallback::open(const std::string moduleName, bool strictness)
 {
     this->strictness = strictness;
     if(strictness) {
@@ -159,23 +106,24 @@ bool vCornerManager::open(const std::string moduleName, bool strictness)
 }
 
 /**********************************************************/
-void vCornerManager::close()
+void vCornerCallback::close()
 {
     //close ports
     debugPort.close();
     outPort.close();
     yarp::os::BufferedPort<ev::vBottle>::close();
 
-
-//    delete surfaceOnL;
-//    delete surfaceOfL;
-//    delete surfaceOnR;
-//    delete surfaceOfR;
+    if(repFlag) {
+        delete surfaceOnL;
+        delete surfaceOfL;
+        delete surfaceOnR;
+        delete surfaceOfR;
+    }
 
 }
 
 /**********************************************************/
-void vCornerManager::interrupt()
+void vCornerCallback::interrupt()
 {
     //pass on the interrupt call to everything needed
     debugPort.interrupt();
@@ -185,7 +133,7 @@ void vCornerManager::interrupt()
 }
 
 /**********************************************************/
-void vCornerManager::onRead(ev::vBottle &bot)
+void vCornerCallback::onRead(ev::vBottle &bot)
 {
     /*prepare output vBottle*/
     ev::vBottle &outBottle = outPort.prepare();
@@ -195,8 +143,9 @@ void vCornerManager::onRead(ev::vBottle &bot)
 
     /*get the event queue in the vBottle bot*/
     ev::vQueue q = bot.get<AE>();
-    int i = 0;
+//    int i = 0;
 
+    bool isc = false;
     for(ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         auto aep = is_event<AE>(*qi);
@@ -204,46 +153,50 @@ void vCornerManager::onRead(ev::vBottle &bot)
         if(!spfilter.check(aep->x, aep->y, aep->polarity, aep->channel, aep->stamp))
             continue;
 
-        queueSet * currentqSet;
-        if(aep->getChannel()) {
-            if(aep->polarity)
-                currentqSet = &queuesOffR;
-            else
-                currentqSet = &queuesOnR;
-        } else {
+        if(repFlag) {
+            //add the event to the appropriate surface
+            ev::vSurface2 * cSurf;
+            if(aep->getChannel()) {
+                if(aep->polarity)
+                    cSurf = surfaceOfR;
+                else
+                    cSurf = surfaceOnR;
+            } else {
+                if(aep->polarity)
+                    cSurf = surfaceOfL;
+                else
+                    cSurf = surfaceOnL;
+            }
 
-            if(aep->polarity)
-                currentqSet = &queuesOffL;
-            else
-                currentqSet = &queuesOnL;
+            cSurf->fastAddEvent(aep);
+
+            //detect corner
+            isc = detectcorner(cSurf);
         }
+        else {
 
-        currentqSet->add(aep);
+            queueSet * currentqSet;
+            if(aep->getChannel()) {
+                if(aep->polarity)
+                    currentqSet = &queuesOffR;
+                else
+                    currentqSet = &queuesOnR;
+            } else {
 
-        bool isc = true;
-        i++;
-        //if(i > 10) isc = false;
+                if(aep->polarity)
+                    currentqSet = &queuesOffL;
+                else
+                    currentqSet = &queuesOnL;
+            }
 
-        //bool isc = detectcorner(currentqSet->getQueue(aep), aep->x, aep->y);
+            currentqSet->add(aep);
 
-//        //add the event to the appropriate surface
-//        ev::vSurface2 * cSurf;
-//        if(aep->getChannel()) {
-//            if(aep->polarity)
-//                cSurf = surfaceOfR;
-//            else
-//                cSurf = surfaceOnR;
-//        } else {
-//            if(aep->polarity)
-//                cSurf = surfaceOfL;
-//            else
-//                cSurf = surfaceOnL;
-//        }
+    //        bool isc = true;
+    //        i++;
+            //if(i > 10) isc = false;
 
-//        cSurf->fastAddEvent(aep);
-
-//        //detect corner
-//        bool isc = detectcorner(cSurf);
+            isc = detectcorner(currentqSet->getQueue(aep), aep->x, aep->y);
+        }
 
 //        double timenow = yarp::os::Time::now();
 //        double tdiff = timenow - timeprev;
@@ -268,7 +221,7 @@ void vCornerManager::onRead(ev::vBottle &bot)
 }
 
 /**********************************************************/
-bool vCornerManager::detectcorner(vQueue patch, int x, int y)
+bool vCornerCallback::detectcorner(vQueue patch, int x, int y)
 {
 
     //set the final response to be centred on the current event
@@ -311,7 +264,7 @@ bool vCornerManager::detectcorner(vQueue patch, int x, int y)
 }
 
 /**********************************************************/
-bool vCornerManager::detectcorner(ev::vSurface2 *surf)
+bool vCornerCallback::detectcorner(ev::vSurface2 *surf)
 {
 
     //get the most recent event
