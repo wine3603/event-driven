@@ -19,11 +19,12 @@
 
 using namespace ev;
 
-clusterPool::clusterPool()
+clusterPool::clusterPool(int mindistance, unsigned int trefresh, int minevts)
 {
-    mindistance = 5; //px
-    trefresh = 1000000; //s
+    this->mindistance = mindistance; //px
+    this->trefresh = trefresh; //s
     firstevent = true;
+    this->minevts = minevts;
 }
 
 std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
@@ -62,14 +63,19 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
         pool[clusterID].addEvent(evt);
 
         //fit line to the cluster
-        pool[clusterID].fitLine();
-
-        clustervel.first = pool[clusterID].getVx();
-        clustervel.second = pool[clusterID].getVy();
+        if(pool[clusterID].getClusterSize() > minevts) {
+            pool[clusterID].fitLine();
+            clustervel.first = pool[clusterID].getVx();
+            clustervel.second = pool[clusterID].getVy();
+        }
+        else {
+            clustervel.first = 0.0;
+            clustervel.second = 0.0;
+        }
 
 //        std::cout << pool[clusterID].getVx() << " " << pool[clusterID].getVy() << std::endl;
 
-    } else{
+    } else {
 
         //create new cluster
         createNewCluster(evt);
@@ -78,7 +84,6 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
 
     //return the velocity of the current cluster
     return clustervel;
-
 
 }
 

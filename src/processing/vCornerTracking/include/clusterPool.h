@@ -38,12 +38,15 @@ private:
     //time from the last update to kill the cluster
     unsigned int trefresh;
 
+    //minimum number of events to fit the line
+    int minevts;
+
     //check for the first event
     bool firstevent;
 
 public:
 
-    clusterPool();
+    clusterPool(int mindistance, unsigned int trefresh, int minevts);
 
     std::pair<double, double> update(ev::event<ev::LabelledAE> evt);
     void createNewCluster(ev::event<ev::LabelledAE> evt);

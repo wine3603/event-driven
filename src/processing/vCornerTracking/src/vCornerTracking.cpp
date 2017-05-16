@@ -37,9 +37,10 @@ bool vCornerTrackingModule::configure(yarp::os::ResourceFinder &rf)
     int width = rf.check("width", yarp::os::Value(128)).asInt();
     int mindistance = rf.check("mindist", yarp::os::Value(6)).asInt();
     unsigned int trefresh = rf.check("trefresh", yarp::os::Value(1000000)).asInt();
+    int minevts = rf.check("minevts", yarp::os::Value(5)).asInt();
 
     /* create the thread and pass pointers to the module parameters */
-    cornertrackingmanager = new vCornerTrackingManager(height, width, mindistance, trefresh);
+    cornertrackingmanager = new vCornerTrackingManager(height, width, mindistance, trefresh, minevts);
     return cornertrackingmanager->open(moduleName, strict);
 
 }
@@ -76,13 +77,14 @@ double vCornerTrackingModule::getPeriod()
 /******************************************************************************/
 //vCornerTrackingManager
 /******************************************************************************/
-vCornerTrackingManager::vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh)
+vCornerTrackingManager::vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh, int minevts)
 {
     this->height = height;
     this->width = width;
     this->mindistance = mindistance;
     this->trefresh = trefresh;
-    clusterSet = new clusterPool();
+    this->minevts = minevts;
+    clusterSet = new clusterPool(mindistance, trefresh, minevts);
 
 }
 /**********************************************************/
@@ -147,21 +149,21 @@ void vCornerTrackingManager::onRead(ev::vBottle &bot)
         //update cluster velocity
         vel = clusterSet->update(cep);
 
-        //create new flow event and assign to it the velocity of the current cluster
-        auto fe = make_event<FlowEvent>(cep);
-        fe->vx = vel.first;
-        fe->vy = vel.second;
+        if(vel.first && vel.second) {
+            //create new flow event and assign to it the velocity of the current cluster
+            auto fe = make_event<FlowEvent>(cep);
+            fe->vx = vel.first;
+            fe->vy = vel.second;
 
-        if(!outBottle) {
-            outBottle = &outPort.prepare();
-            outBottle->clear();
+            if(!outBottle) {
+                outBottle = &outPort.prepare();
+                outBottle->clear();
+            }
+            outBottle->addEvent(fe);
         }
-        outBottle->addEvent(fe);
-
     }
 
-    if (strictness) outPort.writeStrict();
-    else outPort.write();
+    outPort.write(strictness);
 
 }
 

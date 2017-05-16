@@ -46,6 +46,7 @@ private:
     int width;
     int mindistance;
     unsigned int trefresh;
+    int minevts;
 
     //for helping with timestamp wrap around
     ev::vtsHelper unwrapper;
@@ -55,7 +56,7 @@ private:
 
 public:
 
-    vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh);
+    vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh, int minevts);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
