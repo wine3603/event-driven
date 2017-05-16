@@ -238,7 +238,9 @@ public:
     vQueue getSurface(int queryTime, int queryWindow, int d);
     vQueue getSurface(int queryTime, int queryWindow, int d, int x, int y);
     vQueue getSurface(int queryTime, int queryWindow, int xl, int xh, int yl, int yh);
-
+    vQueue getSurfaceN(int queryTime, int numEvents, int d);
+    vQueue getSurfaceN(int queryTime, int numEvents, int d, int x, int y);
+    vQueue getSurfaceN(int queryTime, int numEvents, int xl, int xh, int yl, int yh);
 
 };
 

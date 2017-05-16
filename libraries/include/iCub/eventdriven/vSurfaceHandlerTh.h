@@ -202,6 +202,7 @@ class hSurfThread : public yarp::os::Thread
 private:
 
     int maxcpudelay; //maximum delay between v time and cpu time (in v time)
+    int numEvts;
 
     queueAllocator allocatorCallback;
     historicalSurface surfaceleft;
@@ -223,6 +224,7 @@ public:
 
     hSurfThread()
     {
+        numEvts = 36;
         cpudelay = 0;
         vstamp = 0;
         cputime = yarp::os::Time::now();
@@ -232,6 +234,16 @@ public:
     void configure(int height, int width, double maxcpudelay)
     {
         //this->maxcpudelay = maxcpudelay / vtsHelper::tsscaler;
+        this->maxcpudelay = vtsHelper::max_stamp * 0.25;
+        surfaceleft.initialise(height, width);
+        surfaceright.initialise(height, width);
+        filter.initialise(width, height, 100000, 1);
+    }
+
+    void configure(int height, int width, double maxcpudelay, int numEvts)
+    {
+        //this->maxcpudelay = maxcpudelay / vtsHelper::tsscaler;
+        this->numEvts = numEvts;
         this->maxcpudelay = vtsHelper::max_stamp * 0.25;
         surfaceleft.initialise(height, width);
         surfaceright.initialise(height, width);
@@ -291,6 +303,29 @@ public:
 
         }
 
+    }
+
+    vQueue queryROI(int channel, int numEvts, int r)
+    {
+
+        vQueue q;
+
+        m.lock();
+        double cpunow = yarp::os::Time::now();
+
+        cpudelay -= (cpunow - cputime) * vtsHelper::vtsscaler * 1.1;
+        cputime = cpunow;
+
+        if(cpudelay < 0) cpudelay = 0;
+        if(cpudelay > maxcpudelay) cpudelay = maxcpudelay;
+
+        if(channel == 0)
+            q = surfaceleft.getSurfaceN(cpudelay, numEvts, r);
+        else
+            q = surfaceright.getSurfaceN(cpudelay, numEvts, r);
+        m.unlock();
+
+        return q;
     }
 
     vQueue queryROI(int channel, unsigned int querySize, int x, int y, int r)
