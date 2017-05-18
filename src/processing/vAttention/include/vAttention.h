@@ -23,9 +23,11 @@
 class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle> {
 private:
     
+    ev::vSurface2* vSurf;
     ev::vQueue vQueue;
     yarp::os::Semaphore mutex;
-
+    int count;
+    ev::vtsHelper vtsHelper;
 public:
     
     vAttentionManager() {};
@@ -41,6 +43,7 @@ public:
     
     ev::vQueue getEvents();
     
+    ev::vQueue getRecentEvents(double sec);
 };
 
 class vAttentionModule : public yarp::os::RFModule {

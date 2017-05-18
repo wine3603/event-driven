@@ -115,7 +115,7 @@ bool vAttentionModule::updateModule() {
     
     int x, y, xScaled, yScaled;
     eventMap*=0.95;
-    ev::vQueue q = attManager->getEvents();
+    ev::vQueue q = attManager->getRecentEvents(0.5);
     for ( ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++ ) {
         auto aep = ev::is_event<ev::AE>(*qi);
         
@@ -143,7 +143,7 @@ bool vAttentionModule::updateModule() {
 }
 
 double vAttentionModule::getPeriod() {
-    return 0;
+    return 0.5;
 }
 
 void vAttentionModule::drawBoundingBox( ImageOf<PixelBgr> &image, int topRow, int topCol, int bottomRow, int bottomCol ) {
@@ -269,6 +269,7 @@ bool vAttentionManager::open( const std::string moduleName, bool strictness ) {
     }
     this->useCallback();
     
+    vSurf = new ev::temporalSurface (304,240);
     // why is the input port treated differently???? both in open and close
     std::string inPortName = moduleName + "/vBottle:i";
     return BufferedPort<ev::vBottle>::open( inPortName );
@@ -292,19 +293,50 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     ev::qsort(q);
     
     mutex.wait();
-    vQueue.insert(vQueue.end(), q.begin(), q.end());
+    for ( ev::vQueue::iterator it = q.begin(); it != q.end(); ++it ) {
+        auto ae = ev::is_event(*it);
+        vSurf->addEvent(ae);
+    }
     mutex.post();
 }
 
 ev::vQueue vAttentionManager::getEvents() {
     mutex.wait();
-    ev::vQueue outQueue = vQueue;
-    vQueue.clear();
+    ev::vQueue outQueue = vSurf->getSurf();
     mutex.post();
     return outQueue;
 }
 
-
+ev::vQueue vAttentionManager::getRecentEvents( double sec ) {
+    mutex.wait();
+    if (vQueue.empty()) {
+        mutex.post();
+        return vQueue;
+    }
+    auto lastEvent = ev::is_event<ev::AE>(vQueue.back());
+    unsigned long int currStamp = vtsHelper(lastEvent->stamp);
+    unsigned long int maxDt = sec / vtsHelper.tstosecs();
+    
+    ev::vQueue::iterator cit;
+    for (cit = vQueue.begin(); cit != vQueue.end(); ++cit){
+        auto aep = ev::is_event<ev::AE>(*cit);
+        std::cout << vtsHelper(aep->stamp) << std::endl;
+//        std::cout << currStamp << " - " << vtsHelper((*cit).get()->stamp) << " = " << currStamp - vtsHelper((*cit).get()->stamp) << std::endl;
+    }
+    
+    ev::vQueue::reverse_iterator it;
+    for (it = vQueue.rbegin(); it != vQueue.rend(); ++it){
+        unsigned long int dt = currStamp - vtsHelper((*it).get()->stamp);
+        if ( dt > maxDt){
+            vQueue.erase(it.base());
+        } else break;
+    }
+    for (cit = vQueue.begin(); cit != vQueue.end(); ++cit){
+        std::cout << currStamp - vtsHelper((*cit).get()->stamp) << std::endl;
+    }
+    mutex.post();
+    return getEvents();
+}
 
 
 //empty line to make gcc happy
