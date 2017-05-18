@@ -77,8 +77,8 @@ bool vCornerModule::close()
         cornercallback->close();
         delete cornercallback;
     }
-//    if(cornerthread) delete cornerthread;
-     yarp::os::RFModule::close();
+    if(cornerthread) delete cornerthread;
+    yarp::os::RFModule::close();
     return true;
 }
 

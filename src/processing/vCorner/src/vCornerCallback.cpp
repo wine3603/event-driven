@@ -48,8 +48,9 @@ vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windo
     this->thresh = thresh;
 
     int gaussiansize = 2*windowRad + 2 - sobelsize;
-    convolution.setSobelFilters(sobelsize);
-    convolution.setGaussianFilter(sigma, gaussiansize);
+    convolution.configure(sobelsize, gaussiansize);
+    convolution.setSobelFilters();
+    convolution.setGaussianFilter(sigma);
 
 //    sobelx = yarp::sig::Matrix(sobelsize, sobelsize);
 //    sobely = yarp::sig::Matrix(sobelsize, sobelsize);
@@ -65,10 +66,15 @@ vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windo
     //create surface representations
     if(repFlag) {
         std::cout << "Creating surfaces..." << std::endl;
-        surfaceOfR = new ev::fixedSurface(nEvents, width, height);
-        surfaceOnR = new ev::fixedSurface(nEvents, width, height);
-        surfaceOfL = new ev::fixedSurface(nEvents, width, height);
-        surfaceOnL = new ev::fixedSurface(nEvents, width, height);
+        surfaceOfR = new ev::temporalSurface(width, height);
+        surfaceOnR = new ev::temporalSurface(width, height);
+        surfaceOfL = new ev::temporalSurface(width, height);
+        surfaceOnL = new ev::temporalSurface(width, height);
+
+//        surfaceOfR = new ev::fixedSurface(nEvents, width, height);
+//        surfaceOnR = new ev::fixedSurface(nEvents, width, height);
+//        surfaceOfL = new ev::fixedSurface(nEvents, width, height);
+//        surfaceOnL = new ev::fixedSurface(nEvents, width, height);
     }
     else {
         std::cout << "Creating local queues... " << std::endl;
@@ -162,10 +168,10 @@ void vCornerCallback::onRead(ev::vBottle &bot)
                 else
                     cSurf = surfaceOnR;
             } else {
-                if(aep->polarity)
-                    cSurf = surfaceOfL;
-                else
-                    cSurf = surfaceOnL;
+//                if(aep->polarity)
+//                    cSurf = surfaceOfL;
+//                else
+//                    cSurf = surfaceOnL;
             }
 
             cSurf->fastAddEvent(aep);
@@ -271,7 +277,8 @@ bool vCornerCallback::detectcorner(ev::vSurface2 *surf)
     auto vc = is_event<AE>(surf->getMostRecent());
 
     //get the queue of events
-    const vQueue subsurf = surf->getSurf(vc->x, vc->y, windowRad);
+//    const vQueue subsurf = surf->getSurf(vc->x, vc->y, windowRad);
+    const vQueue subsurf = surf->getSurf_Clim(qlen, vc->x, vc->y, windowRad);
 
 //    std::cout << subsurf.size() << std::endl;
 
@@ -284,6 +291,7 @@ bool vCornerCallback::detectcorner(ev::vSurface2 *surf)
         //events are in the surface
         auto vi = is_event<AE>(subsurf[i]);
 
+//        std::cout << vi->x << " " << vi->y << std::endl;
 //        std::cout << "Applying sobel filter..." << std::endl;
         convolution.applysobel(vi);
 
