@@ -35,7 +35,7 @@ private:
     int sobelrad;
 
     //parameters for gaussian filter
-    double sigma;
+//    double sigma;
 
     //parameters of the final response
     int rx;
@@ -58,10 +58,11 @@ public:
 
     filters();
 
+    void configure(int sobelsize, int l);
     void setFilterCenter(int cx, int cy);
     void setResponseCenter(int rx, int ry);
-    void setSobelFilters(int sobelsize);
-    void setGaussianFilter(double sigma, int gaussiansize);
+    void setSobelFilters();
+    void setGaussianFilter(double sigma);
     int factorial(int a);
     int Pasc(int k, int n);
     void applysobel(ev::event<ev::AE> evt);

@@ -22,16 +22,39 @@ using namespace ev;
 filters::filters()
 {
 
+//    cx = 0;
+//    cy = 0;
+//    sobelsize = 5;
+//    sobelrad = (sobelsize - 1)/2;
+
+//    sigma = 0.0;
+
+//    rx = 0;
+//    ry = 0;
+//    l = 7;
+//    lrad = (l - 1)/2;
+
+//    dx = 0.0;
+//    dy = 0.0;
+//    dxy = 0.0;
+//    sobelx.resize(sobelsize, sobelsize);
+//    sobely.resize(sobelsize, sobelsize);
+//    gaussian.resize(l, l);
+//    responsex.resize(l, l);
+//    responsey.resize(l, l);
+
+}
+
+void filters::configure(int sobelsize, int l)
+{
     cx = 0;
     cy = 0;
-    sobelsize = 5;
+    this->sobelsize = sobelsize;
     sobelrad = (sobelsize - 1)/2;
-
-    sigma = 0.0;
 
     rx = 0;
     ry = 0;
-    l = 7;
+    this->l = l;
     lrad = (l - 1)/2;
 
     dx = 0.0;
@@ -96,6 +119,7 @@ void filters::applysobel(ev::event<AE> evt)
     int ux = std::min(evt->x+sobelrad, rx+lrad);
     int ly = std::max(evt->y-sobelrad, ry-lrad);
     int uy = std::min(evt->y+sobelrad, ry+lrad);
+//    int count = 0;
     for(int cx = lx; cx <= ux; cx++)
     {
         for(int cy = ly; cy <= uy; cy++)
@@ -111,9 +135,10 @@ void filters::applysobel(ev::event<AE> evt)
             this->responsex(cx - rx + lrad, cy - ry + lrad) += gainx;
             this->responsey(cx - rx + lrad, cy - ry + lrad) += gainy;
 
+//            count++;
         }
     }
-
+//    std::cout << count << std::endl;
 }
 
 void filters::applygaussian()
@@ -137,7 +162,7 @@ double filters::getScore()
     return (dx*dy - dxy*dxy) - 0.04*((dx + dy) * (dx + dy));
 }
 
-void filters::setSobelFilters(int sobelsize)
+void filters::setSobelFilters()
 {
     yarp::sig::Vector Sx(sobelsize);
     yarp::sig::Vector Dx(sobelsize);
@@ -187,11 +212,11 @@ int filters::Pasc(int k, int n)
     return P;
 }
 
-void filters::setGaussianFilter(double sigma, int gaussiansize)
+void filters::setGaussianFilter(double sigma)
 {
     double hsum = 0.0;
     const double A = 1.0/(2.0*M_PI*sigma*sigma);
-    const int w = (gaussiansize-1)/2;
+    const int w = (l-1)/2;
     for(int x = -w; x <= w; x++)
     {
         for(int y = -w; y <= w; y++)
