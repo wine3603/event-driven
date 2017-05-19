@@ -18,7 +18,7 @@
 #ifndef __VATT__
 #define __VATT__
 
-#include <iCub/eventdriven/vFeatureMap.h>
+#include <vFeatureMap.h>
 
 class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle> {
 private:

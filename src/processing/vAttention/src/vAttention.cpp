@@ -205,12 +205,11 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     prevT = t;
     double th = 0.00005;
     bool binary = false;
-    std::vector<ImageOf<PixelBgr> > images( 4 );
-    
-    images[0] = outFeatMap0.prepare();
-    images[1] = outFeatMap45.prepare();
-    images[2] = outFeatMap90.prepare();
-    images[3] = outFeatMap135.prepare();
+
+    ImageOf<PixelBgr > &img0 = outFeatMap0.prepare();
+    ImageOf<PixelBgr > &img45 = outFeatMap45.prepare();
+    ImageOf<PixelBgr > &img90 = outFeatMap90.prepare();
+    ImageOf<PixelBgr > &img135 = outFeatMap135.prepare();
     
     for ( unsigned int j = 0; j < orientFeatMap.size(); ++j ) {
         orientFeatMap[j].decay( dt, tau );
@@ -218,9 +217,26 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
         orientFeatMap[j].normalise();
 //        orientFeatMap[j].threshold( 0.00001, threshFeatMap[j], binary );
         salMapLeft += orientFeatMap[j];
-//        orientFeatMap[j] *= 200000;
-//        orientFeatMap[j].convertToImage( images[j] );
+       
     }
+    
+    vFeatureMap visOrMap0(orientFeatMap[0]);
+    vFeatureMap visOrMap45(orientFeatMap[1]);
+    vFeatureMap visOrMap90(orientFeatMap[2]);
+    vFeatureMap visOrMap135(orientFeatMap[3]);
+    visOrMap0 *= 500000;
+    visOrMap45 *= 500000;
+    visOrMap90 *= 500000;
+    visOrMap135 *= 500000;
+    double thVis = 70;
+    visOrMap0.threshold(thVis);
+    visOrMap45.threshold(thVis);
+    visOrMap90.threshold(thVis);
+    visOrMap135.threshold(thVis);
+    visOrMap0.convertToImage( img0 );
+    visOrMap45.convertToImage( img45 );
+    visOrMap90.convertToImage( img90 );
+    visOrMap135.convertToImage( img135 );
     
     salMapLeft.normalise();
     salMapLeft.threshold(0.00001);
