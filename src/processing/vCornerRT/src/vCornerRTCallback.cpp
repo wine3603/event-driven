@@ -130,10 +130,11 @@ void vCornerCallback::onRead(ev::vBottle &bot)
 
         ev::historicalSurface *cSurf;
         if(ae->getChannel()) {
-            if(ae->polarity)
-                cSurf = &surfaceOfR;
-            else
-                cSurf = &surfaceOnR;
+            continue;
+//            if(ae->polarity)
+//                cSurf = &surfaceOfR;
+//            else
+//                cSurf = &surfaceOnR;
         } else {
             if(ae->polarity)
                 cSurf = &surfaceOfL;
@@ -143,7 +144,7 @@ void vCornerCallback::onRead(ev::vBottle &bot)
         cSurf->addEvent(ae);
 
         if(cpudelay <= 0.0) {
-            if(t1 == 0)
+            if(t1 == 0.0)
                 t1 = yarp::os::Time::now();
 //            std::cout << "test " << std::endl;
 //            t1 = yarp::os::Time::now();
@@ -160,6 +161,8 @@ void vCornerCallback::onRead(ev::vBottle &bot)
                 fillerbottle.addEvent(ce);
             }
 
+            //times it takes to process
+//            cpudelay = 0.0;
             cpudelay += yarp::os::Time::now() - t1;
             t1 = yarp::os::Time::now();
         }
