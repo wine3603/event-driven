@@ -32,16 +32,28 @@
 #include <fstream>
 #include <math.h>
 
-//class vComputeThread : public yarp::os::Thread
-//{
-//private:
+class vComputeThread : public yarp::os::Thread
+{
+private:
 
-//public:
-//    void configure();
-//    bool threadInit() { return true; }
-//    void run();
-//    void threadRelease() {}
-//};
+    int sobelsize;
+    int windowRad;
+    double sigma;
+    double thresh;
+    ev::vQueue *patch;
+    filters convolution;
+    ev::event<ev::LabelledAE> cornerevt;
+
+    bool detectcorner(int x, int y);
+
+public:
+    vComputeThread(int sobelsize, int windowRad, double sigma, double thresh);
+    void setData(ev::vQueue *patch);
+    ev::event<ev::LabelledAE> getResponse();
+    bool threadInit() { return true; }
+    void run();
+    void threadRelease() {}
+};
 
 class vCornerThread : public yarp::os::Thread
 {
@@ -63,7 +75,7 @@ private:
     double sigma;
     double thresh;
 
-//    std::vector<vComputeThread *> computeThreads;
+    std::vector<vComputeThread *> computeThreads;
     int nthreads;
 
     ev::hSurfThread eventhandler;

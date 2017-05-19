@@ -14,6 +14,7 @@ add_subdirectory(vFlow)
 add_subdirectory(vParticleFilter)
 add_subdirectory(vPepper)
 add_subdirectory(vCorner)
+add_subdirectory(vCornerRT)
 add_subdirectory(vCornerTracking)
 
 
