@@ -87,7 +87,6 @@ void vCornerThread::run()
 
             auto ae = ev::is_event<ev::AE>(*qi);
             double dt = ae->stamp - prevstamp;
-            std::cout << ae->stamp << " " << prevstamp << std::endl;
             if(dt < 0.0) dt += vtsHelper::max_stamp;
             cpudelay -= dt * vtsHelper::tsscaler;
             prevstamp = ae->stamp;
@@ -114,23 +113,20 @@ void vCornerThread::run()
                 }
 
                 //time it took to process
-//                cpudelay = 0.0;
-                double temp = yarp::os::Time::now();
-//                std::cout << cpudelay << " " << temp - t1 << std::endl;
-                cpudelay += temp - t1;
+                cpudelay = 0.0;
+                cpudelay += yarp::os::Time::now() - t1;
                 t1 = yarp::os::Time::now();
             }
 
             if(debugPort.getOutputCount()) {
                 yarp::os::Bottle &scorebottleout = debugPort.prepare();
                 scorebottleout.clear();
-                scorebottleout.addDouble(dt);
                 scorebottleout.addDouble(cpudelay);
                 debugPort.write();
             }
         }
 
-        if( (yarp::os::Time::now() - t2) > 0.001 ) { // && fillerbottle.size()
+        if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
             vBottleOut.setEnvelope(yarpstamp);
             ev::vBottle &eventsout = vBottleOut.prepare();
             eventsout.clear();
