@@ -38,10 +38,20 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     int windowRad = rf.check("spatial", yarp::os::Value(5)).asInt();
     double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
     double thresh = rf.check("thresh", yarp::os::Value(8.0)).asDouble();
+    bool callback = rf.check("callback", yarp::os::Value(true)).asBool();
 
     /* create the thread and pass pointers to the module parameters */
-    cornercallback = new vCornerCallback(height, width, sobelsize, windowRad, sigma, qlen, thresh);
-    return cornercallback->open(moduleName, strict);
+    if(callback) {
+        cornerthread = 0;
+        cornercallback = new vCornerCallback(height, width, sobelsize, windowRad, sigma, qlen, thresh);
+        return cornercallback->open(moduleName, strict);
+    }
+    else {
+        cornercallback = 0;
+        cornerthread = new vCornerThread(height, width, moduleName, strict, qlen, windowRad, sobelsize, sigma, thresh);
+        if(!cornerthread->start())
+            return false;
+    }
 
     return true;
 }
@@ -49,7 +59,8 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
 /**********************************************************/
 bool vCornerModule::interruptModule()
 {
-    cornercallback->interrupt();
+    if(cornercallback) cornercallback->interrupt();
+    if(cornerthread) cornerthread->stop();
     yarp::os::RFModule::interruptModule();
     return true;
 }
@@ -57,7 +68,11 @@ bool vCornerModule::interruptModule()
 /**********************************************************/
 bool vCornerModule::close()
 {
-    cornercallback->close();
+    if(cornercallback) {
+        cornercallback->close();
+        delete cornercallback;
+    }
+    if(cornerthread) delete cornerthread;
     yarp::os::RFModule::close();
     return true;
 }
