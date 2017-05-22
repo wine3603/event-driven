@@ -30,12 +30,14 @@
 #include <fstream>
 #include <vCornerRTModule.h>
 #include <vCornerRTCallback.h>
+#include <vCornerRTThread.h>
 
 class vCornerModule : public yarp::os::RFModule
 {
 
     //the event bottle input and output handler
     vCornerCallback      *cornercallback;
+    vCornerThread        *cornerthread;
 
 public:
 
