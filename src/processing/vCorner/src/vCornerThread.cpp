@@ -17,7 +17,7 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     this->thresh = thresh;
     this->nthreads = nthreads;
 
-    eventhandler.configure(height, width, 0.1, eventsInPatch);
+    eventhandler.configure(height, width, 0.1);
 
 //    int gaussiansize = 2*windowRad + 2 - sobelsize;
 //    convolution.setSobelFilters(sobelsize);

@@ -202,7 +202,6 @@ class hSurfThread : public yarp::os::Thread
 private:
 
     int maxcpudelay; //maximum delay between v time and cpu time (in v time)
-    int numEvts;
 
     queueAllocator allocatorCallback;
     historicalSurface surfaceleft;
@@ -226,8 +225,6 @@ public:
 
     hSurfThread()
     {
-        numEvts = 36;
-        cpudelay = 0;
         vstamp = 0;
         cpudelayL = cpudelayR = 0;
         cputimeL = cputimeR = yarp::os::Time::now();
@@ -237,15 +234,6 @@ public:
     void configure(int height, int width, double maxcpudelay)
     {
         this->maxcpudelay = maxcpudelay * vtsHelper::vtsscaler;
-        surfaceleft.initialise(height, width);
-        surfaceright.initialise(height, width);
-        filter.initialise(width, height, 100000, 1);
-    }
-
-    void configure(int height, int width, double maxcpudelay, int numEvts)
-    {
-        this->maxcpudelay = maxcpudelay * vtsHelper::vtsscaler;
-        this->numEvts = numEvts;
         surfaceleft.initialise(height, width);
         surfaceright.initialise(height, width);
         filter.initialise(width, height, 100000, 1);
@@ -315,16 +303,33 @@ public:
         m.lock();
         double cpunow = yarp::os::Time::now();
 
-        cpudelay -= (cpunow - cputime) * vtsHelper::vtsscaler * 1.1;
-        cputime = cpunow;
+        if(channel == 0) {
 
-        if(cpudelay < 0) cpudelay = 0;
-        if(cpudelay > maxcpudelay) cpudelay = maxcpudelay;
+            cpudelayL -= (cpunow - cputimeL) * vtsHelper::vtsscaler * 1.1;
+            cputimeL = cpunow;
 
-        if(channel == 0)
-            q = surfaceleft.getSurfaceN(cpudelay, numEvts, r);
-        else
-            q = surfaceright.getSurfaceN(cpudelay, numEvts, r);
+            if(cpudelayL < 0) cpudelayL = 0;
+            if(cpudelayL > maxcpudelay) {
+                yWarning() << "CPU delay hit maximum";
+                cpudelayL = maxcpudelay;
+            }
+
+            q = surfaceleft.getSurfaceN(cpudelayL, numEvts, r);
+        }
+        else {
+
+            cpudelayR -= (cpunow - cputimeR) * vtsHelper::vtsscaler * 1.1;
+            cputimeR = cpunow;
+
+            if(cpudelayR < 0) cpudelayR = 0;
+            if(cpudelayR > maxcpudelay) {
+                yWarning() << "CPU delay hit maximum";
+                cpudelayR = maxcpudelay;
+            }
+
+            q = surfaceright.getSurfaceN(cpudelayR, numEvts, r);
+        }
+
         m.unlock();
 
         return q;
