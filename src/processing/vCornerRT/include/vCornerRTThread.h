@@ -40,6 +40,8 @@ private:
     ev::historicalSurface surfaceleft;
     ev::historicalSurface surfaceright;
 
+    ev::vNoiseFilter spfilter;
+
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<ev::vBottle> vBottleOut;
     yarp::os::BufferedPort<yarp::os::Bottle> debugPort;

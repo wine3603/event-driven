@@ -28,6 +28,8 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     std::cout << "Using a " << sobelsize << "x" << sobelsize << " filter ";
     std::cout << "and a " << 2*windowRad + 1 << "x" << 2*windowRad + 1 << " spatial window" << std::endl;
 
+    spfilter.initialise(width, height, 100000, 1);
+
     this->cpudelay = 0.005;
     this->prevstamp = 0;
     this->t1 = this->t2 = yarp::os::Time::now();
@@ -83,6 +85,7 @@ void vCornerThread::run()
         if(isStopping()) break;
 
         ev::vBottle fillerbottle;
+//        int count = 0;
         for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
 
             auto ae = ev::is_event<ev::AE>(*qi);
@@ -91,6 +94,9 @@ void vCornerThread::run()
             cpudelay -= dt * vtsHelper::tsscaler;
             prevstamp = ae->stamp;
 
+            if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
+                continue;
+
             ev::historicalSurface *cSurf;
             if(ae->getChannel() == 0)
                 cSurf = &surfaceleft;
@@ -98,8 +104,10 @@ void vCornerThread::run()
                 cSurf = &surfaceright;
             cSurf->addEvent(ae);
 
-            if(cpudelay <= 0.0) {
-                if(t1 == 0.0)
+            if(cpudelay < 0.0) cpudelay = 0.0;
+
+            if(cpudelay <= 0.05) {
+//                if(t1 == 0.0)
                     t1 = yarp::os::Time::now();
 
                 const vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
@@ -110,20 +118,25 @@ void vCornerThread::run()
                     auto ce = ev::make_event<LabelledAE>(ae);
                     ce->ID = 1;
                     fillerbottle.addEvent(ce);
+//                    count++;
                 }
 
                 //time it took to process
-                cpudelay = 0.0;
+//                cpudelay = 0.0;
                 cpudelay += yarp::os::Time::now() - t1;
-                t1 = yarp::os::Time::now();
+//                t1 = yarp::os::Time::now();
+
+//                std::cout << count << std::endl;
             }
 
-            if(debugPort.getOutputCount()) {
-                yarp::os::Bottle &scorebottleout = debugPort.prepare();
-                scorebottleout.clear();
-                scorebottleout.addDouble(cpudelay);
-                debugPort.write();
-            }
+
+        }
+
+        if(debugPort.getOutputCount()) {
+            yarp::os::Bottle &scorebottleout = debugPort.prepare();
+            scorebottleout.clear();
+            scorebottleout.addDouble(cpudelay);
+            debugPort.write();
         }
 
         if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
@@ -136,9 +149,9 @@ void vCornerThread::run()
             t2 = yarp::os::Time::now();
         }
 
-    }
+        allocatorCallback.scrapQ();
 
-    allocatorCallback.scrapQ();
+    }
 
 }
 

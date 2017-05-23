@@ -164,9 +164,7 @@ void vCornerCallback::onRead(ev::vBottle &bot)
 
             //times it takes to process
 //            cpudelay = 0.0;
-            double temp = yarp::os::Time::now();
-            std::cout << cpudelay << " " << temp - t1 << std::endl;
-            cpudelay += temp - t1;
+            cpudelay +=  yarp::os::Time::now() - t1;
             t1 = yarp::os::Time::now();
         }
 
