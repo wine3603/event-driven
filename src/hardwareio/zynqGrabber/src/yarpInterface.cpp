@@ -15,6 +15,9 @@
  */
 
 #include "yarpInterface.h"
+#include "deviceRegisters.h"
+
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -22,6 +25,7 @@
 /******************************************************************************/
 //vDevReadBuffer
 /******************************************************************************/
+
 vDevReadBuffer::vDevReadBuffer()
 {
     //parameters
@@ -48,6 +52,9 @@ bool vDevReadBuffer::initialise(std::string devicename,
         if(fd < 0)
             return false;
     }
+
+    unsigned int timestampswitch = 1;
+    ioctl(fd, IOC_SET_TS_TYPE, &timestampswitch);
 
     if(bufferSize > 0) this->bufferSize = bufferSize;
     if(readSize > 0) this->readSize = readSize;
@@ -253,9 +260,9 @@ void  device2yarp::run() {
 
         if(applyfilter)
             nBytesRead = applysaltandpepperfilter(data, nBytesRead);
-            
-	    if(jumpcheck)
-	        tsjumpcheck(data, nBytesRead);
+
+        if(jumpcheck)
+            tsjumpcheck(data, nBytesRead);
 
         if(portEventCount.getOutputCount() && nBytesRead) {
             yarp::os::Bottle &ecb = portEventCount.prepare();
@@ -269,7 +276,7 @@ void  device2yarp::run() {
             continue;
 
         //typical ZYNQ behaviour to skip error checking
-        unsigned int chunksize = 80000, i = 0;
+        unsigned int chunksize = 4096 * 10, i = 0;
         if(!errorchecking && !dataError) {
 
             while((i+1) * chunksize < nBytesRead) {

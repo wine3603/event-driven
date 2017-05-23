@@ -23,6 +23,7 @@ file(GLOB folder_header
   include/iCub/eventdriven/vWindow_basic.h
   include/iCub/eventdriven/vFilters.h
   include/iCub/eventdriven/vSurfaceHandlerTh.h
+  include/iCub/eventdriven/vCollectSend.h
   include/iCub/eventdriven/all.h
 )
 
@@ -39,11 +40,11 @@ include_directories(
 add_library(${EVENTDRIVEN_LIBRARIES} ${folder_source} ${folder_header})
 
 if(VLIB_32BITTIME)
-    set_target_properties(${EVENTDRIVEN_LIBRARIES} PROPERTIES COMPILE_DEFINITIONS TIME32BIT)
+    target_compile_definitions(${EVENTDRIVEN_LIBRARIES} PRIVATE TIME32BIT=1)
 endif(VLIB_32BITTIME)
 
 if(VLIB_10BITCODEC)
-    set_target_properties(${EVENTDRIVEN_LIBRARIES} PROPERTIES COMPILE_DEFINITIONS TENBITCODEC)
+    target_compile_definitions(${EVENTDRIVEN_LIBRARIES} PRIVATE TENBITCODEC=1)
 endif(VLIB_10BITCODEC)
 
 target_link_libraries(${EVENTDRIVEN_LIBRARIES} ${YARP_LIBRARIES})
