@@ -27,7 +27,6 @@
 #include <yarp/sig/all.h>
 #include <yarp/math/Math.h>
 #include <iCub/eventdriven/all.h>
-#include <iCub/eventdriven/vtsHelper.h>
 #include <filters.h>
 #include <fstream>
 #include <math.h>
@@ -36,7 +35,10 @@ class vCornerThread : public yarp::os::Thread
 {
 private:
 
+    //thread for queues of events
     ev::queueAllocator allocatorCallback;
+
+    //data structures
     ev::historicalSurface surfaceleft;
     ev::historicalSurface surfaceright;
 
@@ -45,6 +47,9 @@ private:
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<ev::vBottle> vBottleOut;
     yarp::os::BufferedPort<yarp::os::Bottle> debugPort;
+
+    //thread for the output
+    ev::collectorPort outthread;
 
     //synchronising value
     double cpudelay;

@@ -39,13 +39,22 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
 bool vCornerThread::threadInit()
 {
 
-    if(!allocatorCallback.open("/" + name + "/vBottle:i"))
+    if(!allocatorCallback.open("/" + name + "/vBottle:i")) {
+    std::cout << "could not open vBottleIn port " << std::endl;
         return false;
+    }
 
-    if(!vBottleOut.open("/" + name + "/vBottle:o")) {
+    if(!outthread.open("/" + name + "/vBottle:o")) {
         std::cout << "could not open vBottleOut port" << std::endl;
         return false;
     }
+    if(!outthread.start())
+        return false;
+
+//    if(!vBottleOut.open("/" + name + "/vBottle:o")) {
+//        std::cout << "could not open vBottleOut port" << std::endl;
+//        return false;
+//    }
 
     std::string debugPortName = "/" + name + "/score:o";
     if(!debugPort.open(debugPortName)) {
@@ -57,14 +66,6 @@ bool vCornerThread::threadInit()
     return true;
 }
 
-//bool vCornerThread::open(std::string portname)
-//{
-//    if(!allocatorCallback.open(portname))
-//        return false;
-
-//    start();
-//    return true;
-//}
 
 void vCornerThread::onStop()
 {
@@ -84,7 +85,7 @@ void vCornerThread::run()
         }
         if(isStopping()) break;
 
-        ev::vBottle fillerbottle;
+//        ev::vBottle fillerbottle;
 //        int count = 0;
         for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
 
@@ -108,7 +109,7 @@ void vCornerThread::run()
 
             if(cpudelay <= 0.05) {
 //                if(t1 == 0.0)
-                    t1 = yarp::os::Time::now();
+                t1 = yarp::os::Time::now();
 
                 const vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
                 bool isc = detectcorner(subsurf, ae->x, ae->y);
@@ -117,7 +118,8 @@ void vCornerThread::run()
                 if(isc) {
                     auto ce = ev::make_event<LabelledAE>(ae);
                     ce->ID = 1;
-                    fillerbottle.addEvent(ce);
+//                    fillerbottle.addEvent(ce);
+                    outthread.pushevent(ce, yarpstamp);
 //                    count++;
                 }
 
@@ -139,15 +141,15 @@ void vCornerThread::run()
             debugPort.write();
         }
 
-        if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
-            vBottleOut.setEnvelope(yarpstamp);
-            ev::vBottle &eventsout = vBottleOut.prepare();
-            eventsout.clear();
-            eventsout = fillerbottle;
-            vBottleOut.write(strict);
-            fillerbottle.clear();
-            t2 = yarp::os::Time::now();
-        }
+//        if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
+//            vBottleOut.setEnvelope(yarpstamp);
+//            ev::vBottle &eventsout = vBottleOut.prepare();
+//            eventsout.clear();
+//            eventsout = fillerbottle;
+//            vBottleOut.write(strict);
+//            fillerbottle.clear();
+//            t2 = yarp::os::Time::now();
+//        }
 
         allocatorCallback.scrapQ();
 
