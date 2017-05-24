@@ -735,28 +735,30 @@ void historicalSurface::initialise(int height, int width)
     surface.resize(width, height);
 }
 
-void historicalSurface::addEvent(event<> v)
+void historicalSurface::addEvent(event<> &v)
 {
-    auto ae = is_event<AE>(v);
-    bool error = false;
+    vTempWindow::addEvent(v);
+//    return;
+//    auto ae = is_event<AE>(v);
+//    bool error = false;
 
-    if(ae->x > surface.width() - 1 || ae->y > surface.height() - 1) {
-        yError() << "Pixel Out of Range: " << ae->getContent().toString();
-        error = true;
-    }
+//    if(ae->x > surface.width() - 1 || ae->y > surface.height() - 1) {
+//        yError() << "Pixel Out of Range: " << ae->getContent().toString();
+//        error = true;
+//    }
 
-    int dt = ae->stamp - debugstamp;
-    if(dt < 0 && dt > -vtsHelper::max_stamp*0.5 ) {
+//    int dt = ae->stamp - debugstamp;
+//    if(dt < 0 && dt > -vtsHelper::max_stamp*0.5 ) {
 //        if(q.size() > 1)
 //            yError() << "Stamp Out of Order: " << (*(q.end()-2))->stamp << " " << debugstamp << " " << ae->stamp;
 //        else
 //            yError() << "Stamp Out of Order: " << debugstamp << " " << ae->stamp;
 //        error = true;
-    } else {
-        debugstamp = ae->stamp;
-    }
+//    } else {
+//        debugstamp = ae->stamp;
+//    }
 
-    if(!error) vTempWindow::addEvent(v);
+//    if(!error) vTempWindow::addEvent(v);
 
 
 }
@@ -823,25 +825,25 @@ vQueue historicalSurface::getSurface(int queryTime, int queryWindow, int xl, int
     return qret;
 }
 
-vQueue historicalSurface::getSurfaceN(int queryTime, int numEvents, int d)
+void historicalSurface::getSurfaceN(ev::vQueue &qret, int queryTime, int numEvents, int d)
 {
-    if(q.empty()) return vQueue();
+    if(q.empty()) return; // vQueue();
 
     auto v = is_event<AE>(q.back());
-    return getSurfaceN(queryTime, numEvents, d, v->x, v->y);
+    return getSurfaceN(qret, queryTime, numEvents, d, v->x, v->y);
 }
 
-vQueue historicalSurface::getSurfaceN(int queryTime, int numEvents, int d, int x, int y)
+void historicalSurface::getSurfaceN(ev::vQueue &qret, int queryTime, int numEvents, int d, int x, int y)
 {
-    if(q.empty()) return vQueue();
-    return getSurfaceN(queryTime, numEvents, x - d, x + d, y - d, y + d);
+    if(q.empty()) return; // vQueue();
+    return getSurfaceN(qret, queryTime, numEvents, x - d, x + d, y - d, y + d);
 }
 
-vQueue historicalSurface::getSurfaceN(int queryTime, int numEvents, int xl, int xh, int yl, int yh)
+void historicalSurface::getSurfaceN(ev::vQueue &qret, int queryTime, int numEvents, int xl, int xh, int yl, int yh)
 {
-    if(q.empty()) return vQueue();
+    if(q.empty()) return; // vQueue();
 
-    vQueue qret;
+//    vQueue qret;
     int ctime = q.back()->stamp;
     int countEvents = 0;
     surface.zero();
@@ -863,7 +865,7 @@ vQueue historicalSurface::getSurfaceN(int queryTime, int numEvents, int xl, int 
 
         if(countEvents > numEvents) break;
     }
-    return qret;
+//    return qret;
 }
 
 

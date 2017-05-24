@@ -142,7 +142,7 @@ void vCornerCallback::onRead(ev::vBottle &bot)
 //            else
 //                cSurf = &surfaceOnL;
         }
-        cSurf->addEvent(ae);
+        cSurf->addEvent(*qi);
 
         if(cpudelay <= 0.0) {
             if(t1 == 0.0)
@@ -152,7 +152,8 @@ void vCornerCallback::onRead(ev::vBottle &bot)
             //get the roi and process
 //            yarp::os::Time::delay(0.05);
 
-            const vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
+            vQueue subsurf;
+            cSurf->getSurfaceN(subsurf, 0, qlen, windowRad, ae->x, ae->y);
             isc = detectcorner(subsurf, ae->x, ae->y);
 
             //if it's a corner, add it to the output bottle

@@ -39,6 +39,7 @@ private:
     int windowRad;
     double sigma;
     double thresh;
+    unsigned int qlen;
     ev::vQueue patch;
     filters convolution;
 
@@ -48,8 +49,8 @@ private:
     yarp::os::Stamp ystamp;
 
 public:
-    vComputeThread(int sobelsize, int windowRad, double sigma, double thresh, ev::collectorPort *outthread);
-    void setData(ev::vQueue patch, yarp::os::Stamp ystamp);
+    vComputeThread(int sobelsize, int windowRad, double sigma, double thresh, unsigned int qlen, ev::collectorPort *outthread);
+    void setData(ev::historicalSurface *cSurf, yarp::os::Stamp ystamp);
     ev::event<ev::LabelledAE> getResponse();
     bool threadInit() { return true; }
     void run();
@@ -96,6 +97,7 @@ private:
 //    int sobelsize;
 //    double sigma;
 //    double thresh;
+    int nthreads;
 
 //    filters convolution;
 //    bool detectcorner(ev::vQueue patch, int x, int y);
@@ -103,7 +105,7 @@ private:
 public:
 
     vCornerThread(unsigned int height, unsigned int width, std::string name, bool strict, int qlen,
-                  int windowRad, int sobelsize, double sigma, double thresh);
+                  int windowRad, int sobelsize, double sigma, double thresh, int nthreads);
     bool threadInit();
     bool open(std::string portname);
     void onStop();

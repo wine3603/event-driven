@@ -402,7 +402,7 @@ void interestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
         return;
     }
 
-    int r = 1;
+    int r = 2;
     CvScalar c = CV_RGB(255, 0, 0);
     ev::vQueue::const_reverse_iterator qi;
     for(qi = eSet.rbegin(); qi != eSet.rend(); qi++) {
@@ -420,7 +420,7 @@ void interestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
         }
 
         cv::Point centr(px, py);
-        cv::circle(image, centr, r, c);
+        cv::circle(image, centr, r, c, CV_FILLED);
     }
 
 }

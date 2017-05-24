@@ -39,6 +39,7 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
     double thresh = rf.check("thresh", yarp::os::Value(8.0)).asDouble();
     bool callback = rf.check("callback", yarp::os::Value(true)).asBool();
+    int nthreads = rf.check("nthreads", yarp::os::Value(2)).asInt();
 
     /* create the thread and pass pointers to the module parameters */
     if(callback) {
@@ -48,7 +49,7 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     }
     else {
         cornercallback = 0;
-        cornerthread = new vCornerThread(height, width, moduleName, strict, qlen, windowRad, sobelsize, sigma, thresh);
+        cornerthread = new vCornerThread(height, width, moduleName, strict, qlen, windowRad, sobelsize, sigma, thresh, nthreads);
         if(!cornerthread->start())
             return false;
     }

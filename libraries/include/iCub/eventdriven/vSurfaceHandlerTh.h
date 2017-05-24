@@ -66,13 +66,14 @@ public:
 
     }
 
-    void scrapQ()
+    unsigned int scrapQ()
     {
         m.lock();
         delete qq.front();
         qq.pop_front();
         sq.pop_front();
         m.unlock();
+        return qq.size();
     }
 
     void releaseDataLock()
@@ -314,7 +315,7 @@ public:
                 cpudelayL = maxcpudelay;
             }
 
-            q = surfaceleft.getSurfaceN(cpudelayL, numEvts, r);
+            surfaceleft.getSurfaceN(q, cpudelayL, numEvts, r);
         }
         else {
 
@@ -327,7 +328,7 @@ public:
                 cpudelayR = maxcpudelay;
             }
 
-            q = surfaceright.getSurfaceN(cpudelayR, numEvts, r);
+            surfaceright.getSurfaceN(q, cpudelayR, numEvts, r);
         }
 
         m.unlock();

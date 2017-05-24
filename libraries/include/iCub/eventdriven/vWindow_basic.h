@@ -102,7 +102,7 @@ protected:
 public:
 
     vTempWindow();
-    void addEvent(event<> v);
+    void addEvent(event<> &v);
     void addEvents(const vQueue &events);
     vQueue getWindow();
 };

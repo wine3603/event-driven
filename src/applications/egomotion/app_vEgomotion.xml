@@ -17,6 +17,12 @@
 </module>
 
 <module>
+    <name>vPepper</name>
+    <parameters>--strict --width 304 --height 240 --temporalSize 100000</parameters>
+    <node>localhost</node>
+</module>
+
+<module>
     <name>vCornerTracking</name>
     <parameters> </parameters>
     <node>localhost</node>
@@ -37,25 +43,31 @@
 <module>
     <name> vFramer</name>
     <parameters> --frameRate 30 --displays "(0 /left (AE AE-INT FLOW) 1 /right (AE AE-INT FLOW))" --height 240 --width 304 --strict --flip</parameters>
-    <node>localhost</node>
+    <node>icub24</node>
 </module>
 
 <module>
    <name> yarpview </name>
    <parameters>--name /viewCh1 --x 648 --y 30 --w 608 --h 480 --RefreshTime 33 </parameters>
-   <node>localhost</node>
+   <node>icub24</node>
 </module>
 
 <connection>
   <from>/zynqGrabber/vBottle:o</from>
-  <to>/vFramer/AE:i</to>
-  <protocol>tcp</protocol>
+  <to>/vPepper/vBottle:i</to>
+  <protocol> udp </protocol>
 </connection>
 
 <connection>
-  <from>/zynqGrabber/vBottle:o</from>
-  <to>/vCorner/vBottle:i</to>
-  <protocol>tcp</protocol>
+  <from>/vPepper/vBottle:o</from>
+  <to>/vFramer/AE:i</to>
+  <protocol> udp </protocol>
+</connection>
+
+<connection>
+  <from>/vPepper/vBottle:o</from>
+  <to>/vCornerRT/vBottle:i</to>
+  <protocol> shmem </protocol>
 </connection>
 
 <connection>
@@ -77,9 +89,9 @@
 </connection>
 
 <connection>
-  <from>/vEgomotion/vBottle:o</from>
+  <from>/vCornerRT/vBottle:o</from>
   <to>/vFramer/LAE:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
