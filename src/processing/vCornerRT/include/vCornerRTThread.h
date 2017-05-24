@@ -31,6 +31,31 @@
 #include <fstream>
 #include <math.h>
 
+class vComputeThread : public yarp::os::Thread
+{
+private:
+
+    int sobelsize;
+    int windowRad;
+    double sigma;
+    double thresh;
+    ev::vQueue patch;
+    filters convolution;
+
+    bool detectcorner(int x, int y);
+
+    ev::collectorPort *outthread;
+    yarp::os::Stamp ystamp;
+
+public:
+    vComputeThread(int sobelsize, int windowRad, double sigma, double thresh, ev::collectorPort *outthread);
+    void setData(ev::vQueue patch, yarp::os::Stamp ystamp);
+    ev::event<ev::LabelledAE> getResponse();
+    bool threadInit() { return true; }
+    void run();
+    void threadRelease() {}
+};
+
 class vCornerThread : public yarp::os::Thread
 {
 private:
@@ -47,6 +72,9 @@ private:
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<ev::vBottle> vBottleOut;
     yarp::os::BufferedPort<yarp::os::Bottle> debugPort;
+
+    //list of thread for processing
+    std::vector<vComputeThread *> computeThreads;
 
     //thread for the output
     ev::collectorPort outthread;
@@ -65,12 +93,12 @@ private:
     bool strict;
     int qlen;
     int windowRad;
-    int sobelsize;
-    double sigma;
-    double thresh;
+//    int sobelsize;
+//    double sigma;
+//    double thresh;
 
-    filters convolution;
-    bool detectcorner(ev::vQueue patch, int x, int y);
+//    filters convolution;
+//    bool detectcorner(ev::vQueue patch, int x, int y);
 
 public:
 

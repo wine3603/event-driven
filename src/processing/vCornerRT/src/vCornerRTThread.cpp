@@ -11,24 +11,28 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     this->strict = strict;
     this->qlen = qlen;
     this->windowRad = windowRad;
-    this->sobelsize = sobelsize;
-    this->sigma = sigma;
-    this->thresh = thresh;
+//    this->sobelsize = sobelsize;
+//    this->sigma = sigma;
+//    this->thresh = thresh;
 
     std::cout << "Creating surfaces..." << std::endl;
     surfaceleft.initialise(height, width);
     surfaceright.initialise(height, width);
 
-    int gaussiansize = 2*windowRad + 2 - sobelsize;
-    convolution.configure(sobelsize, gaussiansize);
-    convolution.setSobelFilters();
-    convolution.setGaussianFilter(sigma);
+//    int gaussiansize = 2*windowRad + 2 - sobelsize;
+//    convolution.configure(sobelsize, gaussiansize);
+//    convolution.setSobelFilters();
+//    convolution.setGaussianFilter(sigma);
 
     std::cout << "Initialising thread..." << std::endl;
     std::cout << "Using a " << sobelsize << "x" << sobelsize << " filter ";
     std::cout << "and a " << 2*windowRad + 1 << "x" << 2*windowRad + 1 << " spatial window" << std::endl;
 
     spfilter.initialise(width, height, 100000, 1);
+
+    for(int i = 0; i < 2; i ++) {
+        computeThreads.push_back(new vComputeThread(sobelsize, windowRad, sigma, thresh, &outthread));
+    }
 
     this->cpudelay = 0.005;
     this->prevstamp = 0;
@@ -71,6 +75,9 @@ void vCornerThread::onStop()
 {
     allocatorCallback.close();
     allocatorCallback.releaseDataLock();
+
+    for(int i = 0; i < 2; i++)
+        delete computeThreads[i];
 }
 
 
@@ -85,8 +92,6 @@ void vCornerThread::run()
         }
         if(isStopping()) break;
 
-//        ev::vBottle fillerbottle;
-//        int count = 0;
         for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
 
             auto ae = ev::is_event<ev::AE>(*qi);
@@ -95,6 +100,7 @@ void vCornerThread::run()
             cpudelay -= dt * vtsHelper::tsscaler;
             prevstamp = ae->stamp;
 
+            //we need to filter the input as we will less likely process noise
             if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
                 continue;
 
@@ -111,16 +117,13 @@ void vCornerThread::run()
 //                if(t1 == 0.0)
                 t1 = yarp::os::Time::now();
 
-                const vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
-                bool isc = detectcorner(subsurf, ae->x, ae->y);
-
-                //if it's a corner, add it to the output bottle
-                if(isc) {
-                    auto ce = ev::make_event<LabelledAE>(ae);
-                    ce->ID = 1;
-//                    fillerbottle.addEvent(ce);
-                    outthread.pushevent(ce, yarpstamp);
-//                    count++;
+                //we look for a free thread
+                for(int k = 0; k < 2; k++) {
+                    if(!computeThreads[k]->isRunning()) {
+                        vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
+                        computeThreads[k]->setData(subsurf, yarpstamp);
+                        computeThreads[k]->start();
+                    }
                 }
 
                 //time it took to process
@@ -128,9 +131,7 @@ void vCornerThread::run()
                 cpudelay += yarp::os::Time::now() - t1;
 //                t1 = yarp::os::Time::now();
 
-//                std::cout << count << std::endl;
             }
-
 
         }
 
@@ -141,23 +142,157 @@ void vCornerThread::run()
             debugPort.write();
         }
 
-//        if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
-//            vBottleOut.setEnvelope(yarpstamp);
-//            ev::vBottle &eventsout = vBottleOut.prepare();
-//            eventsout.clear();
-//            eventsout = fillerbottle;
-//            vBottleOut.write(strict);
-//            fillerbottle.clear();
-//            t2 = yarp::os::Time::now();
-//        }
-
         allocatorCallback.scrapQ();
 
     }
 
 }
 
-bool vCornerThread::detectcorner(ev::vQueue patch, int x, int y)
+//void vCornerThread::run()
+//{
+
+//    while(true) {
+
+//        ev::vQueue *q = 0;
+//        while(!q && !isStopping()) {
+//            q = allocatorCallback.getNextQ(yarpstamp);
+//        }
+//        if(isStopping()) break;
+
+////        ev::vBottle fillerbottle;
+////        int count = 0;
+//        for(ev::vQueue::iterator qi = q->begin(); qi != q->end(); qi++) {
+
+//            auto ae = ev::is_event<ev::AE>(*qi);
+//            double dt = ae->stamp - prevstamp;
+//            if(dt < 0.0) dt += vtsHelper::max_stamp;
+//            cpudelay -= dt * vtsHelper::tsscaler;
+//            prevstamp = ae->stamp;
+
+//            //we need to filter the input as we will less likely process noise
+//            if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
+//                continue;
+
+//            ev::historicalSurface *cSurf;
+//            if(ae->getChannel() == 0)
+//                cSurf = &surfaceleft;
+//            else if(ae->getChannel() == 1)
+//                cSurf = &surfaceright;
+//            cSurf->addEvent(ae);
+
+//            if(cpudelay < 0.0) cpudelay = 0.0;
+
+//            if(cpudelay <= 0.05) {
+////                if(t1 == 0.0)
+//                t1 = yarp::os::Time::now();
+
+//                const vQueue subsurf = cSurf->getSurfaceN(0, qlen, windowRad, ae->x, ae->y);
+//                bool isc = detectcorner(subsurf, ae->x, ae->y);
+
+//                //if it's a corner, add it to the output bottle
+//                if(isc) {
+//                    auto ce = ev::make_event<LabelledAE>(ae);
+//                    ce->ID = 1;
+////                    fillerbottle.addEvent(ce);
+//                    outthread.pushevent(ce, yarpstamp);
+////                    count++;
+//                }
+
+//                //time it took to process
+////                cpudelay = 0.0;
+//                cpudelay += yarp::os::Time::now() - t1;
+////                t1 = yarp::os::Time::now();
+
+////                std::cout << count << std::endl;
+//            }
+
+
+//        }
+
+//        if(debugPort.getOutputCount()) {
+//            yarp::os::Bottle &scorebottleout = debugPort.prepare();
+//            scorebottleout.clear();
+//            scorebottleout.addDouble(cpudelay);
+//            debugPort.write();
+//        }
+
+////        if( (yarp::os::Time::now() - t2) > 0.001 && fillerbottle.size() ) {
+////            vBottleOut.setEnvelope(yarpstamp);
+////            ev::vBottle &eventsout = vBottleOut.prepare();
+////            eventsout.clear();
+////            eventsout = fillerbottle;
+////            vBottleOut.write(strict);
+////            fillerbottle.clear();
+////            t2 = yarp::os::Time::now();
+////        }
+
+//        allocatorCallback.scrapQ();
+
+//    }
+
+//}
+
+//bool vCornerThread::detectcorner(ev::vQueue patch, int x, int y)
+//{
+
+//    //set the final response to be centred on the current event
+//    convolution.setResponseCenter(x, y);
+
+//    //update filter response
+//    for(unsigned int i = 0; i < patch.size(); i++)
+//    {
+//        //events the patch
+//        auto vi = ev::is_event<ev::AE>(patch[i]);
+//        convolution.applysobel(vi);
+
+//    }
+//    convolution.applygaussian();
+
+//    double score = convolution.getScore();
+
+//    //reset responses
+//    convolution.reset();
+
+//    //if score > thresh tag ae as ce
+//    return score > thresh;
+
+//}
+
+/*////////////////////////////////////////////////////////////////////////////*/
+//threaded computation
+/*////////////////////////////////////////////////////////////////////////////*/
+vComputeThread::vComputeThread(int sobelsize, int windowRad, double sigma, double thresh, collectorPort *outthread)
+{
+    this->sobelsize = sobelsize;
+    this->windowRad = windowRad;
+    this->sigma = sigma;
+    this->thresh = thresh;
+    int gaussiansize = 2*windowRad + 2 - sobelsize;
+    convolution.configure(sobelsize, gaussiansize);
+    convolution.setSobelFilters();
+    convolution.setGaussianFilter(sigma);
+    this->outthread = outthread;
+}
+
+void vComputeThread::setData(vQueue patch, yarp::os::Stamp ystamp)
+{
+    this->patch = patch;
+    this->ystamp = ystamp;
+}
+
+void vComputeThread::run()
+{
+//    std::cout << "running " << std::endl;
+    auto aep = is_event<AE>(patch.front());
+    if(detectcorner(aep->x, aep->y)) {
+        ev::event<ev::LabelledAE> ce = make_event<LabelledAE>(aep);
+        ce->ID = 1;
+        outthread->pushevent(ce, ystamp);
+    }
+
+}
+
+bool vComputeThread::detectcorner(int x, int y)
 {
 
     //set the final response to be centred on the current event
@@ -167,7 +302,7 @@ bool vCornerThread::detectcorner(ev::vQueue patch, int x, int y)
     for(unsigned int i = 0; i < patch.size(); i++)
     {
         //events the patch
-        auto vi = ev::is_event<ev::AE>(patch[i]);
+        auto vi = is_event<AE>(patch[i]);
         convolution.applysobel(vi);
 
     }
@@ -177,6 +312,8 @@ bool vCornerThread::detectcorner(ev::vQueue patch, int x, int y)
 
     //reset responses
     convolution.reset();
+
+//    std::cout << x << " " << y << " " << score << std::endl;
 
     //if score > thresh tag ae as ce
     return score > thresh;
