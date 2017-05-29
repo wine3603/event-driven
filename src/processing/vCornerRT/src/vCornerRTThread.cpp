@@ -17,8 +17,10 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     this->nthreads = nthreads;
 
     std::cout << "Creating surfaces..." << std::endl;
-    surfaceleft.initialise(height, width);
-    surfaceright.initialise(height, width);
+//    surfaceleft.initialise(height, width);
+//    surfaceright.initialise(height, width);
+    surfaceleft  = new temporalSurface(width, height, 100000);
+    surfaceright = new temporalSurface(width, height, 100000);
 
 //    int gaussiansize = 2*windowRad + 2 - sobelsize;
 //    convolution.configure(sobelsize, gaussiansize);
@@ -79,6 +81,9 @@ void vCornerThread::onStop()
 
     for(int i = 0; i < nthreads; i++)
         delete computeThreads[i];
+
+    delete surfaceleft;
+    delete surfaceright;
 }
 
 
@@ -110,12 +115,16 @@ void vCornerThread::run()
 //            if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
 //                continue;
 
-            ev::historicalSurface *cSurf;
+//            ev::historicalSurface *cSurf;
+            ev::temporalSurface *cSurf;
             if(ae->getChannel() == 0)
-                cSurf = &surfaceleft;
+                cSurf = surfaceleft;
+//                cSurf = &surfaceleft;
             else
-                cSurf = &surfaceright;
-            cSurf->addEvent(*qi);
+                cSurf = surfaceright;
+//                cSurf = &surfaceright;
+//            cSurf->addEvent(*qi);
+            cSurf->fastAddEvent(*qi);
 
             if(cpudelay < 0.0) cpudelay = 0.0;
 
@@ -149,7 +158,7 @@ void vCornerThread::run()
 
         }
 
-        std::cout << q->size() << " " << countProcessed << " " << (double)countProcessed/q->size() << std::endl;
+//        std::cout << q->size() << " " << countProcessed << " " << (double)countProcessed/q->size() << std::endl;
 
         //std::cout << std::endl;
 
@@ -161,7 +170,7 @@ void vCornerThread::run()
         }
 
         allocatorCallback.scrapQ();
-        //std::cout << allocatorCallback.scrapQ() << std::endl;
+//        std::cout << allocatorCallback.scrapQ() << std::endl;
 
     }
 
@@ -294,20 +303,25 @@ vComputeThread::vComputeThread(int sobelsize, int windowRad, double sigma, doubl
     this->outthread = outthread;
 }
 
-void vComputeThread::setData(historicalSurface *cSurf, yarp::os::Stamp ystamp)
+void vComputeThread::setData(temporalSurface *cSurf, yarp::os::Stamp ystamp)
+//void vComputeThread::setData(historicalSurface *cSurf, yarp::os::Stamp ystamp)
 {
+//    patch.clear();
+//    cSurf->getSurfaceN(patch, 0, qlen, windowRad);
+
     patch.clear();
-    cSurf->getSurfaceN(patch, 0, qlen, windowRad); // patch;
+    patch = cSurf->getSurf(windowRad); // cSurf->getSurf_Clim(qlen, windowRad);
+    aep = is_event<AE>(cSurf->getMostRecent());
     this->ystamp = ystamp;
 }
 
 void vComputeThread::run()
 {
 //    std::cout << "running " << std::endl;
-//    yarp::os::Time::delay(0.001);
+//    yarp::os::Time::delay(0.1);
     if(patch.size() == 0) return;
 
-    auto aep = is_event<AE>(patch.front());
+//    auto aep = is_event<AE>(patch.front());
     if(detectcorner(aep->x, aep->y)) {
         ev::event<ev::LabelledAE> ce = make_event<LabelledAE>(aep);
         ce->ID = 1;
@@ -337,7 +351,7 @@ bool vComputeThread::detectcorner(int x, int y)
     //reset responses
     convolution.reset();
 
-//    std::cout << x << " " << y << " " << score << std::endl;
+//    std::cout << score << std::endl;
 
     //if score > thresh tag ae as ce
     return score > thresh;

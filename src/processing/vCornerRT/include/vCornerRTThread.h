@@ -42,6 +42,7 @@ private:
     unsigned int qlen;
     ev::vQueue patch;
     filters convolution;
+    ev::event<ev::AddressEvent> aep;
 
     bool detectcorner(int x, int y);
 
@@ -50,7 +51,8 @@ private:
 
 public:
     vComputeThread(int sobelsize, int windowRad, double sigma, double thresh, unsigned int qlen, ev::collectorPort *outthread);
-    void setData(ev::historicalSurface *cSurf, yarp::os::Stamp ystamp);
+    void setData(ev::temporalSurface *cSurf, yarp::os::Stamp ystamp);
+//    void setData(ev::historicalSurface *cSurf, yarp::os::Stamp ystamp);
     ev::event<ev::LabelledAE> getResponse();
     bool threadInit() { return true; }
     void run();
@@ -65,8 +67,11 @@ private:
     ev::queueAllocator allocatorCallback;
 
     //data structures
-    ev::historicalSurface surfaceleft;
-    ev::historicalSurface surfaceright;
+//    ev::historicalSurface surfaceleft;
+//    ev::historicalSurface surfaceright;
+    ev::temporalSurface *surfaceleft;
+    ev::temporalSurface *surfaceright;
+
 
     ev::vNoiseFilter spfilter;
 
