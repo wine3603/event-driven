@@ -171,14 +171,31 @@ public:
 class isoDraw : public vDraw {
 private:
 
+//    //angles
+//    double thetaY;
+//    double thetaX;
+//    double CY, SY;
+//    double CX, SX;
+
+//    int tsscalar;
+//    int Zlimit;
+//    int imagewidth;
+//    int imageheight;
+//    int imagexshift;
+//    int imageyshift;
+//    int maxdt;
+
+//    //private functions
+//    void pttr(int &x, int &y, int &z);
+
+
+public:
+
     //angles
     double thetaY;
     double thetaX;
     double CY, SY;
     double CX, SX;
-
-    //image with warped square drawn
-    cv::Mat baseimage;
 
     int tsscalar;
     int Zlimit;
@@ -191,8 +208,8 @@ private:
     //private functions
     void pttr(int &x, int &y, int &z);
 
-
-public:
+    //image with warped square drawn
+    cv::Mat baseimage;
 
     void initialise();
 
@@ -203,6 +220,16 @@ public:
 
 };
 
+class isoInterestDraw : public isoDraw {
+
+public:
+
+    static const std::string drawtype;
+    virtual void draw(cv::Mat &image, const ev::vQueue &eSet, int vTime);
+    virtual std::string getDrawType();
+    virtual std::string getEventType();
+
+};
 
 /**
  * @brief createDrawer returns an instance of a drawer that matches the tag
