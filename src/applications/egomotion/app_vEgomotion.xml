@@ -11,8 +11,8 @@
 </module>
 
 <module>
-    <name>vCorner</name>
-    <parameters>--width 304 --height 240 </parameters>
+    <name>vCornerRT</name>
+    <parameters>--strict --width 304 --height 240 --callback false --nthreads 1</parameters>
     <node>localhost</node>
 </module>
 

@@ -6,6 +6,7 @@ option(ENABLE_reptest "Build representation tester" OFF)
 option(ENABLE_vergence "Build vergence control demo" OFF)
 option(ENABLE_calibrate "Build camera calibration" OFF)
 option(ENABLE_view "Build basic viewer" OFF)
+option(ENABLE_egomotion "Build egomotion module" OFF)
 
 if(ENABLE_autosaccade)
     add_subdirectory(autosaccade)
@@ -30,3 +31,8 @@ endif(ENABLE_calibrate)
 if(ENABLE_view)
     add_subdirectory(view)
 endif(ENABLE_view)
+
+if(ENABLE_egomotion)
+    add_subdirectory(egomotion)
+endif(ENABLE_egomotion)
+
