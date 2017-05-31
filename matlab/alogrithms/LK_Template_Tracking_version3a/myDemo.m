@@ -1,6 +1,16 @@
 clc
 clearvars -except data imFig tempFig
 
+%Resolution
+w = 304;
+h = 240;
+
+%ROI
+minY = 70;
+maxY = 180;
+minX = 70;
+maxX = 200;
+
 if ~exist('tempFig') | ~exist('imFig')
   close all
   tempFig = figure;
@@ -18,11 +28,6 @@ end
 ch = logical(data(:,1));
 data(ch,:) = [];
 
-%Cropping
-minY = 70;
-maxY = 180;
-minX = 70;
-maxX = 200;
 
 %Creating vector of dts
 currTs = data (end,2);
@@ -33,12 +38,15 @@ L = [0  1  0;
      1 -4  1;
      0  1  0];
      
+%Initializing variables for loop 
 maxVar = [];
 step = 0.001;
 startTime = 17.0;
 duration = 5;
 
-mat = zeros(304,240);
+mat = zeros(w,h);
+
+figure(tempFig)
 
 for ts = startTime:step:startTime+duration
   
@@ -63,7 +71,6 @@ for ts = startTime:step:startTime+duration
   mat = accumarray ([X Y], 1, size(mat));
   maxVal = max(max(mat));
   template = mat(minX:maxX,minY:maxY);
-  figure(tempFig)
   imagesc (template,[0,8]); 
 end
 
@@ -82,11 +89,13 @@ Options.AffineIterations=0;
 Options.RoughSigma=3;
 Options.FineSigma=1.5;
 
-mat = zeros(304,240);
 T_error = zeros( floor(duration/windSize),1);
 i=0;
 startTime = 3;
 duration = 10;
+
+mat = zeros(w,h);
+figure(imFig);
 
 for ts = startTime:windSize:startTime+duration
   %Take events in temporal window
@@ -96,7 +105,7 @@ for ts = startTime:windSize:startTime+duration
   Y = vWind(:,5) + 1;
   mat = accumarray ([X Y], 1, size(mat));
 
-  figure(imFig);
+  
   hold on;
   imagesc(mat,[0 8]);
   if i == 1
@@ -109,7 +118,5 @@ for ts = startTime:windSize:startTime+duration
   
   i=i+1;
   [TemplateData.p,ROIimage,T_error(i)]=LucasKanadeInverseAffine(mat,TemplateData.p,TemplateData.image,TemplateData.weight,Options);
-  
-  
   
 end
