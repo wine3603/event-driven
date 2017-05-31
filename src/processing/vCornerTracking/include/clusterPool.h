@@ -37,6 +37,7 @@ private:
 
     //time from the last update to kill the cluster
     unsigned int trefresh;
+    ev::vtsHelper unwrapper;
 
     //minimum number of events to fit the line
     int minevts;

@@ -310,7 +310,8 @@ void vComputeThread::setData(temporalSurface *cSurf, yarp::os::Stamp ystamp)
 //    cSurf->getSurfaceN(patch, 0, qlen, windowRad);
 
     patch.clear();
-    patch = cSurf->getSurf(windowRad); // cSurf->getSurf_Clim(qlen, windowRad);
+//    patch = cSurf->getSurf(windowRad); // cSurf->getSurf_Clim(qlen, windowRad);
+    cSurf->getSurf(patch, windowRad);
     aep = is_event<AE>(cSurf->getMostRecent());
     this->ystamp = ystamp;
 }
@@ -323,7 +324,7 @@ void vComputeThread::run()
 
 //    auto aep = is_event<AE>(patch.front());
     if(detectcorner(aep->x, aep->y)) {
-        ev::event<ev::LabelledAE> ce = make_event<LabelledAE>(aep);
+        auto ce = make_event<LabelledAE>(aep);
         ce->ID = 1;
         outthread->pushevent(ce, ystamp);
     }

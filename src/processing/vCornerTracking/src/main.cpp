@@ -16,7 +16,7 @@
  */
 
 
-#include "vCornerTracking.h"
+#include "vCornerTrackingModule.h"
 
 int main(int argc, char * argv[])
 {

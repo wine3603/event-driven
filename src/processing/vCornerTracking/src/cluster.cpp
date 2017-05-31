@@ -61,6 +61,9 @@ void cluster::fitLine()
 
     //matrices to store data
     unsigned n = cluster_.size();
+
+//    std::cout << n << std::endl;
+
     yarp::sig::Matrix data(n, 3);
     yarp::sig::Matrix centreddata(n, 3);
 
@@ -73,22 +76,28 @@ void cluster::fitLine()
     meanvec[0] = 0.0;
     meanvec[1] = 0.0;
     meanvec[2] = 0.0;
-    for(ev::vQueue::iterator qi = cluster_.begin(); qi != cluster_.end(); qi++)
+    for(ev::vQueue::reverse_iterator qi = cluster_.rbegin(); qi != cluster_.rend(); qi++)
     {
         auto cep = is_event<LabelledAE>(*qi);
+//        std::cout << cep->x << " " << cep->y << " " << cep->stamp << std::endl;
+
         data[count][0] = cep->x;
         data[count][1] = cep->y;
         data[count][2] = cep->stamp;
 
-        meanvec[0] += cep->x;
-        meanvec[1] += cep->y;
-        meanvec[2] += cep->stamp;
+        meanvec[0] += data[count][0];
+        meanvec[1] += data[count][1];
+        meanvec[2] += data[count][2];
+
+//        std::cout << meanvec[2] << std::endl;
 
         count++;
     }
     meanvec[0] = meanvec[0]/n;
     meanvec[1] = meanvec[1]/n;
     meanvec[2] = meanvec[2]/n;
+
+//    std::cout << std::endl;
 
     //center data
     for(unsigned int i = 0; i < n; i++)
@@ -98,6 +107,7 @@ void cluster::fitLine()
         centreddata[i][2] = data[i][2] - meanvec[2];
     }
 
+//    std::cout << "computing SVD..." << std::endl;
     yarp::math::SVDJacobi(centreddata, U, S, V);
 
     //line parameters (a/c, b/c) will provide the velocity

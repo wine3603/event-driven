@@ -15,69 +15,11 @@
  * Public License for more details
  */
 
-#include "vCornerTracking.h"
-
-#include <iomanip>
+#include "vCornerTrackingCallback.h"
 
 using namespace ev;
 
-/**********************************************************/
-bool vCornerTrackingModule::configure(yarp::os::ResourceFinder &rf)
-{
-    //set the name of the module
-    std::string moduleName =
-            rf.check("name", yarp::os::Value("vCornerTracking")).asString();
-    yarp::os::RFModule::setName(moduleName.c_str());
-
-    bool strict = rf.check("strict") &&
-            rf.check("strict", yarp::os::Value(true)).asBool();
-
-    /* set parameters */
-    int height = rf.check("height", yarp::os::Value(128)).asInt();
-    int width = rf.check("width", yarp::os::Value(128)).asInt();
-    int mindistance = rf.check("mindist", yarp::os::Value(6)).asInt();
-    unsigned int trefresh = rf.check("trefresh", yarp::os::Value(1000000)).asInt();
-    int minevts = rf.check("minevts", yarp::os::Value(5)).asInt();
-
-    /* create the thread and pass pointers to the module parameters */
-    cornertrackingmanager = new vCornerTrackingManager(height, width, mindistance, trefresh, minevts);
-    return cornertrackingmanager->open(moduleName, strict);
-
-}
-
-/**********************************************************/
-bool vCornerTrackingModule::interruptModule()
-{
-    cornertrackingmanager->interrupt();
-    yarp::os::RFModule::interruptModule();
-    return true;
-}
-
-/**********************************************************/
-bool vCornerTrackingModule::close()
-{
-    cornertrackingmanager->close();
-    delete cornertrackingmanager;
-    yarp::os::RFModule::close();
-    return true;
-}
-
-/**********************************************************/
-bool vCornerTrackingModule::updateModule()
-{
-    return true;
-}
-
-/**********************************************************/
-double vCornerTrackingModule::getPeriod()
-{
-    return 1;
-}
-
-/******************************************************************************/
-//vCornerTrackingManager
-/******************************************************************************/
-vCornerTrackingManager::vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh, int minevts)
+vCornerTrackingCallback::vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int minevts)
 {
     this->height = height;
     this->width = width;
@@ -88,7 +30,7 @@ vCornerTrackingManager::vCornerTrackingManager(int height, int width, int mindis
 
 }
 /**********************************************************/
-bool vCornerTrackingManager::open(const std::string moduleName, bool strictness)
+bool vCornerTrackingCallback::open(const std::string moduleName, bool strictness)
 {
     this->strictness = strictness;
     if(strictness) {
@@ -109,7 +51,7 @@ bool vCornerTrackingManager::open(const std::string moduleName, bool strictness)
 }
 
 /**********************************************************/
-void vCornerTrackingManager::close()
+void vCornerTrackingCallback::close()
 {
     //close ports
     outPort.close();
@@ -120,7 +62,7 @@ void vCornerTrackingManager::close()
 }
 
 /**********************************************************/
-void vCornerTrackingManager::interrupt()
+void vCornerTrackingCallback::interrupt()
 {
     //pass on the interrupt call to everything needed
     outPort.interrupt();
@@ -128,7 +70,7 @@ void vCornerTrackingManager::interrupt()
 }
 
 /**********************************************************/
-void vCornerTrackingManager::onRead(ev::vBottle &bot)
+void vCornerTrackingCallback::onRead(ev::vBottle &bot)
 {
     /*prepare output vBottle*/
     ev::vBottle * outBottle = 0;

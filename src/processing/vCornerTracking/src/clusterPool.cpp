@@ -33,6 +33,8 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
     int clusterID = -1;
     std::pair <double, double> clustervel;
 
+//    std::cout << "curr event " << evt->x << " " << evt->y << std::endl;
+
     //if it's the first event, we create the first cluster
     if(firstevent) {
         firstevent = false;
@@ -51,6 +53,7 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
 
         //check for old clusters
         if( (evt->stamp - pool[i].getLastUpdate()) > trefresh ) {
+//            std::cout << evt->stamp << " " << pool[i].getLastUpdate() << std::endl;
             killOldCluster(i);
         }
 
@@ -60,10 +63,12 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt)
     if(clusterID >= 0) {
 
         //add corner event to the cluster
+//        std::cout << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
         pool[clusterID].addEvent(evt);
 
         //fit line to the cluster
         if(pool[clusterID].getClusterSize() > minevts) {
+//            std::cout << "fitting line to cluster " << clusterID << " to event " << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
             pool[clusterID].fitLine();
             clustervel.first = pool[clusterID].getVx();
             clustervel.second = pool[clusterID].getVy();

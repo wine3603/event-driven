@@ -16,23 +16,22 @@
  */
 
 /// \defgroup Modules Modules
-/// \defgroup vCorner vCorner
+/// \defgroup vCornerTracking vCornerTracking
 /// \ingroup Modules
-/// \brief detects corner events using the Harris method
+/// \brief tracks corner events fitting 3D lines to cluster of corner events
 
-#ifndef __VCORNERTRACKING__
-#define __VCORNERRACKING__
+#ifndef __VCORNERTRACKINGCALLBACK__
+#define __VCORNERTRACKINGCALLBACK__
 
 #include <yarp/os/all.h>
 #include <yarp/sig/all.h>
 #include <yarp/math/Math.h>
 #include <iCub/eventdriven/all.h>
-#include <iCub/eventdriven/vtsHelper.h>
 #include <fstream>
 #include <math.h>
 #include <clusterPool.h>
 
-class vCornerTrackingManager : public yarp::os::BufferedPort<ev::vBottle>
+class vCornerTrackingCallback : public yarp::os::BufferedPort<ev::vBottle>
 {
 private:
 
@@ -48,15 +47,12 @@ private:
     unsigned int trefresh;
     int minevts;
 
-    //for helping with timestamp wrap around
-    ev::vtsHelper unwrapper;
-
     //set of clusters
     clusterPool *clusterSet;
 
 public:
 
-    vCornerTrackingManager(int height, int width, int mindistance, unsigned int trefresh, int minevts);
+    vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int minevts);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
@@ -66,25 +62,6 @@ public:
     void    onRead(ev::vBottle &bot);
 
 };
-
-class vCornerTrackingModule : public yarp::os::RFModule
-{
-
-    //the event bottle input and output handler
-    vCornerTrackingManager      *cornertrackingmanager;
-
-
-public:
-
-    //the virtual functions that need to be overloaded
-    virtual bool configure(yarp::os::ResourceFinder &rf);
-    virtual bool interruptModule();
-    virtual bool close();
-    virtual double getPeriod();
-    virtual bool updateModule();
-
-};
-
 
 #endif
 //empty line to make gcc happy
