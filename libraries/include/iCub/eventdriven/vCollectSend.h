@@ -20,17 +20,17 @@ private:
     yarp::os::BufferedPort<vBottle> sendPort;
     yarp::os::Mutex m;
     yarp::os::Stamp ystamp;
-    double currystamp;
-    double prevystamp;
-    int prevstamp;
+//    double currystamp;
+//    double prevystamp;
+//    int prevstamp;
 
 
 
 public:
     collectorPort() : RateThread(1.0) {
 
-        prevstamp = 0;
-        prevystamp = 0.0;
+//        prevstamp = 0;
+//        prevystamp = 0.0;
 
     }
 
@@ -45,11 +45,11 @@ public:
         m.lock();
 //        if((v->stamp - prevstamp) < 0)
 //            std::cout << prevstamp * vtsHelper::tsscaler << " " << v->stamp * vtsHelper::tsscaler << std::endl;
-        prevstamp = v->stamp;
+//        prevstamp = v->stamp;
 
         filler.addEvent(v);
         ystamp = y;
-        currystamp = ystamp.getTime();
+//        currystamp = ystamp.getTime();
         m.unlock();
 
     }
@@ -65,13 +65,15 @@ public:
             sendPort.setEnvelope(ystamp);
 //            std::cout.precision( dbl::digits10 );
 //            std::cout << (currystamp - prevystamp) << std::endl;
-            prevystamp = currystamp;
+//            prevystamp = currystamp;
             m.unlock();
+
+            sendPort.write();
 
         }
 
-         if(!(currystamp - prevystamp))
-             sendPort.write();
+//         if(!(currystamp - prevystamp))
+//             sendPort.write();
 
     }
 
