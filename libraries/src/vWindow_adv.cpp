@@ -62,32 +62,32 @@ vQueue vSurface2::addEvent(event<> v)
 
 }
 
-vQueue vSurface2::getSurf()
+void vSurface2::getSurf(vQueue &qcopy)
 {
-    return getSurf(0, width, 0, height);
+    return getSurf(qcopy, 0, width, 0, height);
 }
 
-vQueue vSurface2::getSurf(int d)
+void vSurface2::getSurf(ev::vQueue &qcopy, int d)
 {
     event<AddressEvent> v(nullptr);
     for(vQueue::reverse_iterator qi = q.rbegin(); qi != q.rend(); qi++) {
         v = as_event<AddressEvent>(*qi);
         if(v) break;
     }
-    if(!v) return vQueue();
+    if(!v) return; // vQueue();
 
-    return getSurf(v->x, v->y, d);
+    return getSurf(qcopy, v->x, v->y, d);
 
 }
 
-vQueue vSurface2::getSurf(int x, int y, int d)
+void vSurface2::getSurf(ev::vQueue &qcopy, int x, int y, int d)
 {
-    return getSurf(x - d, x + d, y - d, y + d);
+    return getSurf(qcopy, x - d, x + d, y - d, y + d);
 }
 
-vQueue vSurface2::getSurf(int xl, int xh, int yl, int yh)
+void vSurface2::getSurf(ev::vQueue &qcopy, int xl, int xh, int yl, int yh)
 {
-    vQueue qcopy;
+//    vQueue qcopy;
 
     xl = std::max(xl, 0);
     xh = std::min(xh, width-1);
@@ -98,7 +98,7 @@ vQueue vSurface2::getSurf(int xl, int xh, int yl, int yh)
         for(int x = xl; x <= xh; x++)
             if(spatial[y][x]) qcopy.push_back(spatial[y][x]);
 
-    return qcopy;
+//    return qcopy;
 
 }
 

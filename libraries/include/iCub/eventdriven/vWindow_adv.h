@@ -88,10 +88,10 @@ public:
     /// \brief getWindow
     /// \return
     ///
-    vQueue getSurf();
+    void getSurf(vQueue &qcopy);
 
 
-    vQueue getSurf(int d);
+    void getSurf(vQueue &qcopy, int d);
 
     ///
     /// \brief getSpatialWindow returns AddressEvents within a spatial window
@@ -100,7 +100,7 @@ public:
     /// \param d distance of the half-length of a square window
     /// \return a vQueue containing a copy of the events
     ///
-    vQueue getSurf(int x, int y, int d);
+    void getSurf(vQueue &qcopy, int x, int y, int d);
 
     ///
     /// \brief getSpatialWindow returns AddressEvents within a spatial window
@@ -110,7 +110,8 @@ public:
     /// \param yh upper y value of window
     /// \return a vQueue containing a copy of the events
     ///
-    vQueue getSurf(int xl, int xh, int yl, int yh);
+//    vQueue getSurf(int xl, int xh, int yl, int yh);
+    void getSurf(vQueue &qcopy, int xl, int xh, int yl, int yh);
 
     vQueue getSurf_Tlim(int dt);
     vQueue getSurf_Tlim(int dt, int d);
