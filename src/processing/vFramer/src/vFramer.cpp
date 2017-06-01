@@ -76,7 +76,7 @@ bool vFramerModule::configure(yarp::os::ResourceFinder &rf)
     if(!displayList)
         displayList = &tempDisplayList;
 
-    std::cout << displayList->toString() << std::endl;
+    yInfo() << displayList->toString();
 
     if(displayList->size() % 3) {
         std::cerr << "Error: display incorrectly configured in provided "
@@ -130,7 +130,7 @@ bool vFramerModule::configure(yarp::os::ResourceFinder &rf)
 //        return false;
 
     //set up the frameRate
-    period = 1.0 / rf.check("frameRate", yarp::os::Value(30)).asInt();
+    period = 1.0 / rf.check("frameRate", yarp::os::Value(20)).asInt();
 
     pyarptime = 0;
 

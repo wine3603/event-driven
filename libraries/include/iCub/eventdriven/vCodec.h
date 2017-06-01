@@ -142,16 +142,14 @@ using vQueue = std::deque< event<vEvent> >;
 void qsort(vQueue &q, bool respectWraps = false);
 event<> createEvent(const std::string &type);
 
+enum { VLEFT = 0, VRIGHT = 1 } ;
+
 //event declarations
 class vEvent
 {
 public:
     static const std::string tag;
-#ifdef TIME32BIT
     unsigned int stamp:31;
-#else
-    unsigned int stamp:24;
-#endif
 
     vEvent();
     virtual ~vEvent();
