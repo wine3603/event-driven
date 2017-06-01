@@ -1,5 +1,4 @@
-file = ['/home/aglover/DataBackup/DATASETS/redballtrackdataset/' ...
-    'withperson/ball_ExtDVS.txt'];
+file = ['/home/miacono/workspace/event-driven/matlab/conversion/crop.txt'];
 
 vBotSize = 1000;
 ch = 1;

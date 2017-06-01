@@ -33,7 +33,7 @@ class EventBottleManager : public yarp::os::BufferedPort<ev::vBottle>
 private:
     
     //for helping with timestamp wrap around
-    ev::vtsHelper unwrapper;
+    ev::vtsHelper vtsHelper;
     
     //rate counters
     yarp::os::Semaphore mutex;

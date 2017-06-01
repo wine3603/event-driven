@@ -23,6 +23,34 @@
 class vAttentionManager : public yarp::os::BufferedPort<ev::vBottle> {
 private:
     
+    ev::vSurface2* vSurf;
+    ev::vQueue vQueue;
+    yarp::os::Semaphore mutex;
+    int count;
+    ev::vtsHelper vtsHelper;
+public:
+    
+    vAttentionManager() {};
+    
+    bool open( const std::string moduleName, bool strictness = false );
+    
+    void close();
+    
+    void interrupt();
+    
+    //this is the entry point to your main functionality
+    void onRead( ev::vBottle &bot );
+    
+    ev::vQueue getEvents();
+    
+    ev::vQueue getRecentEvents(double sec);
+};
+
+class vAttentionModule : public yarp::os::RFModule {
+    
+    //the event bottle input and output handler
+    vAttentionManager *attManager;
+    yarp::os::Port handlerPort;                 // a port to handle messages
     
     using imagePort = yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelBgr> >;
     using eventPort = yarp::os::BufferedPort<ev::vBottle>;
@@ -43,7 +71,6 @@ private:
     int boxWidth;
     int boxHeight;
     
-    ev::vtsHelper unwrap;
     vFeatureMap eventMap;
     
     vFeatureMap activationMap;
@@ -74,29 +101,7 @@ private:
     
     void drawBoundingBox( yarp::sig::ImageOf<yarp::sig::PixelBgr> &image, Rectangle ROI );
 
-public:
-    
-    vAttentionManager() {};
-    
     bool initialize( yarp::os::ResourceFinder &rf );
-    
-    bool open( const std::string moduleName, bool strictness = false );
-    
-    void close();
-    
-    void interrupt();
-    
-    //this is the entry point to your main functionality
-    void onRead( ev::vBottle &bot );
-    
-    
-};
-
-class vAttentionModule : public yarp::os::RFModule {
-    
-    //the event bottle input and output handler
-    vAttentionManager *attManager;
-    yarp::os::Port handlerPort;                 // a port to handle messages
 
 public:
     

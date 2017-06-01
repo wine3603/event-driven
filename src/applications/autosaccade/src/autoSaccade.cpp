@@ -202,7 +202,7 @@ double AutoSaccadeModule::computeEventRate() {
     if(vPeriod <= 0)
         return 0;
     
-    vPeriod *= 80 *10e-9;
+    vPeriod *= 80e-9;
     double vCount = eventBottleManager.popCount();
     const double eventRate = vCount / vPeriod;
     prevStamp = latestStamp;
@@ -421,7 +421,7 @@ void EventBottleManager::onRead(ev::vBottle &bot) {
     mutex.wait();
     //append new events to queue
     vQueue.insert(vQueue.end(), newQueue.begin(), newQueue.end());
-    latestStamp = unwrapper(newQueue.back()->stamp);
+    latestStamp = vtsHelper(newQueue.back()->stamp);
     vCount += newQueue.size();
     mutex.post();
 }

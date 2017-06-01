@@ -12,8 +12,7 @@ file(GLOB header include/*.h)
 source_group("Source Files" FILES ${source})
 source_group("Header Files" FILES ${header})
 
-include_directories(
-                    include
+include_directories(include
                     ${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
                     ${EVENTDRIVENLIBS_INCLUDE_DIRS})
