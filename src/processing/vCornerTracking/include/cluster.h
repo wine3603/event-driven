@@ -35,7 +35,7 @@ private:
     ev::vQueue cluster_;
 
     //maximum size of the cluster
-    unsigned int maxsize;
+    int maxsize;
 
     //time at which the cluster had the last update
     double tlast_update;
@@ -45,10 +45,11 @@ private:
 
 public:
 
-    cluster();
+    cluster() {}
 
+    void initialise(int maxsize);
     double dist2event(ev::event<ev::LabelledAE> evt);
-    void addEvent(ev::event<ev::LabelledAE> evt);
+    void addEvent(ev::event<ev::LabelledAE> evt, unsigned int currt);
     ev::event<> getLastEvent();
     void fitLine();
     unsigned int getLastUpdate();

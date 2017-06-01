@@ -19,14 +19,14 @@
 
 using namespace ev;
 
-vCornerTrackingCallback::vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int minevts)
+vCornerTrackingCallback::vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int maxsize, int minevts)
 {
     this->height = height;
     this->width = width;
     this->mindistance = mindistance;
     this->trefresh = trefresh;
     this->minevts = minevts;
-    clusterSet = new clusterPool(mindistance, trefresh, minevts);
+    clusterSet = new clusterPool(mindistance, trefresh, maxsize, minevts);
 
 }
 /**********************************************************/
@@ -88,8 +88,10 @@ void vCornerTrackingCallback::onRead(ev::vBottle &bot)
         //current corner event
         auto cep = is_event<LabelledAE>(*qi);
 
+        unsigned int currt = unwrapper(cep->stamp);
+
         //update cluster velocity
-        vel = clusterSet->update(cep);
+        vel = clusterSet->update(cep, currt);
 
         if(vel.first && vel.second) {
             //create new flow event and assign to it the velocity of the current cluster

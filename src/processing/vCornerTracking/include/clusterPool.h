@@ -37,7 +37,9 @@ private:
 
     //time from the last update to kill the cluster
     unsigned int trefresh;
-    ev::vtsHelper unwrapper;
+
+    //maximum size of the single cluster
+    int maxsize;
 
     //minimum number of events to fit the line
     int minevts;
@@ -47,10 +49,10 @@ private:
 
 public:
 
-    clusterPool(int mindistance, unsigned int trefresh, int minevts);
+    clusterPool(int mindistance, unsigned int trefresh, int maxsize, int minevts);
 
-    std::pair<double, double> update(ev::event<ev::LabelledAE> evt);
-    void createNewCluster(ev::event<ev::LabelledAE> evt);
+    std::pair<double, double> update(ev::event<ev::LabelledAE> evt, unsigned int currt);
+    void createNewCluster(ev::event<ev::LabelledAE> evt, unsigned int currt);
     void killOldCluster(int clusterID);
     std::vector <cluster> getPool();
 //    cluster getCluster(int clusterID);

@@ -19,11 +19,11 @@
 
 using namespace ev;
 
-cluster::cluster()
+void cluster::initialise(int maxsize)
 {
 
     tlast_update = 0.0;
-    maxsize = 50;
+    this->maxsize = maxsize;
     vel.first = 0.0;
     vel.second = 0.0;
 
@@ -39,10 +39,10 @@ double cluster::dist2event(ev::event<LabelledAE> evt)
     return dist;
 }
 
-void cluster::addEvent(ev::event<LabelledAE> evt)
+void cluster::addEvent(ev::event<LabelledAE> evt, unsigned int currt)
 {
     cluster_.push_back(evt);
-    tlast_update = evt->stamp;
+    tlast_update = currt;
 
     //remove the first event added
     if(cluster_.size() > maxsize)
@@ -72,25 +72,35 @@ void cluster::fitLine()
     yarp::sig::Vector S;
     yarp::sig::Matrix V;
 
-    int count = 0;
     meanvec[0] = 0.0;
     meanvec[1] = 0.0;
     meanvec[2] = 0.0;
-    for(ev::vQueue::reverse_iterator qi = cluster_.rbegin(); qi != cluster_.rend(); qi++)
+
+    int count = 0;
+    unsigned int prevstamp;
+    unsigned int currt;
+    for(ev::vQueue::iterator qi = cluster_.begin(); qi != cluster_.end(); qi++)
     {
         auto cep = is_event<LabelledAE>(*qi);
 //        std::cout << cep->x << " " << cep->y << " " << cep->stamp << std::endl;
 
+        currt = cep->stamp;
+//        std::cout << currt << std::endl;
+        double dt = currt - prevstamp;
+        if(dt < 0) {
+            currt += ev::vtsHelper::max_stamp;
+//            std::cout << currt << std::endl;
+        }
+
         data[count][0] = cep->x;
         data[count][1] = cep->y;
-        data[count][2] = cep->stamp;
+        data[count][2] = currt;
 
         meanvec[0] += data[count][0];
         meanvec[1] += data[count][1];
         meanvec[2] += data[count][2];
 
-//        std::cout << meanvec[2] << std::endl;
-
+        prevstamp = currt;
         count++;
     }
     meanvec[0] = meanvec[0]/n;
@@ -113,7 +123,7 @@ void cluster::fitLine()
     //line parameters (a/c, b/c) will provide the velocity
     yarp::sig::Vector v;
     v = V.getCol(0);
-//    std::cout << -v[0]/v[2] * 1000000 << " " << -v[1]/v[2] * 1000000 << std::endl;
+//    std::cout << "from line fitting " << -v[0]/v[2] * 1000000 << " " << -v[1]/v[2] * 1000000 << std::endl;
     vel.first = -v[0]/v[2];
     vel.second = -v[1]/v[2];
 
@@ -138,10 +148,5 @@ double cluster::getVy()
 {
     return vel.second;
 }
-
-//vQueue cluster::getCluster()
-//{
-//    return cluster_;
-//}
 
 //empty line to make gcc happy

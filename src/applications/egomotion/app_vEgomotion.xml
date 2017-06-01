@@ -42,20 +42,20 @@
 
 <module>
     <name> vFramer</name>
-    <parameters> --frameRate 30 --displays "(0 /left (AE AE-INT FLOW) 1 /right (AE AE-INT FLOW))" --height 240 --width 304 --strict --flip</parameters>
-    <node>icub24</node>
+    <parameters> --frameRate 30 --displays "(1 /flow (AE AE-INT FLOW) 1 /right (AE AE-INT ISO ISO-INT))" --height 240 --width 304 --strict --flip</parameters>
+    <node>localhost</node>
 </module>
 
 <module>
    <name> yarpview </name>
    <parameters>--name /viewCh0 --x 30 --y 30 --w 608 --h 480 --RefreshTime 33 </parameters>
-   <node>icub24</node>
+   <node>localhost</node>
 </module>
 
 <module>
    <name> yarpview </name>
    <parameters>--name /viewCh1 --x 648 --y 30 --w 608 --h 480 --RefreshTime 33 </parameters>
-   <node>icub24</node>
+   <node>localhost</node>
 </module>
 
 <connection>
@@ -77,9 +77,9 @@
 </connection>
 
 <connection>
-  <from>/vCorner/vBottle:o</from>
+  <from>/vCornerRT/vBottle:o</from>
   <to>/vCornerTracking/vBottle:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
@@ -113,7 +113,7 @@
 </connection>
 
 <connection>
-  <from>/vFramer/left</from>
+  <from>/vFramer/flow</from>
   <to>/viewCh0</to>
   <protocol>tcp</protocol>
 </connection>

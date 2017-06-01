@@ -35,18 +35,19 @@ bool vCornerTrackingModule::configure(yarp::os::ResourceFinder &rf)
     unsigned int width = rf.check("width", yarp::os::Value(128)).asInt();
     int mindistance = rf.check("mindist", yarp::os::Value(6)).asInt();
     unsigned int trefresh = rf.check("trefresh", yarp::os::Value(1000000)).asInt();
+    int maxsize = rf.check("maxsize", yarp::os::Value(30)).asInt();
     int minevts = rf.check("minevts", yarp::os::Value(5)).asInt();
     bool callback = rf.check("callback", yarp::os::Value(true)).asBool();
 
     /* create the thread and pass pointers to the module parameters */
     if(callback) {
         cornertrackingthread = 0;
-        cornertrackingcallback = new vCornerTrackingCallback(height, width, mindistance, trefresh, minevts);
+        cornertrackingcallback = new vCornerTrackingCallback(height, width, mindistance, trefresh, maxsize, minevts);
         return cornertrackingcallback->open(moduleName, strict);
     }
     else {
         cornertrackingcallback = 0;
-        cornertrackingthread = new vCornerTrackingThread(height, width, moduleName, strict, mindistance, trefresh, minevts);
+        cornertrackingthread = new vCornerTrackingThread(height, width, moduleName, strict, mindistance, trefresh, maxsize, minevts);
         if(!cornertrackingthread->start())
             return false;
     }

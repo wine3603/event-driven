@@ -325,7 +325,8 @@ void flowDraw::draw(cv::Mat &image, const vQueue &eSet, int vTime)
     if(checkStagnancy(eSet) > clearThreshold) return;
 
 
-    //double vx_mean = 0, vy_mean = 0, n = 0;
+    double vx_mean = 0, vy_mean = 0;
+
     int line_thickness = 0;
     cv::Scalar line_color = CV_RGB(255,0,0);
     cv::Point p_start,p_end;
@@ -353,6 +354,9 @@ void flowDraw::draw(cv::Mat &image, const vQueue &eSet, int vTime)
             vy = temp;
         }
 
+        vx_mean += vx;
+        vy_mean += vy;
+
         //Starting point of the line
         p_start.x = x;
         p_start.y = y;
@@ -377,6 +381,27 @@ void flowDraw::draw(cv::Mat &image, const vQueue &eSet, int vTime)
         cv::line(image, p_start, p_end, line_color, line_thickness, 4);
 
     }
+
+    vx_mean = vx_mean/eSet.size();
+    vy_mean = vy_mean/eSet.size();
+    p_start.x = Xlimit/2;
+    p_start.y = Ylimit/2;
+    double h = 15;
+    double theta = atan2(vy_mean, vx_mean);
+    p_end.x = (int) (p_start.x + h * sin(theta));
+    p_end.y = (int) (p_start.y + h * cos(theta));
+
+    cv::Scalar line_color2 = CV_RGB(0,255,0);
+    cv::line(image, p_start, p_end, line_color2, 3, 4);
+
+    //Draw the tips of the arrow
+    p_start.x = (int) (p_end.x - 5*sin(theta + M_PI/4));
+    p_start.y = (int) (p_end.y - 5*cos(theta + M_PI/4));
+    cv::line(image, p_start, p_end, line_color2, 3, 4);
+
+    p_start.x = (int) (p_end.x - 5*sin(theta - M_PI/4));
+    p_start.y = (int) (p_end.y - 5*cos(theta - M_PI/4));
+    cv::line(image, p_start, p_end, line_color2, 4, 4);
 
 }
 

@@ -29,6 +29,7 @@
 #include <iCub/eventdriven/all.h>
 #include <iCub/eventdriven/vtsHelper.h>
 #include <fstream>
+#include <iostream>
 #include <math.h>
 #include <clusterPool.h>
 
@@ -42,6 +43,9 @@ private:
 
     //thread for the output
     ev::collectorPort outthread;
+
+    ev::vtsHelper unwrapper;
+    ev::vtsHelper unwrapperflow;
 
 //    //synchronising value
 //    double cpudelay;
@@ -57,20 +61,23 @@ private:
     bool strict;
     int mindistance;
     unsigned int trefresh;
+    int maxsize;
     int minevts;
 
     //set of clusters
     clusterPool *clusterSet;
 
+    std::ofstream outfile;
 
 public:
 
     vCornerTrackingThread(unsigned int height, unsigned int width, std::string name, bool strict,
-                          int mindistance, unsigned int trefresh, int minevts);
+                          int mindistance, unsigned int trefresh, int maxsize, int minevts);
     bool threadInit();
     bool open(std::string portname);
     void onStop();
     void run();
+    void threadRelease();
 
 };
 

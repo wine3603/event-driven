@@ -3,7 +3,7 @@
 using namespace ev;
 
 vCornerTrackingThread::vCornerTrackingThread(unsigned int height, unsigned int width, std::string name, bool strict,
-                                             int mindistance, unsigned int trefresh, int minevts)
+                                             int mindistance, unsigned int trefresh, int maxsize, int minevts)
 {
     this->height = height;
     this->width = width;
@@ -11,8 +11,11 @@ vCornerTrackingThread::vCornerTrackingThread(unsigned int height, unsigned int w
     this->strict = strict;
     this->mindistance = mindistance;
     this->trefresh = trefresh;
+    this->maxsize = maxsize;
     this->minevts = minevts;
-    clusterSet = new clusterPool(mindistance, trefresh, minevts);
+    clusterSet = new clusterPool(mindistance, trefresh, maxsize, minevts);
+
+    outfile.open("clustersvel.txt");
 
 }
 
@@ -40,10 +43,14 @@ void vCornerTrackingThread::onStop()
 {
     allocatorCallback.close();
     allocatorCallback.releaseDataLock();
-
-    delete clusterSet;
+    outthread.stop();
 }
 
+void vCornerTrackingThread::threadRelease()
+{
+    delete clusterSet;
+    outfile.close();
+}
 
 void vCornerTrackingThread::run()
 {
@@ -66,14 +73,29 @@ void vCornerTrackingThread::run()
                 continue;
             }
 
+            //unwrap timestamp
+            unsigned int currt = unwrapper(cep->stamp);
+
             //update cluster velocity
-            vel = clusterSet->update(cep);
+            vel = clusterSet->update(cep, currt);
+//            std::cout << "becomes " << vel.first << " " << vel.second << std::endl;
+//            std::cout << std::endl;
 
             if(vel.first && vel.second) {
                 //create new flow event and assign to it the velocity of the current cluster
                 auto fe = make_event<FlowEvent>(cep);
+//                auto fe = make_event<GaussianAE>(cep);
                 fe->vx = vel.first;
                 fe->vy = vel.second;
+
+//                fe->sigx = (float)(vel.first * 1000000);
+//                fe->sigy = (float)(vel.second * 1000000);
+//                fe->sigxy = 0;
+//                fe->polarity = 1;
+
+//                std::cout << fe->sigx << " " << fe->sigy << std::endl;
+
+                outfile << unwrapperflow(fe->stamp) * vtsHelper::tsscaler << " " << vel.first * 1000000 << " " << vel.second * 1000000 << std::endl;
 
                 outthread.pushevent(fe, yarpstamp);
 

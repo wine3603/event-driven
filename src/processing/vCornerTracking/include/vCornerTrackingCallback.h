@@ -40,11 +40,14 @@ private:
     //output port for the vBottle with the new events computed by the module
     yarp::os::BufferedPort<ev::vBottle> outPort;
 
+    ev::vtsHelper unwrapper;
+
     //parameters
     int height;
     int width;
     int mindistance;
     unsigned int trefresh;
+    int maxsize;
     int minevts;
 
     //set of clusters
@@ -52,7 +55,7 @@ private:
 
 public:
 
-    vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int minevts);
+    vCornerTrackingCallback(int height, int width, int mindistance, unsigned int trefresh, int maxsize, int minevts);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
