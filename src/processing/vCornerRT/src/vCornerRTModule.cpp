@@ -35,6 +35,7 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     int width = rf.check("width", yarp::os::Value(128)).asInt();
     int sobelsize = rf.check("filterSize", yarp::os::Value(5)).asInt();
     unsigned int qlen = rf.check("qsize", yarp::os::Value(36)).asInt();
+    int temporalsize = rf.check("tempsize", yarp::os::Value(100000)).asInt();
     int windowRad = rf.check("spatial", yarp::os::Value(5)).asInt();
     double sigma = rf.check("sigma", yarp::os::Value(1.0)).asDouble();
     double thresh = rf.check("thresh", yarp::os::Value(8.0)).asDouble();
@@ -49,7 +50,7 @@ bool vCornerModule::configure(yarp::os::ResourceFinder &rf)
     }
     else {
         cornercallback = 0;
-        cornerthread = new vCornerThread(height, width, moduleName, strict, qlen, windowRad, sobelsize, sigma, thresh, nthreads);
+        cornerthread = new vCornerThread(height, width, moduleName, strict, qlen, temporalsize, windowRad, sobelsize, sigma, thresh, nthreads);
         if(!cornerthread->start())
             return false;
     }

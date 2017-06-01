@@ -3,13 +3,14 @@
 using namespace ev;
 
 vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::string name, bool strict, int qlen,
-                             int windowRad, int sobelsize, double sigma, double thresh, int nthreads)
+                             int temporalsize, int windowRad, int sobelsize, double sigma, double thresh, int nthreads)
 {
     this->height = height;
     this->width = width;
     this->name = name;
     this->strict = strict;
     this->qlen = qlen;
+    this->temporalsize = temporalsize;
     this->windowRad = windowRad;
 //    this->sobelsize = sobelsize;
 //    this->sigma = sigma;
@@ -19,8 +20,8 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     std::cout << "Creating surfaces..." << std::endl;
 //    surfaceleft.initialise(height, width);
 //    surfaceright.initialise(height, width);
-    surfaceleft  = new temporalSurface(width, height, 100000);
-    surfaceright = new temporalSurface(width, height, 100000);
+    surfaceleft  = new temporalSurface(width, height, temporalsize);
+    surfaceright = new temporalSurface(width, height, temporalsize);
 
 //    int gaussiansize = 2*windowRad + 2 - sobelsize;
 //    convolution.configure(sobelsize, gaussiansize);
@@ -30,7 +31,7 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     std::cout << "Using a " << sobelsize << "x" << sobelsize << " filter ";
     std::cout << "and a " << 2*windowRad + 1 << "x" << 2*windowRad + 1 << " spatial window" << std::endl;
 
-    spfilter.initialise(width, height, 100000, 1);
+//    spfilter.initialise(width, height, 100000, 1);
 
     for(int i = 0; i < nthreads; i ++) {
         computeThreads.push_back(new vComputeThread(sobelsize, windowRad, sigma, thresh, qlen, &outthread));

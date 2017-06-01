@@ -98,6 +98,7 @@ private:
     std::string name;
     bool strict;
     int qlen;
+    int temporalsize;
     int windowRad;
 //    int sobelsize;
 //    double sigma;
@@ -110,7 +111,7 @@ private:
 public:
 
     vCornerThread(unsigned int height, unsigned int width, std::string name, bool strict, int qlen,
-                  int windowRad, int sobelsize, double sigma, double thresh, int nthreads);
+                  int temporalsize, int windowRad, int sobelsize, double sigma, double thresh, int nthreads);
     bool threadInit();
     bool open(std::string portname);
     void onStop();
