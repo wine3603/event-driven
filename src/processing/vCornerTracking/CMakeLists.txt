@@ -6,9 +6,12 @@ project(${MODULENAME})
 file(GLOB source src/*.cpp)
 file(GLOB header include/*.h)
 
+find_package(Eigen3 REQUIRED)
+
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${YARP_INCLUDE_DIRS}
-                    ${EVENTDRIVENLIBS_INCLUDE_DIRS})
+                    ${EVENTDRIVENLIBS_INCLUDE_DIRS}
+                    ${EIGEN3_INCLUDE_DIR})
 
 add_executable(${MODULENAME} ${source} ${header})
 
