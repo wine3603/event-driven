@@ -19,11 +19,12 @@
 
 using namespace ev;
 
-vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windowRad, double sigma, int qlen, double thresh)
+vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windowRad, double temporalsize, double sigma, int qlen, double thresh)
 {
     this->height = height;
     this->width = width;
     this->windowRad = windowRad;
+    this->temporalsize = temporalsize / ev::vtsHelper::tsscaler;
 
     //ensure that sobel size is an odd number
     if(!(sobelsize % 2))
@@ -50,12 +51,16 @@ vCornerCallback::vCornerCallback(int height, int width, int sobelsize, int windo
 
     //create surface representations
     std::cout << "Creating surfaces..." << std::endl;
-    surfaceOfR.initialise(height, width);
-    surfaceOnR.initialise(height, width);
-    surfaceOfL.initialise(height, width);
-    surfaceOnL.initialise(height, width);
+//    surfaceOfR.initialise(height, width);
+//    surfaceOnR.initialise(height, width);
+//    surfaceOfL.initialise(height, width);
+//    surfaceOnL.initialise(height, width);
+    surfaceOfR = new temporalSurface(width, height, this->temporalsize);
+    surfaceOnR = new temporalSurface(width, height, this->temporalsize);
+    surfaceOfL = new temporalSurface(width, height, this->temporalsize);
+    surfaceOnL = new temporalSurface(width, height, this->temporalsize);
 
-    spfilter.initialise(width, height, 100000, 1);
+//    spfilter.initialise(width, height, 100000, 1);
 
 }
 /**********************************************************/
@@ -90,6 +95,11 @@ void vCornerCallback::close()
     outPort.close();
     yarp::os::BufferedPort<ev::vBottle>::close();
 
+    delete surfaceOfR;
+    delete surfaceOnR;
+    delete surfaceOfL;
+    delete surfaceOnL;
+
 }
 
 /**********************************************************/
@@ -120,40 +130,46 @@ void vCornerCallback::onRead(ev::vBottle &bot)
     for(ev::vQueue::iterator qi = q.begin(); qi != q.end(); qi++)
     {
         auto ae = is_event<AE>(*qi);
-        if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
-            continue;
+//        if(!spfilter.check(ae->x, ae->y, ae->polarity, ae->channel, ae->stamp))
+//            continue;
 
-        double dt = ae->stamp - prevstamp;
-        if(dt < 0) dt += vtsHelper::max_stamp;
-        cpudelay -= dt * vtsHelper::tsscaler;
-        prevstamp = ae->stamp;
+//        double dt = ae->stamp - prevstamp;
+//        if(dt < 0) dt += vtsHelper::max_stamp;
+//        cpudelay -= dt * vtsHelper::tsscaler;
+//        prevstamp = ae->stamp;
 
-        ev::historicalSurface *cSurf;
+//        ev::historicalSurface *cSurf;
+        ev::temporalSurface *cSurf;
         if(ae->getChannel()) {
 //            continue;
             if(ae->polarity)
-                cSurf = &surfaceOfR;
+//                cSurf = &surfaceOfR;
+                cSurf = surfaceOfR;
             else
-                cSurf = &surfaceOnR;
+//                cSurf = &surfaceOnR;
+                cSurf = surfaceOnR;
         } else {
-            continue;
-//            if(ae->polarity)
+//            continue;
+            if(ae->polarity)
 //                cSurf = &surfaceOfL;
-//            else
+                cSurf = surfaceOfL;
+            else
 //                cSurf = &surfaceOnL;
+                cSurf = surfaceOnL;
         }
-        cSurf->addEvent(*qi);
+//        cSurf->addEvent(*qi);
+        cSurf->fastAddEvent(*qi);
 
-        if(cpudelay <= 0.0) {
-            if(t1 == 0.0)
-                t1 = yarp::os::Time::now();
-//            std::cout << "test " << std::endl;
+//        if(cpudelay <= 0.0) {
+//            if(t1 == 0.0)
+//                t1 = yarp::os::Time::now();
 //            t1 = yarp::os::Time::now();
             //get the roi and process
 //            yarp::os::Time::delay(0.05);
 
             vQueue subsurf;
-            cSurf->getSurfaceN(subsurf, 0, qlen, windowRad, ae->x, ae->y);
+//            cSurf->getSurfaceN(subsurf, 0, qlen, windowRad, ae->x, ae->y);
+            cSurf->getSurf(subsurf, windowRad, 1);
             isc = detectcorner(subsurf, ae->x, ae->y);
 
             //if it's a corner, add it to the output bottle
@@ -163,11 +179,11 @@ void vCornerCallback::onRead(ev::vBottle &bot)
                 fillerbottle.addEvent(ce);
             }
 
-            //times it takes to process
-//            cpudelay = 0.0;
-            cpudelay +=  yarp::os::Time::now() - t1;
-            t1 = yarp::os::Time::now();
-        }
+//            //times it takes to process
+////            cpudelay = 0.0;
+//            cpudelay +=  yarp::os::Time::now() - t1;
+//            t1 = yarp::os::Time::now();
+//        }
 
         if(debugPort.getOutputCount()) {
             yarp::os::Bottle &scorebottleout = debugPort.prepare();
@@ -213,6 +229,8 @@ bool vCornerCallback::detectcorner(const vQueue subsurf, int x, int y)
 
     //reset responses
     convolution.reset();
+
+//    std::cout << score << std::endl;
 
     //if score > thresh tag ae as ce
     return score > thresh;

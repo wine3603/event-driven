@@ -46,17 +46,21 @@ private:
     ev::vNoiseFilter spfilter;   
 
     //data structures
-    ev::historicalSurface surfaceOnL;
-    ev::historicalSurface surfaceOfL;
-    ev::historicalSurface surfaceOnR;
-    ev::historicalSurface surfaceOfR;
-
+//    ev::historicalSurface surfaceOnL;
+//    ev::historicalSurface surfaceOfL;
+//    ev::historicalSurface surfaceOnR;
+//    ev::historicalSurface surfaceOfR;
+    ev::temporalSurface *surfaceOnL;
+    ev::temporalSurface *surfaceOfL;
+    ev::temporalSurface *surfaceOnR;
+    ev::temporalSurface *surfaceOfR;
 
 
     //parameters
     int height;
     int width;
     unsigned int qlen;
+    int temporalsize;
     int windowRad;
     double thresh;
 
@@ -71,7 +75,7 @@ private:
 
 public:
 
-    vCornerCallback(int height, int width, int filterSize, int windowRad, double sigma, int qlen, double thresh);
+    vCornerCallback(int height, int width, int filterSize, int windowRad, double temporalsize, double sigma, int qlen, double thresh);
 
     bool    open(const std::string moduleName, bool strictness = false);
     void    close();
