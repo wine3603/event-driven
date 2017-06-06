@@ -16,5 +16,5 @@ add_subdirectory(vPepper)
 #add_subdirectory(vCorner)
 add_subdirectory(vCornerRT)
 add_subdirectory(vCornerTracking)
-
+add_subdirectory(vEgomotion)
 
