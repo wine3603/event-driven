@@ -296,8 +296,8 @@ void vAttentionManager::onRead( ev::vBottle &bot ) {
     
     mutex.wait();
     for ( ev::vQueue::iterator it = q.begin(); it != q.end(); ++it ) {
-        auto ae = ev::is_event(*it);
-        vSurf->addEvent(ae);
+//        auto ae = ev::is_event(*it);
+//        vSurf->addEvent(ae); //TODO
     }
     mutex.post();
 }

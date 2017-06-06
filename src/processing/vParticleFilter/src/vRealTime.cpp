@@ -5,7 +5,8 @@ using namespace ev;
 /*////////////////////////////////////////////////////////////////////////////*/
 //particleprocessor (real-time)
 /*////////////////////////////////////////////////////////////////////////////*/
-particleProcessor::particleProcessor(std::string name, unsigned int height, unsigned int width, hSurfThread* eventhandler, collectorPort *eventsender)
+particleProcessor::particleProcessor( std::string name, unsigned int height, unsigned int width
+                                      , hSurfThread *eventhandler, collectorPort *eventsender, ParticleType type )
 {
     res.height = height;
     res.width  = width;
@@ -42,6 +43,7 @@ particleProcessor::particleProcessor(std::string name, unsigned int height, unsi
     rbound_max = 50;
     rbound_min = 10;
 
+    particleType = type;
 }
 
 bool particleProcessor::threadInit()
@@ -71,21 +73,25 @@ bool particleProcessor::threadInit()
     }
 
     //initialise the particles
-    vParticle p;
-
+    vParticle* p;
+    
     indexedlist.clear();
     for(int i = 0; i < nparticles; i++) {
-        p.initialiseParameters(i, obsThresh, obsOutlier, obsInlier, pVariance, 128);
-        p.attachPCB(&pcb);
+        switch (particleType) {
+            case ParticleType::Circle : p = new vParticleCircle;
+            case ParticleType::Template :  ;  //TODO other cases
+        }
+        p->initialiseParameters(i, obsThresh, obsOutlier, obsInlier, pVariance, 128);
+        p->attachPCB(&pcb);
 
         if(seedr)
-            p.initialiseState(seedx, seedy, seedr, 50000);
+            p->initialiseState(seedx, seedy, seedr, 50000);
         else
-            p.randomise(res.width, res.height, 30, 50000);
+            p->randomise(res.width, res.height, 30, 50000);
 
-        p.resetWeight(1.0/nparticles);
+        p->resetWeight(1.0/nparticles);
 
-        maxtw = std::max(maxtw, p.gettw());
+        maxtw = std::max(maxtw, p->gettw());
         indexedlist.push_back(p);
     }
 
@@ -122,21 +128,26 @@ void particleProcessor::run()
         pt = t;
         t = unwrap(currentstamp);
 
-        std::vector<vParticle> indexedSnap = indexedlist;
+        std::vector<vParticle*> indexedSnap;// = indexedlist;
+        vParticle* p;
+        for ( auto it = indexedlist.begin(); it != indexedlist.end(); it++ ){
+            p  = (*it)->clone();
+            indexedSnap.push_back(p);
+        }
 
         //resampling
         if(!adaptive || pwsumsq * nparticles > 2.0) {
             for(int i = 0; i < nparticles; i++) {
                 double rn = nRandomise * (double)rand() / RAND_MAX;
                 if(rn > 1.0)
-                    indexedlist[i].randomise(res.width, res.height, 30.0, avgtw);
+                    indexedlist[i]->randomise(res.width, res.height, 30.0, avgtw);
                 else {
                     double accum = 0.0; int j = 0;
                     for(j = 0; j < nparticles; j++) {
-                        accum += indexedSnap[j].getw();
+                        accum += indexedSnap[j]->getw();
                         if(accum > rn) break;
                     }
-                    indexedlist[i] = indexedSnap[j];
+                    *indexedlist[i] = *indexedSnap[j];
                 }
             }
         }
@@ -144,12 +155,12 @@ void particleProcessor::run()
         //prediction
         maxtw = 0; //also calculate maxtw for next processing step
         for(int i = 0; i < nparticles; i++) {
-            indexedlist[i].predict(t);
-            if(!inbounds(indexedlist[i]))
-                indexedlist[i].randomise(res.width, res.height, 30.0, avgtw);
+            indexedlist[i]->predict(t);
+            if(!inbounds(*indexedlist[i]))
+                indexedlist[i]->randomise(res.width, res.height, 30.0, avgtw);
 
-            if(indexedlist[i].gettw() > maxtw)
-                maxtw = indexedlist[i].gettw();
+            if(indexedlist[i]->gettw() > maxtw)
+                maxtw = indexedlist[i]->gettw();
         }
 
 
@@ -192,11 +203,11 @@ void particleProcessor::run()
 
         //normalisation
         pwsumsq = 0;
-        vParticle pmax = indexedlist[0];
+        vParticle* pmax = indexedlist[0];
         for(int i = 0; i < nparticles; i ++) {
-            indexedlist[i].updateWeightSync(normval);
-            pwsumsq += pow(indexedlist[i].getw(), 2.0);
-            if(indexedlist[i].getw() > pmax.getw())
+            indexedlist[i]->updateWeightSync(normval);
+            pwsumsq += pow(indexedlist[i]->getw(), 2.0);
+            if(indexedlist[i]->getw() > pmax->getw())
                 pmax = indexedlist[i];
         }
 
@@ -207,10 +218,10 @@ void particleProcessor::run()
         avgtw = 0;
 
         for(int i = 0; i < nparticles; i ++) {
-            avgx += indexedlist[i].getx() * indexedlist[i].getw();
-            avgy += indexedlist[i].gety() * indexedlist[i].getw();
-            avgr += indexedlist[i].getr() * indexedlist[i].getw();
-            avgtw += indexedlist[i].gettw() * indexedlist[i].getw();
+            avgx += indexedlist[i]->getx() * indexedlist[i]->getw();
+            avgy += indexedlist[i]->gety() * indexedlist[i]->getw();
+            avgr += indexedlist[i]->getr() * indexedlist[i]->getw();
+            avgtw += indexedlist[i]->gettw() * indexedlist[i]->getw();
         }
 
         auto ceg = make_event<GaussianAE>();
@@ -244,8 +255,8 @@ void particleProcessor::run()
 
 //            for(unsigned int i = 0; i < indexedlist.size(); i++) {
 
-//                int py = indexedlist[i].gety();
-//                int px = indexedlist[i].getx();
+//                int py = indexedlist[i]->gety();
+//                int px = indexedlist[i]->getx();
 
 //                if(py < 0 || py >= res.height || px < 0 || px >= res.width) continue;
 //                //image(res.width-1 - px, res.height - 1 - py) = yarp::sig::PixelBgr(255, 255, 255);
@@ -325,8 +336,6 @@ bool particleProcessor::inbounds(vParticle &p)
     return true;
 }
 
-
-
 void particleProcessor::threadRelease()
 {
     scopeOut.close();
@@ -344,7 +353,7 @@ vPartObsThread::vPartObsThread(int pStart, int pEnd)
     this->pEnd = pEnd;
 }
 
-void vPartObsThread::setDataSources(std::vector<vParticle> *particles,
+void vPartObsThread::setDataSources(std::vector<vParticle*> *particles,
                     std::vector<int> *deltats, ev::vQueue *stw, yarp::sig::ImageOf < yarp::sig::PixelBgr> *debugIm)
 {
     this->particles = particles;
@@ -357,14 +366,14 @@ void vPartObsThread::run()
 {
 
     for(int i = pStart; i < pEnd; i++) {
-        (*particles)[i].initLikelihood();
+        (*particles)[i]->initLikelihood();
     }
 
     for(int i = pStart; i < pEnd; i++) {
         for(unsigned int j = 0; j < (*stw).size(); j++) {
-            if((*deltats)[j] < (*particles)[i].gettw()) {
+            if((*deltats)[j] < (*particles)[i]->gettw()) {
                 auto v = is_event<AE>((*stw)[j]);
-                int l = 2 * (*particles)[i].incrementalLikelihood(v->x, v->y, (*deltats)[j]);
+                int l = 2 * (*particles)[i]->incrementalLikelihood(v->x, v->y, (*deltats)[j]);
                 if(debugIm) {
                     l += 128;
                     if(l > 255) l = 255;
@@ -382,7 +391,7 @@ void vPartObsThread::run()
 
     normval = 0.0;
     for(int i = pStart; i < pEnd; i++) {
-        (*particles)[i].concludeLikelihood();
-        normval += (*particles)[i].getw();
+        (*particles)[i]->concludeLikelihood();
+        normval += (*particles)[i]->getw();
     }
 }

@@ -91,9 +91,9 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
             std::cout << "Using initial seed location: " << seed->toString() << std::endl;
             particleCallback->setSeed(seed->get(0).asDouble(), seed->get(1).asDouble(), seed->get(2).asDouble());
         }
-        particleCallback->initialise(width, height, rightParticles, rate,
-                                     nRandResample, adaptivesampling,
-                                     particleVariance, 1, useroi);
+//        particleCallback->initialise<vParticleCircle>(width, height, rightParticles,
+//                                                       rate, nRandResample, adaptivesampling,
+//                                                      particleVariance, 1, useroi);
 
         //open the ports
         if(!particleCallback->open(getName(), strict)) {
@@ -106,7 +106,7 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
         eventhandler.configure(height, width, 0.05);
 
         if(leftParticles) {
-            leftThread = new particleProcessor(getName(), height, width, &eventhandler, &outport);
+            leftThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, Circle );
             leftThread->setComputeOptions(0, nthread, useroi);
             leftThread->setFilterParameters(leftParticles, nRandResample,
                                                 adaptivesampling, particleVariance);
@@ -120,8 +120,9 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
                 return false;
         }
 
+        
         if(rightParticles) {
-            rightThread = new particleProcessor(getName(), height, width, &eventhandler, &outport);
+            rightThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, Circle );
             rightThread->setComputeOptions(1, nthread, useroi);
             rightThread->setFilterParameters(rightParticles, nRandResample,
                                                 adaptivesampling, particleVariance);

@@ -17,7 +17,7 @@ private:
 
     double normval;
 
-    std::vector<vParticle> *particles;
+    std::vector<vParticle*> *particles;
     std::vector<int> *deltats;
     ev::vQueue *stw;
     yarp::sig::ImageOf < yarp::sig::PixelBgr> *debugIm;
@@ -25,7 +25,7 @@ private:
 public:
 
     vPartObsThread(int pStart, int pEnd);
-    void setDataSources(std::vector<vParticle> *particles,
+    void setDataSources(std::vector<vParticle*> *particles,
                         std::vector<int> *deltats, ev::vQueue *stw, yarp::sig::ImageOf<yarp::sig::PixelBgr> *debugIm);
     double getNormVal() { return normval; }
     bool threadInit() { return true; }
@@ -55,7 +55,7 @@ private:
     yarp::os::BufferedPort<yarp::sig::ImageOf <yarp::sig::PixelBgr> > debugOut;
     yarp::os::BufferedPort<yarp::os::Bottle> scopeOut;
     ev::vtsHelper unwrap;
-    std::vector<vParticle> indexedlist;
+    std::vector<vParticle*> indexedlist;
     double avgx;
     double avgy;
     double avgr;
@@ -81,6 +81,8 @@ private:
     double obsThresh;
     double obsInlier;
     double obsOutlier;
+    
+    ParticleType particleType;
 
     bool inbounds(vParticle &p);
 
@@ -96,8 +98,11 @@ public:
         seedx = x; seedy = y; seedr = r;
     }
 
-    particleProcessor(std::string name, unsigned int height, unsigned int width, hSurfThread* eventhandler, collectorPort* eventsender);
+    particleProcessor( std::string name, unsigned int height, unsigned int width
+                           , hSurfThread *eventhandler, collectorPort *eventsender, ParticleType type );
+    
     bool threadInit();
+    
     void run();
     void threadRelease();
 };

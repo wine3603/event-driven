@@ -6,6 +6,11 @@
 
 using namespace ev;
 
+enum ParticleType {
+    Circle,
+    Template
+};
+
 class vParticle;
 
 void drawEvents(yarp::sig::ImageOf< yarp::sig::PixelBgr> &image, ev::vQueue &q, int currenttime, double tw = 0, bool flip = false);
@@ -21,7 +26,7 @@ class preComputedBins;
 /*////////////////////////////////////////////////////////////////////////////*/
 class vParticle
 {
-private:
+protected:
 
     //static parameters
     int id;
@@ -55,7 +60,8 @@ public:
 
     vParticle();
     vParticle& operator=(const vParticle &rhs);
-
+    virtual vParticle* clone () = 0; //Virtual constructor
+    
     //initialise etc.
     void initialiseParameters(int id, double minLikelihood, double outlierParam, double inlierParam, double variance, int angbuckets);
     void attachPCB(preComputedBins *pcb) { this->pcb = pcb; }
@@ -72,7 +78,7 @@ public:
     void predict(unsigned long int stamp);
 
     void initLikelihood();
-    int incrementalLikelihood(int vx, int vy, int dt);
+    virtual int incrementalLikelihood(int vx, int vy, int dt) = 0;
     void concludeLikelihood();
 
     void updateWeightSync(double normval);
@@ -87,6 +93,15 @@ public:
     double gettw() { return tw; }
 
 
+};
+
+
+class vParticleCircle : public vParticle
+{
+public:
+    vParticleCircle() : vParticle(){};
+    vParticle* clone() { return new vParticleCircle(*this);};
+    int incrementalLikelihood(int vx, int vy, int dt);
 };
 
 class preComputedBins
