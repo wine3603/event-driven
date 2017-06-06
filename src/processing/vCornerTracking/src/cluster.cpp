@@ -43,6 +43,7 @@ void cluster::addEvent(ev::event<LabelledAE> evt, unsigned int currt)
 {
     cluster_.push_back(evt);
     tlast_update = currt;
+//    std::cout << "last update at " << tlast_update << std::endl;
 
     //remove the first event added
     if(cluster_.size() > maxsize)

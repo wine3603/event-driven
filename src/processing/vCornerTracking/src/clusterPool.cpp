@@ -48,14 +48,9 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt, un
         if(dist < mindist) {
             mindist = dist;
             clusterID = i;
+            pool[clusterID].addEvent(evt, currt);
+//            std::cout << "updating " << clusterID << " at time " << currt << std::endl;
         }
-
-        //check for old clustersrp read
-        if( (currt - pool[i].getLastUpdate()) > trefresh) {
-//            std::cout << "killing cluster " << i << " " << currt << " " << pool[i].getLastUpdate() << std::endl;
-            killOldCluster(i);
-        }
-
     }
 
     clustervel.first = 0.0;
@@ -63,30 +58,51 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt, un
     //if the minimum distance is less than a predefined threshold
     if(clusterID >= 0) {
 
-        //add corner event to the cluster
-//        std::cout << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
-        pool[clusterID].addEvent(evt, currt);
+//        auto last = ev::is_event<ev::LabelledAE>(pool[clusterID].getLastEvent());
+//        int dx = evt->x - last->x;
+//        int dy = evt->y - last->y;
+//        double distance = sqrt(dx*dx + dy*dy);
 
-        //fit line to the cluster
+        //add corner event to the cluster
+        //        std::cout << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
+//        pool[clusterID].addEvent(evt, currt);
+
+//        //fit line to the cluster
+//        if(distance < 15.0 && distance > 3.0) {
+//            pool[clusterID].fitLine();
+//            clustervel.first = pool[clusterID].getVx();
+//            clustervel.second = pool[clusterID].getVy();
+//        }
+
+//        if(distance > 15.0)
+//            killOldCluster(clusterID);
+
         if(pool[clusterID].getClusterSize() > minevts) {
-//            std::cout << "fitting line to cluster " << clusterID << " to event " << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
+            //            std::cout << "fitting line to cluster " << clusterID << " to event " << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
             pool[clusterID].fitLine();
             clustervel.first = pool[clusterID].getVx();
             clustervel.second = pool[clusterID].getVy();
         }
-//        else {
-//            clustervel.first = 0.0;
-//            clustervel.second = 0.0;
-//        }
 
-//        std::cout << pool[clusterID].getVx() << " " << pool[clusterID].getVy() << std::endl;
+        //        std::cout << pool[clusterID].getVx() << " " << pool[clusterID].getVy() << std::endl;
 
     } else {
 
         //create new cluster
         createNewCluster(evt, currt);
         clusterID = pool.size() + 1;
+//        std::cout << "creating new cluster " << clusterID << std::endl;
     }
+
+    //check for old clusters
+    for(unsigned int i = 0; i < pool.size(); i++) {
+//        std::cout << "for cluster " << i << " " << " last update at " << pool[i].getLastUpdate() << " " << currt - pool[i].getLastUpdate() << std::endl;
+        if( (currt - pool[i].getLastUpdate()) > trefresh) {
+//            std::cout << " killing cluster " << i << " " << pool.size() << std::endl;
+            killOldCluster(i);
+        }
+    }
+//    std::cout << std::endl;
 
     //return the velocity of the current cluster
     return clustervel;

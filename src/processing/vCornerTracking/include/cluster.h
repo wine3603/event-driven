@@ -38,7 +38,7 @@ private:
     int maxsize;
 
     //time at which the cluster had the last update
-    double tlast_update;
+    unsigned int tlast_update;
 
     //cluster velocity
     std::pair <double, double> vel;
@@ -56,6 +56,7 @@ public:
     int getClusterSize();
     double getVx();
     double getVy();
+
 //    ev::vQueue getCluster();
 
 };

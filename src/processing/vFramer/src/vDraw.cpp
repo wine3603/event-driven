@@ -328,7 +328,7 @@ void flowDraw::draw(cv::Mat &image, const vQueue &eSet, int vTime)
     double vx_mean = 0, vy_mean = 0;
 
     int line_thickness = 0;
-    cv::Scalar line_color = CV_RGB(255,0,0);
+    cv::Scalar line_color = CV_RGB(0,0,255);
     cv::Point p_start,p_end;
 
     vQueue::const_reverse_iterator qi;
@@ -669,7 +669,7 @@ void isoInterestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
     isoimage.setTo(255);
 
     if(checkStagnancy(eSet) > clearThreshold) {
-       // return;
+        return;
     }
 
     if(eSet.empty()) return;

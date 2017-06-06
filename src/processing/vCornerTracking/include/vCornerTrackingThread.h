@@ -44,8 +44,9 @@ private:
     //thread for the output
     ev::collectorPort outthread;
 
+    yarp::os::BufferedPort<yarp::os::Bottle> debugPort;
+
     ev::vtsHelper unwrapper;
-    ev::vtsHelper unwrapperflow;
 
 //    //synchronising value
 //    double cpudelay;
@@ -77,7 +78,7 @@ public:
     bool open(std::string portname);
     void onStop();
     void run();
-    void threadRelease();
+//    void threadRelease();
 
 };
 

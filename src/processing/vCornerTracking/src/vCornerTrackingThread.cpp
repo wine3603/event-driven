@@ -15,7 +15,7 @@ vCornerTrackingThread::vCornerTrackingThread(unsigned int height, unsigned int w
     this->minevts = minevts;
     clusterSet = new clusterPool(mindistance, trefresh, maxsize, minevts);
 
-    outfile.open("clustersvel.txt");
+//    outfile.open("clustersvel.txt");
 
 }
 
@@ -34,6 +34,12 @@ bool vCornerTrackingThread::threadInit()
     if(!outthread.start())
         return false;
 
+    std::string debugPortName = "/" + name + "/dist:o";
+    if(!debugPort.open(debugPortName)) {
+        std::cout << "could not open debug port" << std::endl;
+        return false;
+    }
+
     std::cout << "Thread initialised" << std::endl;
     return true;
 }
@@ -44,13 +50,14 @@ void vCornerTrackingThread::onStop()
     allocatorCallback.close();
     allocatorCallback.releaseDataLock();
     outthread.stop();
+    delete clusterSet;
 }
 
-void vCornerTrackingThread::threadRelease()
-{
-    delete clusterSet;
-    outfile.close();
-}
+//void vCornerTrackingThread::threadRelease()
+//{
+//    delete clusterSet;
+////    outfile.close();
+//}
 
 void vCornerTrackingThread::run()
 {
@@ -78,24 +85,23 @@ void vCornerTrackingThread::run()
 
             //update cluster velocity
             vel = clusterSet->update(cep, currt);
-//            std::cout << "becomes " << vel.first << " " << vel.second << std::endl;
-//            std::cout << std::endl;
+////            std::cout << "becomes " << vel.first << " " << vel.second << std::endl;
+////            std::cout << std::endl;
 
             if(vel.first && vel.second) {
                 //create new flow event and assign to it the velocity of the current cluster
                 auto fe = make_event<FlowEvent>(cep);
-//                auto fe = make_event<GaussianAE>(cep);
                 fe->vx = vel.first;
                 fe->vy = vel.second;
 
-//                fe->sigx = (float)(vel.first * 1000000);
-//                fe->sigy = (float)(vel.second * 1000000);
-//                fe->sigxy = 0;
-//                fe->polarity = 1;
+//                outfile << currt * vtsHelper::tsscaler << " " << vel.first * 1000000 << " " << vel.second * 1000000 << std::endl;
 
-//                std::cout << fe->sigx << " " << fe->sigy << std::endl;
-
-                outfile << unwrapperflow(fe->stamp) * vtsHelper::tsscaler << " " << vel.first * 1000000 << " " << vel.second * 1000000 << std::endl;
+//                if(debugPort.getOutputCount()) {
+//                    yarp::os::Bottle &distbottleout = debugPort.prepare();
+//                    distbottleout.clear();
+//                    distbottleout.addDouble(vel.first);
+//                    debugPort.write();
+//                }
 
                 outthread.pushevent(fe, yarpstamp);
 
