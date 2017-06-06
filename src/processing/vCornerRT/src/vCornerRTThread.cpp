@@ -3,14 +3,14 @@
 using namespace ev;
 
 vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::string name, bool strict, int qlen,
-                             int temporalsize, int windowRad, int sobelsize, double sigma, double thresh, int nthreads)
+                             double temporalsize, int windowRad, int sobelsize, double sigma, double thresh, int nthreads)
 {
     this->height = height;
     this->width = width;
     this->name = name;
     this->strict = strict;
     this->qlen = qlen;
-    this->temporalsize = temporalsize;
+    this->temporalsize = temporalsize / ev::vtsHelper::tsscaler;
     this->windowRad = windowRad;
 //    this->sobelsize = sobelsize;
 //    this->sigma = sigma;
@@ -20,8 +20,8 @@ vCornerThread::vCornerThread(unsigned int height, unsigned int width, std::strin
     std::cout << "Creating surfaces..." << std::endl;
 //    surfaceleft.initialise(height, width);
 //    surfaceright.initialise(height, width);
-    surfaceleft  = new temporalSurface(width, height, temporalsize);
-    surfaceright = new temporalSurface(width, height, temporalsize);
+    surfaceleft  = new temporalSurface(width, height, this->temporalsize);
+    surfaceright = new temporalSurface(width, height, this->temporalsize);
 
 //    int gaussiansize = 2*windowRad + 2 - sobelsize;
 //    convolution.configure(sobelsize, gaussiansize);
@@ -319,7 +319,6 @@ void vComputeThread::setData(temporalSurface *cSurf, yarp::os::Stamp ystamp)
 
 void vComputeThread::run()
 {
-//    std::cout << "running " << std::endl;
 //    yarp::os::Time::delay(0.1);
     if(patch.size() == 0) return;
 
@@ -347,13 +346,10 @@ bool vComputeThread::detectcorner(int x, int y)
 
     }
     convolution.applygaussian();
-
     double score = convolution.getScore();
 
     //reset responses
     convolution.reset();
-
-//    std::cout << score << std::endl;
 
     //if score > thresh tag ae as ce
     return score > thresh;

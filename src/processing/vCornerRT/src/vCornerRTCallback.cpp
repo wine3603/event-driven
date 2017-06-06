@@ -169,7 +169,7 @@ void vCornerCallback::onRead(ev::vBottle &bot)
 
             vQueue subsurf;
 //            cSurf->getSurfaceN(subsurf, 0, qlen, windowRad, ae->x, ae->y);
-            cSurf->getSurf(subsurf, windowRad, 1);
+            cSurf->getSurf(subsurf, windowRad);
             isc = detectcorner(subsurf, ae->x, ae->y);
 
             //if it's a corner, add it to the output bottle
