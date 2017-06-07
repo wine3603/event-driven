@@ -77,7 +77,7 @@ public:
     //update
     void predict(unsigned long int stamp);
 
-    void initLikelihood();
+    virtual void initLikelihood() = 0;
     virtual int incrementalLikelihood(int vx, int vy, int dt) = 0;
     void concludeLikelihood();
 
@@ -95,12 +95,31 @@ public:
 
 };
 
-
 class vParticleCircle : public vParticle
 {
 public:
     vParticleCircle() : vParticle(){};
     vParticle* clone() { return new vParticleCircle(*this);};
+    
+    void initLikelihood();
+    int incrementalLikelihood(int vx, int vy, int dt);
+};
+
+class vParticleTemplate : public vParticle
+{
+private:
+    yarp::sig::Matrix vTemplate;
+    yarp::sig::Matrix buckets;
+    
+public:
+    
+    vParticleTemplate( yarp::sig::Matrix vTemplate)  : vParticle(), vTemplate(vTemplate){
+        buckets.resize(vTemplate.rows(), vTemplate.cols());
+        buckets.zero();
+    };
+    vParticle* clone() { return new vParticleTemplate(*this);};
+    
+    void initLikelihood();
     int incrementalLikelihood(int vx, int vy, int dt);
 };
 

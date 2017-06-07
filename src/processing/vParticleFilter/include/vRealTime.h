@@ -56,6 +56,8 @@ private:
     yarp::os::BufferedPort<yarp::os::Bottle> scopeOut;
     ev::vtsHelper unwrap;
     std::vector<vParticle*> indexedlist;
+    std::vector<vParticle*> indexedSnap;
+    
     double avgx;
     double avgy;
     double avgr;

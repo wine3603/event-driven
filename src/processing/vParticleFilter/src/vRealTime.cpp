@@ -78,9 +78,15 @@ bool particleProcessor::threadInit()
     indexedlist.clear();
     for(int i = 0; i < nparticles; i++) {
         switch (particleType) {
-            case ParticleType::Circle : p = new vParticleCircle;
-            case ParticleType::Template :  ;  //TODO other cases
+            case ParticleType::Circle :
+                p = new vParticleCircle; break;
+                
+            case ParticleType::Template :
+                p = new vParticleTemplate(yarp::sig::Matrix(0,0)) ; break;
+                
+                //TODO pass template as parameter
         }
+        
         p->initialiseParameters(i, obsThresh, obsOutlier, obsInlier, pVariance, 128);
         p->attachPCB(&pcb);
 
@@ -93,6 +99,11 @@ bool particleProcessor::threadInit()
 
         maxtw = std::max(maxtw, p->gettw());
         indexedlist.push_back(p);
+    }
+    
+    for ( auto it = indexedlist.begin(); it != indexedlist.end(); it++ ){
+        p  = (*it)->clone();
+        indexedSnap.push_back(p);
     }
 
     yInfo() << "Thread and particles initialised";
@@ -127,14 +138,11 @@ void particleProcessor::run()
 
         pt = t;
         t = unwrap(currentstamp);
-
-        std::vector<vParticle*> indexedSnap;// = indexedlist;
-        vParticle* p;
-        for ( auto it = indexedlist.begin(); it != indexedlist.end(); it++ ){
-            p  = (*it)->clone();
-            indexedSnap.push_back(p);
+    
+        for ( int i = 0; i < indexedlist.size(); ++i ) {
+            *indexedSnap[i] = *indexedlist[i];
         }
-
+        
         //resampling
         if(!adaptive || pwsumsq * nparticles > 2.0) {
             for(int i = 0; i < nparticles; i++) {
