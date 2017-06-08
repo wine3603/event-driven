@@ -6,11 +6,14 @@ w = 304;
 h = 240;
 
 %ROI
-minY = 70;
-maxY = 180;
-minX = 70;
-maxX = 200;
-
+% minY = 70;
+% maxY = 180;
+% minX = 70;
+% maxX = 200;
+minY = 1;
+maxY = 240;
+minX = 1;
+maxX = 304;
 if ~exist('tempFig') | ~exist('imFig')
   close all
   tempFig = figure;
@@ -19,7 +22,7 @@ end
 
 if ~exist('data')
   disp('Loading data...');
-  file = ['/home/miacono/workspace/DATASETS/objects_contour/train/shaking/atis/data.log.txt'];
+  file = ['/home/miacono/workspace/DATASETS/balldyn/1/ATIS/data.log.txt'];
   data = dlmread(file);
   disp ('Finished loading!');
 end
@@ -41,7 +44,7 @@ L = [0  1  0;
 %Initializing variables for loop 
 maxVar = [];
 step = 0.001;
-startTime = 17.0;
+startTime = 5.0;
 duration = 5;
 
 mat = zeros(w,h);

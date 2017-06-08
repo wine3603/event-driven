@@ -75,16 +75,30 @@ bool particleProcessor::threadInit()
     //initialise the particles
     vParticle* p;
     
+    //TODO move template generator somewhere else
+    double radius = 25;
+    int thickness = 4;
+    yarp::sig::Matrix vTemplate(2 * radius + 1 , 2 * radius + 1);
+    vTemplate.zero();
+    for ( double theta = 0; theta < 2 * M_PI ; theta += M_PI/360 ) {
+        
+        for ( int i = 0; i < thickness; ++i ) {
+            
+            int x = (radius - i) * cos(theta);
+            int y = (radius - i) * sin(theta);
+            vTemplate(x + radius  ,y + radius ) = 1;
+        }
+        
+    }
+    
     indexedlist.clear();
     for(int i = 0; i < nparticles; i++) {
         switch (particleType) {
             case ParticleType::Circle :
                 p = new vParticleCircle; break;
-                
             case ParticleType::Template :
-                p = new vParticleTemplate(yarp::sig::Matrix(0,0)) ; break;
+                p = new vParticleTemplate(vTemplate); break;
                 
-                //TODO pass template as parameter
         }
         
         p->initialiseParameters(i, obsThresh, obsOutlier, obsInlier, pVariance, 128);
@@ -132,6 +146,7 @@ void particleProcessor::run()
     yarp::os::Stamp yarpstamp = eventhandler->queryYstamp();
     int currentstamp = eventhandler->queryVstamp(camera);
 
+    
     while(!isStopping()) {
 
         stw = stw2;

@@ -318,13 +318,17 @@ int vParticleTemplate::incrementalLikelihood( int vx, int vy, int dt ) {
     int dx = vx - x;
     int dy = vy - y;
     
-    if (vTemplate(dx,dy)) {
-        if ( !buckets( dx, dy ) ) {
-            inlierCount++;
-            buckets( dx, dy ) = 1;
+    bool inROI = dx > 0 && dx < vTemplate.cols() && dy > 0 && dy < vTemplate.rows();
+    
+    if (inROI) {
+        if ( vTemplate( dx, dy ) ) {
+            if ( !buckets( dx, dy ) ) {
+                inlierCount++;
+                buckets( dx, dy ) = 1;
+            }
+        } else {
+            outlierCount++;
         }
-    } else {
-        outlierCount ++;
     }
     
     int score = inlierCount - outlierCount;

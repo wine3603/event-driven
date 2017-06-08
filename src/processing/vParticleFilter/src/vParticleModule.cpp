@@ -80,7 +80,8 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
     particleCallback = 0;
     leftThread = 0;
     rightThread = 0;
-
+    ParticleType particleType = Circle;
+    
     if(!realtime) {
 
         /* USE FULL PROCESS IN CALLBACK */
@@ -104,9 +105,9 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
 
         /* USE REAL-TIME THREAD */
         eventhandler.configure(height, width, 0.05);
-
+        
         if(leftParticles) {
-            leftThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, Circle );
+            leftThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, particleType );
             leftThread->setComputeOptions(0, nthread, useroi);
             leftThread->setFilterParameters(leftParticles, nRandResample,
                                                 adaptivesampling, particleVariance);
@@ -122,7 +123,7 @@ bool vParticleModule::configure(yarp::os::ResourceFinder &rf)
 
         
         if(rightParticles) {
-            rightThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, Circle );
+            rightThread = new particleProcessor( getName(), height, width, &eventhandler, &outport, particleType );
             rightThread->setComputeOptions(1, nthread, useroi);
             rightThread->setFilterParameters(rightParticles, nRandResample,
                                                 adaptivesampling, particleVariance);
