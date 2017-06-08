@@ -52,6 +52,7 @@ public:
     clusterPool(int mindistance, unsigned int trefresh, int maxsize, int minevts);
 
     std::pair<double, double> update(ev::event<ev::LabelledAE> evt, unsigned int currt);
+    std::pair<double, double> updateNew(ev::event<ev::LabelledAE> evt, unsigned int currt);
     void createNewCluster(ev::event<ev::LabelledAE> evt, unsigned int currt);
     void killOldCluster(int clusterID);
     std::vector <cluster> getPool();

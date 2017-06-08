@@ -53,6 +53,7 @@ public:
     ev::event<> getLastEvent();
     void fitLine();
     unsigned int getLastUpdate();
+    bool isInTriangle(ev::event<LabelledAE> evt, unsigned int currt);
     int getClusterSize();
     double getVx();
     double getVy();

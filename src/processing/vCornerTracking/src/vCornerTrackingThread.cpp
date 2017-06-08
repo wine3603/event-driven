@@ -84,9 +84,10 @@ void vCornerTrackingThread::run()
             unsigned int currt = unwrapper(cep->stamp);
 
             //update cluster velocity
-            vel = clusterSet->update(cep, currt);
-////            std::cout << "becomes " << vel.first << " " << vel.second << std::endl;
-////            std::cout << std::endl;
+//            vel = clusterSet->update(cep, currt);
+            vel = clusterSet->updateNew(cep, currt);
+//            std::cout << "becomes " << vel.first << " " << vel.second << std::endl;
+//            std::cout << std::endl;
 
             if(vel.first && vel.second) {
                 //create new flow event and assign to it the velocity of the current cluster
@@ -96,12 +97,13 @@ void vCornerTrackingThread::run()
 
 //                outfile << currt * vtsHelper::tsscaler << " " << vel.first * 1000000 << " " << vel.second * 1000000 << std::endl;
 
-//                if(debugPort.getOutputCount()) {
-//                    yarp::os::Bottle &distbottleout = debugPort.prepare();
-//                    distbottleout.clear();
-//                    distbottleout.addDouble(vel.first);
-//                    debugPort.write();
-//                }
+                if(debugPort.getOutputCount()) {
+                    yarp::os::Bottle &distbottleout = debugPort.prepare();
+                    distbottleout.clear();
+                    distbottleout.addDouble(vel.first * 1000000);
+                    distbottleout.addDouble(vel.second * 1000000);
+                    debugPort.write();
+                }
 
                 outthread.pushevent(fe, yarpstamp);
 

@@ -432,7 +432,8 @@ void interestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
     if(eSet.empty()) return;
 
     int r = 2;
-    CvScalar c = CV_RGB(255, 0, 0);
+    CvScalar c1 = CV_RGB(255, 0, 0);
+    CvScalar c2 = CV_RGB(0, 255, 255);
     ev::vQueue::const_reverse_iterator qi;
     for(qi = eSet.rbegin(); qi != eSet.rend(); qi++) {
         int dt = eSet.back()->stamp - (*qi)->stamp;
@@ -449,7 +450,11 @@ void interestDraw::draw(cv::Mat &image, const ev::vQueue &eSet, int vTime)
         }
 
         cv::Point centr(px, py);
-        cv::circle(image, centr, r, c, CV_FILLED);
+        if(v->ID == 1)
+            cv::circle(image, centr, r, c1, CV_FILLED);
+        else
+            cv::circle(image, centr, r, c2, CV_FILLED);
+
     }
 
 }

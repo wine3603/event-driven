@@ -237,11 +237,23 @@ void vEgomotionManager::onRead(ev::vBottle &vbot)
 
             auto inde = make_event<LabelledAE>(ofp);
             //if it is independent motion, tag the event as independent
-            if(isindependent)
+            if(isindependent) {
                 inde->ID = 2;
-            else
+//                std::cout << "independent " << std::endl;
+            }
+                else
                 //if not, tag it as corner
                 inde->ID = 1;
+
+            if(debugPort.getOutputCount()) {
+                yarp::os::Bottle &scorebottleout = debugPort.prepare();
+                scorebottleout.clear();
+                scorebottleout.addDouble(pred_meanv[0]);
+                scorebottleout.addDouble(pred_meanv[1]);
+                scorebottleout.addDouble(ofp->vx);
+                scorebottleout.addDouble(ofp->vy);
+                debugPort.write();
+            }
 
             if(!outBottle) {
                 outBottle = &outPort.prepare();
@@ -279,16 +291,16 @@ bool vEgomotionManager::detect_independent(event<FlowEvent> ofe, yarp::sig::Vect
     //compute mahalanobis distance
     double mahdist = sqrt(a(0, 0)*diff[0] + a(0, 1)*diff[1]);
 
-//    std::cout << mahdist << std::endl;
+//    std::cout << mahdist << " " << threshold << std::endl;
 
-    if(debugPort.getOutputCount()) {
-        yarp::os::Bottle &scorebottleout = debugPort.prepare();
-        scorebottleout.clear();
-        scorebottleout.addDouble(mahdist);
-        debugPort.write();
-    }
+//    if(debugPort.getOutputCount()) {
+//        yarp::os::Bottle &scorebottleout = debugPort.prepare();
+//        scorebottleout.clear();
+//        scorebottleout.addDouble(mahdist);
+//        debugPort.write();
+//    }
 
-    return (mahdist > threshold);
+    return mahdist > threshold;
 }
 
 /**********************************************************/

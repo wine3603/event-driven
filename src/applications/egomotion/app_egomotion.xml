@@ -11,51 +11,57 @@
 </module>
 
 <module>
-    <name>vCornerRT</name>
-    <parameters>--strict --width 304 --height 240 --callback false --nthreads 1</parameters>
-    <node>localhost</node>
+    <name>vPepper</name>
+    <parameters>--strict --width 304 --height 240 --temporalSize 100000</parameters>
+    <node>icub23</node>
 </module>
 
 <module>
-    <name>vPepper</name>
-    <parameters>--strict --width 304 --height 240 --temporalSize 100000</parameters>
-    <node>localhost</node>
+    <name>vCornerRT</name>
+    <parameters>--strict --width 304 --height 240 --callback false --nthreads 8 --tempsize 0.1</parameters>
+    <node>icub23</node>
 </module>
 
 <module>
     <name>vCornerTracking</name>
-    <parameters> </parameters>
-    <node>localhost</node>
+    <parameters> --strict --width 304 --height 240 --callback false --minevts 10 --mindist 3 </parameters>
+    <node>icub23</node>
 </module>
 
 <module>
     <name>vEgomotion</name>
     <parameters> </parameters>
-    <node>localhost</node>
+    <node>icub23</node>
 </module>
 
 <module>
    <name>velocityObserver</name>
    <parameters> --name /velObsHead --lenVel 20</parameters>
-   <node>localhost</node>
+   <node>icub23</node>
 </module>
 
 <module>
     <name> vFramer</name>
-    <parameters> --frameRate 30 --displays "(1 /flow (AE AE-INT FLOW) 1 /right (AE AE-INT ISO ISO-INT))" --height 240 --width 304 --strict --flip</parameters>
-    <node>localhost</node>
+    <parameters> --frameRate 30 --eventWindow 0.1 --displays "(1 /flow (AE AE-INT FLOW) 1 /right (AE AE-INT ISO ISO-INT))" --height 240 --width 304 --strict --flip</parameters>
+    <node>icub24</node>
 </module>
 
 <module>
    <name> yarpview </name>
    <parameters>--name /viewCh0 --x 30 --y 30 --w 608 --h 480 --RefreshTime 33 </parameters>
-   <node>localhost</node>
+   <node>icub24</node>
 </module>
 
 <module>
    <name> yarpview </name>
    <parameters>--name /viewCh1 --x 648 --y 30 --w 608 --h 480 --RefreshTime 33 </parameters>
-   <node>localhost</node>
+   <node>icub24</node>
+</module>
+
+<module>
+   <name> yarpscope </name>
+   <parameters>--xml velocityOut.xml</parameters>
+   <node>icub23</node>
 </module>
 
 <connection>
@@ -85,13 +91,19 @@
 <connection>
   <from>/vCornerTracking/vBottle:o</from>
   <to>/vEgomotion/vBottle:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
+</connection>
+
+<connection>
+  <from>/vEgomotion/vBottle:o</from>
+  <to>/vFramer/LAE:i</to>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
   <from>/vCornerTracking/vBottle:o</from>
   <to>/vFramer/FLOW:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
@@ -103,25 +115,25 @@
 <connection>
   <from>/icub/head/state:o</from>
   <to>/velObsHead/pos:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
   <from>/velObsHead/vel:o</from>
   <to>/vEgomotion/encoders:i</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
   <from>/vFramer/flow</from>
   <to>/viewCh0</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 <connection>
   <from>/vFramer/right</from>
   <to>/viewCh1</to>
-  <protocol>tcp</protocol>
+  <protocol>udp</protocol>
 </connection>
 
 

@@ -74,11 +74,11 @@ private:
     double threshold;
 
     //pre-trained models
-    const char *mu_vx_file = "/home/vvasco/dev/libsvm-3.22/muvx.model";
-    const char *mu_vy_file = "/home/vvasco/dev/libsvm-3.22/muvy.model";
-    const char *sigma_vx_file = "/home/vvasco/dev/libsvm-3.22/sigmavx.model";
-    const char *sigma_vy_file = "/home/vvasco/dev/libsvm-3.22/sigmavy.model";
-    const char *sigma_vxvy_file = "/home/vvasco/dev/libsvm-3.22/sigmavxvy.model";
+    const char *mu_vx_file = "/usr/local/src/robot/event-driven/build/bin/muvx.model";
+    const char *mu_vy_file = "/usr/local/src/robot/event-driven/build/bin/muvy.model";
+    const char *sigma_vx_file = "/usr/local/src/robot/event-driven/build/bin/sigmavx.model";
+    const char *sigma_vy_file = "/usr/local/src/robot/event-driven/build/bin/sigmavy.model";
+    const char *sigma_vxvy_file = "/usr/local/src/robot/event-driven/build/bin/sigmavxvy.model";
     struct svm_model *mu_vx, *mu_vy, *sigma_vx, *sigma_vy, *sigma_vxvy;
 
     //encoders velocities

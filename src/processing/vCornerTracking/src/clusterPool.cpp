@@ -109,6 +109,47 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt, un
 
 }
 
+std::pair <double, double> clusterPool::updateNew(ev::event<ev::LabelledAE> evt, unsigned int currt)
+{
+    int clusterID = -1;
+
+    //if it's the first event, we create the first cluster
+    if(firstevent) {
+        firstevent = false;
+        createNewCluster(evt, currt);
+    }
+
+    //for each created cluster
+    for(unsigned int i = 0; i < pool.size(); i++) {
+
+        //discard the event if it's already in the cluster
+
+
+        //if the event is within the triangle add it
+        //CHECK IF THIS HAPPENS FOR MORE CLUSTERS
+        if(pool[i].isInTriangle(evt)) {
+            clusterID = i;
+            pool[clusterID].addEvent(evt, currt);
+        }
+
+    }
+
+    if(clusterID >= 0) {
+        if(pool[clusterID].getClusterSize() > minevts) {
+            pool[clusterID].fitLine();
+            clustervel.first = pool[clusterID].getVx();
+            clustervel.second = pool[clusterID].getVy();
+        }
+
+    } else {
+        //create new cluster
+        createNewCluster(evt, currt);
+        clusterID = pool.size() + 1;
+    }
+
+
+}
+
 void clusterPool::createNewCluster(ev::event<ev::LabelledAE> evt, unsigned int currt)
 {
     cluster newcluster;
