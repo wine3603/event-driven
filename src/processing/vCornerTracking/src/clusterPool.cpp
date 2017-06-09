@@ -58,25 +58,6 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt, un
     //if the minimum distance is less than a predefined threshold
     if(clusterID >= 0) {
 
-//        auto last = ev::is_event<ev::LabelledAE>(pool[clusterID].getLastEvent());
-//        int dx = evt->x - last->x;
-//        int dy = evt->y - last->y;
-//        double distance = sqrt(dx*dx + dy*dy);
-
-        //add corner event to the cluster
-        //        std::cout << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
-//        pool[clusterID].addEvent(evt, currt);
-
-//        //fit line to the cluster
-//        if(distance < 15.0 && distance > 3.0) {
-//            pool[clusterID].fitLine();
-//            clustervel.first = pool[clusterID].getVx();
-//            clustervel.second = pool[clusterID].getVy();
-//        }
-
-//        if(distance > 15.0)
-//            killOldCluster(clusterID);
-
         if(pool[clusterID].getClusterSize() > minevts) {
             //            std::cout << "fitting line to cluster " << clusterID << " to event " << evt->x << " " << evt->y << " " << evt->stamp << std::endl;
             pool[clusterID].fitLine();
@@ -112,41 +93,54 @@ std::pair <double, double> clusterPool::update(ev::event<ev::LabelledAE> evt, un
 std::pair <double, double> clusterPool::updateNew(ev::event<ev::LabelledAE> evt, unsigned int currt)
 {
     int clusterID = -1;
+    std::pair <double, double> clustervel;
+    clustervel.first = 0.0;
+    clustervel.second = 0.0;
 
     //if it's the first event, we create the first cluster
     if(firstevent) {
         firstevent = false;
         createNewCluster(evt, currt);
     }
+    else {
 
-    //for each created cluster
-    for(unsigned int i = 0; i < pool.size(); i++) {
+        //for each created cluster
+        for(unsigned int i = 0; i < pool.size(); i++) {
 
-        //discard the event if it's already in the cluster
+            //if the event is within the triangle add it
+            //CHECK IF THIS HAPPENS FOR MORE CLUSTERS
+            if(pool[i].isInTriangle(evt, currt)) {
+                std::cout << "adding evt to cluster " << i << std::endl;
+                clusterID = i;
+                pool[clusterID].addEvent(evt, currt);
+            }
 
-
-        //if the event is within the triangle add it
-        //CHECK IF THIS HAPPENS FOR MORE CLUSTERS
-        if(pool[i].isInTriangle(evt)) {
-            clusterID = i;
-            pool[clusterID].addEvent(evt, currt);
         }
 
-    }
+        if(clusterID >= 0) {
 
-    if(clusterID >= 0) {
-        if(pool[clusterID].getClusterSize() > minevts) {
-            pool[clusterID].fitLine();
-            clustervel.first = pool[clusterID].getVx();
-            clustervel.second = pool[clusterID].getVy();
+            //start tracking when there are enough events in the cluster
+            //and there the cluster moved enough
+            if(pool[clusterID].getClusterSize() > minevts && pool[clusterID].getSpatialDist(evt) > mindistance) {
+                pool[clusterID].fitLine();
+                clustervel.first = pool[clusterID].getVx();
+                clustervel.second = pool[clusterID].getVy();
+            }
+
+        } else {
+            //create new cluster
+            //        std::cout << "create new cluster " << std::endl;
+            createNewCluster(evt, currt);
+            clusterID = pool.size() + 1;
         }
 
-    } else {
-        //create new cluster
-        createNewCluster(evt, currt);
-        clusterID = pool.size() + 1;
+//        //THIS DOESN'T HAVE TO BE HARDCODED
+//        double maxdistance = 15.0;
+//        if(pool[clusterID].getSpatialDist(evt) > maxdistance)
+//            killOldCluster(clusterID);
     }
 
+    return clustervel;
 
 }
 

@@ -27,6 +27,10 @@ void cluster::initialise(int maxsize)
     vel.first = 0.0;
     vel.second = 0.0;
 
+    checkevt.resize(240);
+    for(int y = 0; y < 240; y++) {
+        checkevt[y].resize(304);
+    }
 }
 
 double cluster::dist2event(ev::event<LabelledAE> evt)
@@ -39,10 +43,26 @@ double cluster::dist2event(ev::event<LabelledAE> evt)
     return dist;
 }
 
+double cluster::getSpatialDist(ev::event<LabelledAE> evt)
+{
+    auto first = is_event<LabelledAE>(this->getFirstEvent());
+    int dx = first->x - evt->x;
+    int dy = first->y - evt->y;
+
+    return sqrt(dx*dx + dy*dy);
+
+}
+
 void cluster::addEvent(ev::event<LabelledAE> evt, unsigned int currt)
 {
-    cluster_.push_back(evt);
-    tlast_update = currt;
+
+    //discard the event if it's already in the cluster
+    if(checkevt[evt->y][evt->x] == 0) {
+        checkevt[evt->y][evt->x] = 1;
+        cluster_.push_back(evt);
+        tlast_update = currt;
+    }
+
 //    std::cout << "last update at " << tlast_update << std::endl;
 
 //    //remove the first event added
@@ -54,6 +74,13 @@ ev::event<> cluster::getLastEvent()
 {
     if(!cluster_.size()) return NULL;
     return cluster_.back();
+}
+
+
+ev::event<> cluster::getFirstEvent()
+{
+    if(!cluster_.size()) return NULL;
+    return cluster_.front();
 }
 
 void cluster::fitLine()
@@ -130,26 +157,48 @@ void cluster::fitLine()
 
 }
 
+//bool cluster::isInTriangle(ev::event<LabelledAE> evt, unsigned int currt)
+//{
+//    //TODO: this doesn't have to be hardcoded
+//    double height = 10.0;
+//    double radius = 1.0;
+//    double s = sqrt(radius*radius + height * height);
+//    double ang = acos(height / s);
+
+//    yarp::sig::Vector apexToPoint(3);
+//    yarp::sig::Vector apexToCentre(3);
+
+//    auto apex = is_event<LabelledAE>(this->getLastEvent());
+
+//    //distance between apex and current point
+//    apexToPoint[0] = apex->x - evt->x;
+//    apexToPoint[1] = apex->y - evt->y;
+//    apexToPoint[2] = tlast_update - currt;
+
+//    //distance between apex and center of the triangle
+//    apexToCentre[0] = apex->x - height;
+//    apexToCentre[1] = apex->y - height;
+//    apexToCentre[2] = tlast_update;
+
+//    double dotProd = apexToPoint[0]*apexToCentre[0] + apexToPoint[1]*apexToCentre[1] + apexToPoint[2]*apexToCentre[2];
+//    double magApexToPoint = sqrt(apexToPoint[0]*apexToPoint[0] + apexToPoint[1]*apexToPoint[1] + apexToPoint[2]*apexToPoint[2]);
+//    double magApexToCentre = sqrt(apexToCentre[0]*apexToCentre[0] + apexToCentre[1]*apexToCentre[1] + apexToCentre[2]*apexToCentre[2]);
+//    double distance = dotProd / (magApexToPoint * magApexToCentre);
+//    double theta = acos(distance);
+
+//    std::cout << theta * (180/M_PI) << " " << ang * (180/M_PI) <<  std::endl;
+
+//    return theta <= 0.5 * ang;
+
+//}
+
 bool cluster::isInTriangle(ev::event<LabelledAE> evt, unsigned int currt)
 {
-    yarp::sig::Vector apexToPoint(3);
-    yarp::sig::Vector apexToCentre(3);
-
     auto apex = is_event<LabelledAE>(this->getLastEvent());
+    double dx = (evt->x - apex->x) / (currt - tlast_update);
+    double dy = (evt->y - apex->y) / (currt - tlast_update);
 
-    //distance between apex and current point
-    apexToPoint[0] = apex->x - evt->x;
-    apexToPoint[1] = apex->y - evt->y;
-    apexToPoint[2] = tlast_update - currt;
-
-    //distance between apex and center of the triangle
-    apexToCentre[0] = apex->x - 10;
-    apexToCentre[1] = apex->y - 10;
-    apexToCentre[2] = tlast_update;
-
-    double dotProd = apexToPoint[0]*apexToCentre[0] + apexToPoint[1]*apexToCentre[1] + apexToPoint[2]*apexToCentre[2];
-    double magApexToPoint = sqrt(apexToPoint[0]*apexToPoint[0] + apexToPoint[1]*apexToPoint[1] + apexToPoint[2]*apexToPoint[2]);
-    double magApexToPoint = sqrt(apexToCentre[0]*apexToCentre[0] + apexToCentre[1]*apexToCentre[1] + apexToCentre[2]*apexToCentre[2]);
+    return (sqrt(dx*dx + dy*dy) <= 10.0);
 
 }
 
